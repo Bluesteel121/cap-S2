@@ -24,7 +24,7 @@
         
         <!-- Farmer Button -->
         <button onclick="redirectToLogin('farmer')" class="flex flex-col items-center">
-            <div class="bg-white w-[150px] h-[140px] p-4 rounded-lg shadow-lg flex flex-col items-center justify-center">
+ <div class="bg-white w-[150px] h-[140px] p-4 rounded-lg shadow-lg flex flex-col items-center justify-center">
                 <img src="Images/farmerlogo.png" alt="Farmer Logo" class="h-20" />
                 <i class="fas fa-users text-[#115D5B] text-4xl"></i>
             </div>
@@ -33,7 +33,7 @@
         
         <!-- Client Button -->
         <button onclick="redirectToLogin('client')" class="flex flex-col items-center">
-            <div class="bg-white w-[150px] h-[140px] p-4 rounded-lg shadow-lg flex flex-col items-center justify-center">
+ <div class="bg-white w-[150px] h-[140px] p-4 rounded-lg shadow-lg flex flex-col items-center justify-center">
                 <img src="Images/customer.png" alt="Client Logo" class="h-20" />
                 <i class="fas fa-handshake text-[#115D5B] text-4xl"></i>
             </div>
@@ -83,8 +83,7 @@
     function redirectToLogin(role) {
       const routes = {
         admin: "adminlogin.php",
-        farmer: "farmerlogin.php",
-        client: "clientlogin.php"
+ user: "userlogin.php"
       };
       window.location.href = routes[role];
     }
