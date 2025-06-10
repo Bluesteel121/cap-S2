@@ -8,14 +8,20 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/js/all.min.js"></script>
 </head>
 <body class="bg-gray-100 min-h-screen">
+
     <!-- Navigation Bar -->
     <nav class="bg-[#115D5B] text-white p-4 shadow-lg">
         <div class="container mx-auto flex justify-between items-center">
-            <a href="index.php" class="flex items-center space-x-2">
-                <i class="fas fa-arrow-left"></i>
-                <span>Back to Home</span>
-            </a>
-            <div class="text-2xl font-bold">CNLRRS Queen Pineapple Research E-Library</div>
+            <div class="flex items-center">
+                <img src="Images/logo.png" alt="CNLRRS Logo" class="h-10 w-10 mr-2">
+                <span class="text-xl font-bold">CNLRRS Rainfed Research Station</span>
+            </div>
+            <div class="space-x-4">
+                <a href="#" class="hover:underline">Home</a>
+                <a href="#" class="hover:underline">Our Services</a>
+                <a href="#" class="hover:underline">About Us</a>
+            </div>
+            <button id="loginBtn" class="bg-[#F2C94C] hover:bg-yellow-500 text-[#115D5B] font-bold py-2 px-4 rounded">Log In</button>
             <div class="flex items-center space-x-4">
             </div>
         </div>
