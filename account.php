@@ -1,36 +1,84 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Account Selection</title>
-    <!-- Include Tailwind CSS CDN -->
-    <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
-    <style>
-        /* Custom styles for responsiveness and appearance */
-        @media (min-width: 640px) {
-            .option-grid {
-                grid-template-columns: repeat(2, 1fr);
-            
-            }
-        }
-    </style>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Account Type</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://kit.fontawesome.com/YOUR_FONT_AWESOME_KIT.js" crossorigin="anonymous"></script>
 </head>
-<body class="bg-gray-100 flex items-center justify-center min-h-screen">
-    <div class="bg-white p-6 rounded-lg shadow-md text-center">
-        <h1 class="text-2xl font-bold text-center text-blue-600 mb-6">Select Your Account Type</h1>
-        <div class="grid grid-cols-1 option-grid gap-4 mb-6">
-            <a href="/adminlogin.php" class="block p-4 border border-blue-500 rounded-lg text-blue-600 hover:bg-blue-600 hover:text-white transition-colors duration-200">
-                <div class="text-lg font-semibold">Admin</div>
-            </a>
-            <a href="/userlogin.php" class="block p-4 border border-green-500 rounded-lg text-green-600 hover:bg-green-600 hover:text-white transition-colors duration-200">
-                <div class="text-lg font-semibold">User</div>
-            </a>
-        </div>
-        <a href="/" class="inline-block px-4 py-2 bg-gray-300 text-gray-700 rounded-lg hover:bg-gray-400 transition-colors duration-200">
+<body class="min-h-screen flex flex-col md:flex-row relative">
+
+  <!-- Left Section -->
+<div class="w-full md:w-1/2 bg-[#115D5B] text-white flex flex-col justify-center items-center p-6">
+    <h1 class="text-2xl md:text-4xl font-bold mb-6 text-center">WELCOME TO CNLRRS</h1>
+    <div class="flex flex-col md:flex-row items-center md:space-x-6 space-y-4 md:space-y-0">
+        <!-- Admin Button -->
+        <button onclick="redirectToLogin('admin')" class="flex flex-col items-center">
+            <div class="bg-white w-[150px] h-[140px] p-4 rounded-lg shadow-lg flex flex-col items-center justify-center">
+                <img src="Images/adminlogo.png" alt="Admin Logo" class="h-20" />
+                <i class="fas fa-user-cog text-[#115D5B] text-4xl"></i>
+            </div>
+            <p class="mt-2 text-lg font-semibold">Admin</p>
+        </button>
+
+        <!-- User Button -->
+        <button onclick="redirectToLogin('user')" class="flex flex-col items-center">
+            <div class="bg-white w-[150px] h-[140px] p-4 rounded-lg shadow-lg flex flex-col items-center justify-center">
+                <img src="Images/farmerlogo.png" alt="User Logo" class="h-20" />
+                <i class="fas fa-users text-[#115D5B] text-4xl"></i>
+            </div>
+            <p class="mt-2 text-lg font-semibold">User</p>
+        </button>
+
+    </div>
+
+    <!-- Back to Home Button (now centered below all buttons) -->
+    <div class="mt-6 flex justify-center">
+        <a href="index.php" class="flex items-center px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-200 rounded-lg shadow-sm hover:bg-gray-50 hover:text-gray-900 transition-all duration-300 ease-in-out group">
+            <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 mr-1.5 text-gray-500 group-hover:text-gray-700 transform group-hover:-translate-x-0.5 transition-transform duration-300" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18" />
+            </svg>
             Back to Home
         </a>
     </div>
-</body>
+</div>
+
+ <!-- Right Section -->
+<div class="w-full md:w-1/2 bg-white text-black flex flex-col justify-center items-center p-6">
+    <div class="flex justify-center space-x-4 mb-4 flex-wrap">
+        <img src="Images/logo1.png" alt="Logo 1" class="h-32 md:h-40" />
+        <img src="Images/logo2.png" alt="Logo 2" class="h-32 md:h-40" />
+    </div>
+    <h2 class="text-center font-bold text-lg md:text-xl mt-4 text-gray-900">
+        DEPARTMENT OF AGRICULTURE RFO 5
+    </h2>
+    <h3 class="text-center font-bold text-base md:text-lg mt-2 text-gray-900">
+        CAMARINES NORTE LOWLAND RAINFED RESEARCH STATION
+    </h3>
+    <div class="mt-6 text-center">
+        <p class="flex justify-center items-center gap-2 font-semibold text-gray-800">
+            <span class="text-gray-700">&#128205;</span> Calasgasan, Daet, Camarines Norte
+        </p>
+        <p class="flex justify-center items-center gap-2 mt-2 font-semibold text-gray-800">
+            <span class="text-gray-700">&#128231;</span> dacnlrrs@gmail.com
+        </p>
+        <p class="flex flex-col items-center gap-1 mt-2 font-semibold text-gray-800">
+            <span>&#128100; Engr. Bella B. Frias</span>
+            <span class="text-sm font-medium text-gray-600">
+                Superintendent/Agricultural Center Chief III
+            </span>
+        </p>
+    </div>
+</div>
+  <script>
+    function redirectToLogin(role) {
+      const routes = {
+        admin: "/adminlogin.php",
+        user: "/userlogin.php",
+      };
+      window.location.href = routes[role];
+    }
+  </script>
 </html>
 
