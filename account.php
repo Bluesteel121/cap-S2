@@ -11,6 +11,7 @@
         @media (min-width: 640px) {
             .option-grid {
                 grid-template-columns: repeat(2, 1fr);
+            
             }
         }
     </style>
