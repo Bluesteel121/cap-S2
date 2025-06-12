@@ -1,11 +1,12 @@
 {
-    "name": "roniel/cap",
+    "name": "bluesteel/cap",
     "description": "capstone project",
     "type": "project",
     "license": "MIT",
     "minimum-stability": "stable",
     "require": {
         "php": "^8.1",
-        "vlucas/phpdotenv": "^5.6"
+        "vlucas/phpdotenv": "^5.6",
+        "inertiajs/inertia-laravel": "^0.6" 
     }
 }
