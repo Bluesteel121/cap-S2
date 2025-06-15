@@ -1,0 +1,6 @@
+[2025-06-15 11:29:33] Database Connection Status: Connected
+[2025-06-15 11:29:33] Attempting user login - Username: nemz, Expected Role: user
+[2025-06-15 11:29:33] Query result rows: 1
+[2025-06-15 11:29:33] Stored Password: pass
+[2025-06-15 11:29:33] Submitted Password: pass
+[2025-06-15 11:29:33] Password match. Redirecting to userpage.php
