@@ -16,7 +16,7 @@ include "connect.php";
 if ($_SERVER["REQUEST_METHOD"] == "POST") {
     $username = $_POST["username"] ?? "";
     $password = $_POST["password"] ?? "";
-    $requested_role = "admin"; // Admins can only log in with the admin role
+    $requested_role = $_POST["role"] ?? ""; // Get the requested role from the form
 
     debugLog("Database Connection Status: " . ($conn ? "Connected" : "Failed"));
     debugLog("Attempting admin login - Username: $username, Requested Role: $requested_role");
@@ -27,8 +27,8 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
             throw new Exception("Database connection not established");
         }
 
-        // Prepared statement to select user with matching username and admin role
-        $stmt = $conn->prepare("SELECT * FROM accounts WHERE username = ? AND role = ?");
+        // Prepared statement to select user with matching username and requested role
+        $stmt = $conn->prepare("SELECT * FROM accounts WHERE username = ? AND role = ? AND password = ?"); // Include password in query for direct comparison
         if ($stmt === false) {
             throw new Exception("Prepare failed: " . $conn->error);
         }
@@ -39,28 +39,20 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
 
         debugLog("Query result rows: " . $result->num_rows);
 
-        if ($result->num_rows === 1) {
+        if ($result->num_rows === 1) { // Check if exactly one user with matching credentials and role is found
             $row = $result->fetch_assoc();
 
-            // Direct password comparison (no hashing based on original code)
-            if ($password === $row["password"]) {
-                $_SESSION["username"] = $username;
-                $_SESSION["role"] = $row["role"]; // Should be 'admin'
-                $_SESSION["user_id"] = $row["id"]; // Store user ID
+            $_SESSION["username"] = $username;
+            $_SESSION["role"] = $row["role"];
+            $_SESSION["user_id"] = $row["id"]; // Store user ID
 
-                debugLog("Admin login successful for user: $username");
+            debugLog("Admin login successful for user: $username with role: " . $row["role"]);
 
-                ob_clean();
-                header("Location: index.php");
-                exit();
-            } else {
-                debugLog("Admin login failed for user: $username - Invalid password");
-                $_SESSION['login_error'] = "Invalid username or password";
-                header("Location: adminlogin.php");
-                exit();
-            }
+            ob_clean();
+            header("Location: index.php"); // Redirect to index.php on successful login
+            exit();
         } else {
-            debugLog("Admin login failed - No matching user found for Username: $username with role admin");
+            debugLog("Admin login failed - No matching user found for Username: $username with role: $requested_role");
             $_SESSION['login_error'] = "Invalid username or password"; // Generic error for security
             header("Location: adminlogin.php");
             exit();

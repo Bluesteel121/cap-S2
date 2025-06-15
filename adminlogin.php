@@ -16,74 +16,7 @@ function debugLog($message) {
 
 include "connect.php"; 
 
-if ($_SERVER["REQUEST_METHOD"] == "POST") {
-    $username = $_POST["username"] ?? "";
-    $password = $_POST["password"] ?? "";
-    $role = $_POST["role"] ?? "";
-
-    
-    debugLog("Database Connection Status: " . ($conn ? "Connected" : "Failed"));
-    debugLog("Attempting login - Username: $username, Role: $role");
-
-    try {
-        
-        $all_users_query = "SELECT * FROM accounts";
-        $all_users_result = $conn->query($all_users_query);
-        
-        debugLog("Total users in database: " . $all_users_result->num_rows);
-        
-       
-        while ($user = $all_users_result->fetch_assoc()) {
-            debugLog("Existing User - Username: " . $user['username'] . ", Role: " . $user['role']);
-        }
-
-        
-        $stmt = $conn->prepare("SELECT * FROM accounts WHERE username = ? AND role = ?");
-        if ($stmt === false) {
-            throw new Exception("Prepare failed: " . $conn->error);
-        }
-
-        $stmt->bind_param("ss", $username, $role);
-        $stmt->execute();
-        $result = $stmt->get_result();
-
-        debugLog("Query result rows: " . $result->num_rows);
-
-        if ($result->num_rows === 1) {
-            $row = $result->fetch_assoc();
-            
-           
-            debugLog("Stored Password: " . $row["password"]);
-            debugLog("Submitted Password: " . $password);
-
-            if ($password === $row["password"]) {
-                $_SESSION["username"] = $username;
-                $_SESSION["role"] = $role;
-                
-                debugLog("Password match. Redirecting to index.php");
-                
-                ob_clean();
-                header("Location: adminpage.php");
-                exit();
-            } else {
-                debugLog("Password mismatch for user: $username");
-                $_SESSION['login_error'] = "Invalid password";
-                header("Location: adminlogin.php");
-                exit();
-            }
-        } else {
-            debugLog("No matching user found for Username: $username, Role: $role");
-            $_SESSION['login_error'] = "Invalid username or role";
-            header("Location: adminlogin.php");
-            exit();
-        }
-    } catch (Exception $e) {
-        debugLog("Exception: " . $e->getMessage());
-        $_SESSION['login_error'] = "An error occurred during login";
-        header("Location: adminlogin.php");
-        exit();
-    }
-}
+include "admin_login_handler.php";
 ?>
 
 <!DOCTYPE html>
@@ -128,7 +61,7 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
         <h2 class="text-2xl font-bold mt-4">Developers</h2>
         <p class="text-gray-500 mt-2">Admin</p>
 
-        <form method="POST" action="adminlogin.php">
+        <form method="POST" action="admin_login_handler.php">
             <input type="text" name="username" placeholder="Username" class="border w-full px-4 py-2 rounded-lg mt-2" required>
             <input type="password" name="password" placeholder="Password" class="border w-full px-4 py-2 rounded-lg mt-2" required>
             <input type="hidden" name="role" value="dev">
@@ -148,7 +81,7 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
         <h2 class="text-2xl font-bold mt-4">Staff</h2>
         <p class="text-gray-500 mt-2">Admin</p>
 
-        <form method="POST" action="adminlogin.php">
+        <form method="POST" action="admin_login_handler.php">
             <input type="text" name="username" placeholder="Username" class="border w-full px-4 py-2 rounded-lg mt-2" required>
             <input type="password" name="password" placeholder="Password" class="border w-full px-4 py-2 rounded-lg mt-2" required>
             <input type="hidden" name="role" value="staff">
