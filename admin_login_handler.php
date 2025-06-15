@@ -6,15 +6,9 @@ ini_set('display_errors', 1);
 ob_start();
 session_start();
 
-function debugLog($message) {
-    error_log($message);
-    file_put_contents('admin_login_handler.log', date('[Y-m-d H:i:s] ') . $message . PHP_EOL, FILE_APPEND);
-}
-
+include "includes/debug.php"; // Include the debugLog function from the separate file
 include "connect.php";
 
-if ($_SERVER["REQUEST_METHOD"] == "POST") {
-    $username = $_POST["username"] ?? "";
     $password = $_POST["password"] ?? "";
     $requested_role = $_POST["role"] ?? ""; // Get the requested role from the form
 
@@ -28,7 +22,7 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
         }
 
         // Prepared statement to select user with matching username and requested role
-        $stmt = $conn->prepare("SELECT * FROM accounts WHERE username = ? AND role = ? AND password = ?"); // Include password in query for direct comparison
+        $stmt = $conn->prepare("SELECT * FROM accounts WHERE username = ? AND role = ? AND password = ?"); // Check for username, role, and password
         if ($stmt === false) {
             throw new Exception("Prepare failed: " . $conn->error);
         }
