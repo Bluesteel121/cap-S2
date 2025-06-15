@@ -5,19 +5,11 @@ ini_set('display_errors', 1);
 
 ob_start();
 
-session_start();
-
-
-function debugLog($message) {
-    error_log($message);
-   
-    file_put_contents('admin_login.log', date('[Y-m-d H:i:s] ') . $message . PHP_EOL, FILE_APPEND);
-}
-
-include "connect.php"; 
+session_start();include "C:\\xampp\\htdocs\\cap_s2\\cap-S2\\includes\\debug.php";
 
 include "admin_login_handler.php";
 ?>
+
 
 <!DOCTYPE html>
 <html lang="en">
