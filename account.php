@@ -74,8 +74,8 @@
   <script>
     function redirectToLogin(role) {
       const routes = {
-        admin: "/adminlogin.php",
-        user: "/userlogin.php",
+        admin: "adminlogin.php",
+        user: "userlogin.php",
       };
       window.location.href = routes[role];
     }
