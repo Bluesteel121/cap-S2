@@ -1,88 +1,80 @@
+php
 <?php
 
 error_reporting(E_ALL);
 ini_set('display_errors', 1);
 
 ob_start();
+session_start();
 
-include_once "includes/debug.php"; // Include the debugLog function from the separate file
 include "connect.php";
 
+// Define logging function
+function logAdminLoginAttempt($message) {
+    $logFile = 'admin_login_attempts.log';
+    $timestamp = date('Y-m-d H:i:s');
+    file_put_contents($logFile, "[{$timestamp}] {$message}" . PHP_EOL, FILE_APPEND);
+}
+
 if ($_SERVER["REQUEST_METHOD"] === "POST") {
-    $password = $_POST["password"] ?? "";
-    $requested_role = $_POST["role"] ?? ""; // Get the requested role from the form
-    $username = $_POST["username"] ?? ""; // Assuming username is also sent via POST
+    $username = filter_input(INPUT_POST, 'username', FILTER_SANITIZE_STRING);
+    $password = filter_input(INPUT_POST, 'password', FILTER_SANITIZE_STRING); // Note: Passwords shouldn't be sanitized in this way if hashing
 
-    debugLog("Database Connection Status: " . ($conn ? "Connected" : "Failed"));
-    debugLog("Attempting admin login - Username: $username, Requested Role: $requested_role");
+    // Basic validation
+    if (empty($username) || empty($password)) {
+        logAdminLoginAttempt("Failed login attempt: Username or password empty for username '{$username}'");
+        $_SESSION['login_error'] = "Please enter both username and password.";
+        header("Location: adminlogin.php");
+        exit();
+    }
 
-    try {
-        // Ensure database connection is established
-        if (!isset($conn) || $conn->connect_error) {
-            throw new Exception("Database connection not established");
-        }
+    // Query the database for the admin user
+    $stmt = $conn->prepare("SELECT id, username, password, role FROM accounts WHERE username = ? AND role = 'admin'");
+    if ($stmt === false) {
+        logAdminLoginAttempt("Database prepare error: " . $conn->error);
+        $_SESSION['login_error'] = "An error occurred. Please try again.";
+        header("Location: adminlogin.php");
+        exit();
+    }
 
-        // Prepared statement to select user with matching username and the 'admin' role
-        $stmt = $conn->prepare("SELECT id, username, role, password FROM accounts WHERE username = ? AND role = 'admin'");
-        if ($stmt === false) {
-            throw new Exception("Prepare failed: " . $conn->error);
-        }
+    $stmt->bind_param("s", $username);
+    $stmt->execute();
+    $result = $stmt->get_result();
 
-        $stmt->bind_param("s", $username);
-        $stmt->execute();
-        $result = $stmt->get_result();
+    if ($result->num_rows === 1) {
+        $user = $result->fetch_assoc();
 
-        debugLog("Query result rows: " . $result->num_rows);
+        // Verify password
+        if (password_verify($password, $user['password'])) {
+            // Successful login
+            logAdminLoginAttempt("Successful login for admin user: '{$username}'");
+            $_SESSION['username'] = $user['username'];
+            $_SESSION['role'] = $user['role'];
+            $_SESSION['user_id'] = $user['id'];
 
-        if ($result->num_rows === 1) { // Check if exactly one user with matching credentials and role is found
-            $row = $result->fetch_assoc();
-
-            // Verify the submitted password against the hashed password in the database
-            if (password_verify($password, $row['password'])) {
-                $_SESSION["username"] = $username;
-                $_SESSION["role"] = $row["role"];
-                $_SESSION["user_id"] = $row["id"]; // Store user ID
-
-                debugLog("Admin login successful for user: $username with role: " . $row["role"]);
-                debugLog("Session variables set: username=" . $_SESSION["username"] . ", role=" . $_SESSION["role"] . ", user_id=" . $_SESSION["user_id"]);
-
-                ob_clean();
-                debugLog("Redirecting to index.php");
-                header("Location: index.php"); // Redirect to index.php on successful login
-                exit();
-            } else {
-                // Password verification failed
-                debugLog("Admin login failed - Invalid password for user: $username");
-                $_SESSION['login_error'] = "Invalid username or password"; // Generic error for security
-                debugLog("Redirecting to adminlogin.php after failed login");
-                header("Location: adminlogin.php");
-                exit();
-            }
+            ob_clean();
+            header("Location: index.php");
+            exit();
         } else {
-            debugLog("Admin login failed - No matching user found for Username: $username with role: $requested_role");
-            $_SESSION['login_error'] = "Invalid username or password"; // Generic error for security
-            debugLog("Redirecting to adminlogin.php after failed login");
+            // Password does not match
+            logAdminLoginAttempt("Failed login attempt: Incorrect password for admin user '{$username}'");
+            $_SESSION['login_error'] = "Invalid username or password."; // Generic error for security
             header("Location: adminlogin.php");
             exit();
         }
-
-    } catch (Exception $e) {
-        debugLog("Exception during admin login: " . $e->getMessage());
-        $_SESSION['login_error'] = "An error occurred during login. Please try again.";
+    } else {
+        // No user found with the provided username and admin role
+        logAdminLoginAttempt("Failed login attempt: No admin user found with username '{$username}'");
+        $_SESSION['login_error'] = "Invalid username or password."; // Generic error for security
         header("Location: adminlogin.php");
         exit();
-    } finally {
-        // Close statement and connection
-        if (isset($stmt) && $stmt !== false) {
-            $stmt->close();
-        }
-        // The include 'connect.php' doesn't have a close connection call after every usage,
-        // so rely on script termination or manual close if needed elsewhere.
-        // closeConnection(); // Uncomment if you want to close the connection here
     }
+
+    $stmt->close();
+    $conn->close();
+
 } else {
     // If not a POST request, redirect back to login page
-    debugLog("Not a POST request. Redirecting to adminlogin.php");
     header("Location: adminlogin.php");
     exit();
 }
