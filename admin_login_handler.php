@@ -4,9 +4,8 @@ error_reporting(E_ALL);
 ini_set('display_errors', 1);
 
 ob_start();
-session_start();
 
-include "includes/debug.php"; // Include the debugLog function from the separate file
+include_once "includes/debug.php"; // Include the debugLog function from the separate file
 include "connect.php";
 
 if ($_SERVER["REQUEST_METHOD"] === "POST") {
