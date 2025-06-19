@@ -9,6 +9,7 @@ session_start();
 include "includes/debug.php"; // Include the debugLog function from the separate file
 include "connect.php";
 
+if ($_SERVER["REQUEST_METHOD"] === "POST") {
     $password = $_POST["password"] ?? "";
     $requested_role = $_POST["role"] ?? ""; // Get the requested role from the form
 
@@ -65,7 +66,7 @@ include "connect.php";
         // so rely on script termination or manual close if needed elsewhere.
         // closeConnection(); // Uncomment if you want to close the connection here
     }
-}
+} else {
     // If not a POST request, redirect back to login page
     header("Location: adminlogin.php");
     exit();
