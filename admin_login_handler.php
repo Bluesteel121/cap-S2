@@ -11,6 +11,7 @@ include "connect.php";
 if ($_SERVER["REQUEST_METHOD"] === "POST") {
     $password = $_POST["password"] ?? "";
     $requested_role = $_POST["role"] ?? ""; // Get the requested role from the form
+    $username = $_POST["username"] ?? ""; // Assuming username is also sent via POST
 
     debugLog("Database Connection Status: " . ($conn ? "Connected" : "Failed"));
     debugLog("Attempting admin login - Username: $username, Requested Role: $requested_role");
@@ -22,7 +23,7 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
         }
 
         // Prepared statement to select user with matching username and requested role
-        $stmt = $conn->prepare("SELECT * FROM accounts WHERE username = ? AND role = ? AND password = ?"); // Check for username, role, and password
+        $stmt = $conn->prepare("SELECT * FROM accounts WHERE username = ? AND role = ?"); // Check for username and role
         if ($stmt === false) {
             throw new Exception("Prepare failed: " . $conn->error);
         }
@@ -41,16 +42,20 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
             $_SESSION["user_id"] = $row["id"]; // Store user ID
 
             debugLog("Admin login successful for user: $username with role: " . $row["role"]);
+            debugLog("Session variables set: username=" . $_SESSION["username"] . ", role=" . $_SESSION["role"] . ", user_id=" . $_SESSION["user_id"]);
 
             ob_clean();
+            debugLog("Redirecting to index.php");
             header("Location: index.php"); // Redirect to index.php on successful login
             exit();
         } else {
             debugLog("Admin login failed - No matching user found for Username: $username with role: $requested_role");
             $_SESSION['login_error'] = "Invalid username or password"; // Generic error for security
+            debugLog("Redirecting to adminlogin.php after failed login");
             header("Location: adminlogin.php");
             exit();
         }
+
     } catch (Exception $e) {
         debugLog("Exception during admin login: " . $e->getMessage());
         $_SESSION['login_error'] = "An error occurred during login. Please try again.";
@@ -67,6 +72,7 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
     }
 } else {
     // If not a POST request, redirect back to login page
+    debugLog("Not a POST request. Redirecting to adminlogin.php");
     header("Location: adminlogin.php");
     exit();
 }
