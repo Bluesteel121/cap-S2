@@ -65,7 +65,7 @@ include "connect.php";
         // so rely on script termination or manual close if needed elsewhere.
         // closeConnection(); // Uncomment if you want to close the connection here
     }
-} else {
+}
     // If not a POST request, redirect back to login page
     header("Location: adminlogin.php");
     exit();
