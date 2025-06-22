@@ -21,9 +21,9 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
     }
 
     // Check if username already exists
-    $check_username_sql = "SELECT user_id FROM users WHERE username = ?";
+    $check_username_sql = "SELECT id FROM accounts WHERE username = ?";
     $stmt_check = $conn->prepare($check_username_sql);
-    $stmt_check->bind_param("s", $username);
+    $stmt_check->bind_param("s", $username); // Assuming username is a string
     $stmt_check->execute();
     $stmt_check->store_result();
 
@@ -36,10 +36,11 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
     }
     $stmt_check->close();
 
+    $role = 'user'; // Set the role to 'user'
     // Insert user into the database
-    $insert_user_sql = "INSERT INTO users (username, full_name, password, contact_number) VALUES (?, ?, ?, ?)";
+    $insert_user_sql = "INSERT INTO accounts (username, name, password, contact, role) VALUES (?, ?, ?, ?, ?)";
     $stmt_insert = $conn->prepare($insert_user_sql);
-    $stmt_insert->bind_param("ssss", $username, $fullname, $password, $contact_number);
+    $stmt_insert->bind_param("sssss", $username, $fullname, $password, $contact_number, $role); // Assuming all are strings
 
     if ($stmt_insert->execute()) {
         $_SESSION['registration_success'] = "Registration successful. You can now log in.";
