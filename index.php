@@ -19,8 +19,7 @@
       <h1 class="text-xl font-bold  leading-tight">Camarines Norte Lowland <br class="hidden sm:block" /> Rainfed Research Station</h1>
     </div>
 
-    <!-- Hamburger Button -->
-    <button id="menu-toggle" class="xl:hidden text-black text-3xl focus:outline-none">☰</button>
+   
 
   
     <img src="Images/Ph.png" alt="PH Logo" class="h-20 w-auto object-contain">
@@ -35,10 +34,23 @@
       <img src="Images/Bago.png" alt="Bagong Pilipinas Logo" class="h-20 w-auto object-contain">
   </div>
 </header>
+ 
+    <!-- Navigation -->
+  <nav class="bg-gray-100 py-10 h-18">
+    <div class="max-w-7xl mx-auto px-4 flex flex-wrap justify-between items-center">
+      <input type="text" placeholder="Search publications, articles, keywords, etc." class="w-full md:w-1/2 px-4 py-2 border rounded-md mb-2 md:mb-0" />
+      <button class="bg-green-800 text-white px-4 py-2 rounded-md">Advance</button>
+      <div class="flex gap-2">
+        <button class="bg-green-900 text-white px-4 py-2 rounded-md">Log In</button>
+      </div>
+    </div>
+    <!-- Hamburger Button -->
+    <button id="menu-toggle" class="xl:hidden text-black text-3xl focus:outline-none">☰</button>
+  </nav>
 
   <!-- Main Content -->
   <section class="relative">
-    <img src="Images/Banner.png" alt="Pineapple Farm" class="w-full h-[750px] object-cover" />
+    <img src="Images/Banner.png" alt="Pineapple Farm" class="py-20 w-full h-[750px] object-cover" />
     <div class="absolute inset-0 flex flex-col items-center justify-center text-center text-white bg-black bg-opacity-50">
       <h2 class="text-3xl font-bold">Welcome to Camarines Norte Lowland Rainfed Research Station</h2>
       <p class="mt-2 text-lg">Learn and Discover the Secrets Behind the Sweetest Pineapple in Camarines Norte</p>
