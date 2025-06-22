@@ -63,6 +63,54 @@ session_start();
                     Login
                 </button>
             </form>
+        </div>
+
+        <!-- Sign-up Form (initially hidden) -->
+        <div id="signup-section" class="hidden">
+            <h2 class="text-2xl font-bold text-center mb-4">User Sign Up</h2>
+            <form id="signup-form" method="POST" action="user_signup_handler.php" autocomplete="off" novalidate>
+                <div class="mb-4">
+                    <label for="signupUsername" class="block text-sm font-medium text-gray-700 mb-1">Username</label>
+                    <input type="text" id="signupUsername" name="username" placeholder="Choose a username" class="border w-full px-4 py-2 rounded-lg focus:ring-green-500 focus:border-green-500" required>
+                </div>
+
+                <div class="mb-4">
+                    <label for="fullname" class="block text-sm font-medium text-gray-700 mb-1">Full Name</label>
+                    <input type="text" id="fullname" name="fullname" placeholder="Enter your full name" class="border w-full px-4 py-2 rounded-lg focus:ring-green-500 focus:border-green-500" required>
+                </div>
+
+                <div class="mb-4">
+                    <label for="signupPassword" class="block text-sm font-medium text-gray-700 mb-1">Password</label>
+                    <div class="relative">
+                        <input type="password" name="password" id="signupPassword" placeholder="Create a password" class="border w-full px-4 py-2 rounded-lg pr-10 focus:ring-green-500 focus:border-green-500" required>
+                        <button type="button" onclick="togglePassword('signupPassword', 'signupToggleIcon')" class="absolute right-3 top-3 text-gray-500">
+                            <i class="far fa-eye" id="signupToggleIcon"></i>
+                        </button>
+                    </div>
+                </div>
+
+                 <div class="mb-4">
+                    <label for="contactNumber" class="block text-sm font-medium text-gray-700 mb-1">Contact Number</label>
+                    <input type="text" id="contactNumber" name="contact_number" placeholder="Enter your contact number" class="border w-full px-4 py-2 rounded-lg focus:ring-green-500 focus:border-green-500" required>
+                </div>
+
+                <button type="submit" class="bg-green-500 text-white w-full py-2 mt-4 rounded-lg hover:bg-green-700 transition-colors duration-200">
+                    Sign Up
+                </button>
+            </form>
+        </div>
+
+        <!-- Toggle Button -->
+        <div class="mt-4 text-center">
+            <button id="toggle-button" class="text-sm text-green-600 hover:underline" onclick="toggleForm()">
+                Don't have an account? Sign Up
+            </button>
+        </div>
+
+        <div class="mt-4 text-center">
+             <button id="toggle-button-back" class="text-sm text-green-600 hover:underline hidden" onclick="toggleFormBack()">
+                Already have an account? Login
+            </button>
 
             <!-- Centered Back Button -->
             <div class="mt-6 text-center">
@@ -74,6 +122,27 @@ session_start();
     </div>
 
     <script>
+    function toggleForm() {
+        const loginSection = document.getElementById('login-section');
+        const signupSection = document.getElementById('signup-section');
+        const toggleButton = document.getElementById('toggle-button');
+        const toggleButtonBack = document.getElementById('toggle-button-back');
+
+        loginSection.classList.add('hidden');
+        signupSection.classList.remove('hidden');
+        toggleButton.classList.add('hidden');
+        toggleButtonBack.classList.remove('hidden');
+    }
+      function toggleFormBack() {
+        const loginSection = document.getElementById('login-section');
+        const signupSection = document.getElementById('signup-section');
+         const toggleButton = document.getElementById('toggle-button');
+        const toggleButtonBack = document.getElementById('toggle-button-back');
+        loginSection.classList.remove('hidden');
+        signupSection.classList.add('hidden');
+        toggleButton.classList.remove('hidden');
+        toggleButtonBack.classList.add('hidden');
+    }
     function togglePassword(passwordFieldId, iconId) {
         const passwordField = document.getElementById(passwordFieldId);
         const icon = document.getElementById(iconId);
