@@ -23,15 +23,12 @@
     <button id="menu-toggle" class="xl:hidden text-black text-3xl focus:outline-none">☰</button>
 
     <!-- Navigation Menu -->
-    <nav id="nav-menu" class="hidden xl:block">
-      <ul class="flex flex-col xl:flex-row xl:space-x-6 bg-[#115D5B] xl:bg-transparent xl:static absolute left-0 top-full w-full xl:w-auto p-4 xl:p-0 shadow-md xl:shadow-none">
-        <li><a href="index.php" class="text-white xl:text-black font-bold hover:text-gray-300 block py-2">Home</a></li>
-        <li><a href="services.php" class="text-white xl:text-black font-bold hover:text-gray-300 block py-2">Our Services</a></li>
-        <li><a href="#contact" class="text-white xl:text-black font-bold hover:text-gray-300 block py-2">Contact Us</a></li>
-        <li><a href="#faq" class="text-white xl:text-black font-bold hover:text-gray-300 block py-2">FAQ</a></li>
-        <li><a href="elibrary.php" class="text-white xl:text-white font-bold bg-yellow-600 px-6 py-2 rounded-lg hover:text-gray-300 block py-2">E-Library</a></li>
-        <li><a href="account.php" class="text-white xl:text-white font-bold bg-green-900 px-6 py-2 rounded-lg hover:text-gray-300 block py-2">Log In</a></li>
-      </ul>
+    <nav id="">
+      <div class="text-center md:text-right mt-2 md:mt-0">
+        <p class="text-sm font-semibold">DEPARTMENT OF AGRICULTURE</p>
+        <p class="text-xs">Calasgasan, Daet, Philippines</p>
+        <p class="text-xs">Email: dacnlrrs@gmail.com | 0951 609 9599</p>
+      </div>
     </nav>
   </div>
 </header>
