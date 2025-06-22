@@ -12,11 +12,12 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
     $fullname = $_POST['fullname'] ?? '';
     $password = $_POST['password'] ?? '';
     $contact_number = $_POST['contact_number'] ?? '';
+    $email = $_POST['email'] ?? '';
 
     // Validate input
-    if (empty($username) || empty($fullname) || empty($password) || empty($contact_number)) {
+    if (empty($username) || empty($fullname) || empty($password) || empty($contact_number) || empty($email)) {
         $_SESSION['registration_error'] = "All fields are required.";
-        header("Location: userlogin.php");
+ header("Location: userlogin.php");
         exit();
     }
 
@@ -37,8 +38,8 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
     $stmt_check->close();
 
     $role = 'user'; // Set the role to 'user'
-    // Insert user into the database
-    $insert_user_sql = "INSERT INTO accounts (username, name, password, contact, role) VALUES (?, ?, ?, ?, ?)";
+ // Insert user into the database
+ $insert_user_sql = "INSERT INTO accounts (username, name, password, contact, email, role) VALUES (?, ?, ?, ?, ?, ?)";
     $stmt_insert = $conn->prepare($insert_user_sql);
     $stmt_insert->bind_param("sssss", $username, $fullname, $password, $contact_number, $role); // Assuming all are strings
 

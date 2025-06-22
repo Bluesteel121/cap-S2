@@ -15,21 +15,24 @@
   <div class="container mx-auto flex justify-between items-center">
     <!-- Logo and Title -->
     <div class="flex items-center space-x-4">
-      <img src="Images/logo.png" alt="CNLRRS Logo" class="h-14 w-auto object-contain">
-      <h1 class="text-xl font-bold text-[#115D5B] leading-tight">Camarines Norte Lowland <br class="hidden sm:block" /> Rainfed Research Station</h1>
+      <img src="Images/Logo.jpg" alt="CNLRRS Logo" class="h-20 w-auto object-contain">
+      <h1 class="text-xl font-bold text-[Black] leading-tight">Camarines Norte Lowland <br class="hidden sm:block" /> Rainfed Research Station</h1>
     </div>
 
     <!-- Hamburger Button -->
     <button id="menu-toggle" class="xl:hidden text-black text-3xl focus:outline-none">☰</button>
 
-    <!-- Navigation Menu -->
-    <nav id="">
-      <div class="text-center md:text-right mt-2 md:mt-0">
-        <p class="text-sm font-semibold">DEPARTMENT OF AGRICULTURE</p>
-        <p class="text-xs">Calasgasan, Daet, Philippines</p>
-        <p class="text-xs">Email: dacnlrrs@gmail.com | 0951 609 9599</p>
+  
+    <img src="Images/Ph.png" alt="PH Logo" class="h-20 w-auto object-contain">
+    <img src="Images/Da.png" alt="DA Logo" class="h-20 w-auto object-contain">
+      <div class="text-center md:text-middle mt-2 md:mt-0">
+        <p class="text-sm font-bold">DEPARTMENT OF AGRICULTURE</p>
+        <p class="text-xs font-bold">Address: Calasgasan, Daet, Philippines</p>
+        <p class="text-xs font-bold">Email: dacnlrrs@gmail.com</p>
+        <p class="text-xs font-bold">Contact No.:  0951 609 9599</p>
       </div>
-    </nav>
+
+      <img src="Images/Bago.png" alt="Bagong Pilipinas Logo" class="h-20 w-auto object-contain">
   </div>
 </header>
 
