@@ -10,3 +10,9 @@
 [2025-06-19 08:13:55] Stored Password: pass
 [2025-06-19 08:13:55] Submitted Password: pass
 [2025-06-19 08:13:55] Password match. Redirecting to userpage.php
+[2025-06-22 13:25:22] Database Connection Status: Connected
+[2025-06-22 13:25:22] Attempting user login - Username: jazz, Expected Role: user
+[2025-06-22 13:25:22] Query result rows: 1
+[2025-06-22 13:25:22] Stored Password: pass
+[2025-06-22 13:25:22] Submitted Password: pass
+[2025-06-22 13:25:22] Password match. Redirecting to userpage.php
