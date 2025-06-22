@@ -35,18 +35,39 @@
   </div>
 </header>
  
-    <!-- Navigation -->
-  <nav class="bg-gray-100 py-10 h-18">
-    <div class="max-w-7xl mx-auto px-4 flex flex-wrap justify-between items-center">
-      <input type="text" placeholder="Search publications, articles, keywords, etc." class="w-full md:w-1/2 px-4 py-2 border rounded-md mb-2 md:mb-0" />
-      <button class="bg-green-800 text-white px-4 py-2 rounded-md">Advance</button>
-      <div class="flex gap-2">
-        <button class="bg-green-900 text-white px-4 py-2 rounded-md">Log In</button>
-      </div>
+   <nav class="bg-white border-b py-10 px-10">
+  <div class="max-w-7xl mx-auto px-4 flex flex-wrap justify-between items-center gap-4">
+    
+    <!-- Search with Advance -->
+    <div class="flex flex-grow max-w-xl border border-green-900 rounded-full overflow-hidden">
+      <input
+        type="text"
+        placeholder="Search publications, articles, keywords, etc."
+        class="flex-grow px-4 py-2 text-sm text-gray-700 placeholder-gray-500 focus:outline-none"
+      />
+      <button class="px-4 text-green-900 text-xl">
+        🔍
+      </button>
+      <button class="bg-transparent px-4 font-semibold text-green-900 hover:underline">
+        Advance
+      </button>
     </div>
-    <!-- Hamburger Button -->
-    <button id="menu-toggle" class="xl:hidden text-black text-3xl focus:outline-none">☰</button>
-  </nav>
+
+    <!-- Navigation Links -->
+    <div class="flex items-center gap-6 text-green-900 font-semibold text-sm">
+      <a href="#" class="hover:underline">Home</a>
+      <a href="#" class="hover:underline">Our Services</a>
+      <a href="#" class="hover:underline">About Us</a>
+    </div>
+
+    <!-- Log In Button -->
+    <button class="bg-green-900 text-white px-6 py-2 rounded-xl font-semibold">
+      Log In
+    </button>
+  </div>
+</nav>
+
+
 
   <!-- Main Content -->
   <section class="relative">
