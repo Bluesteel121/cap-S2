@@ -40,8 +40,8 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
     $role = 'user'; // Set the role to 'user'
  // Insert user into the database
  $insert_user_sql = "INSERT INTO accounts (username, name, password, contact, email, role) VALUES (?, ?, ?, ?, ?, ?)";
-    $stmt_insert = $conn->prepare($insert_user_sql);
-    $stmt_insert->bind_param("sssss", $username, $fullname, $password, $contact_number, $role); // Assuming all are strings
+ $stmt_insert = $conn->prepare($insert_user_sql);
+    $stmt_insert->bind_param("ssssss", $username, $fullname, $password, $contact_number, $email, $role); // Assuming all are strings
 
     if ($stmt_insert->execute()) {
         $_SESSION['registration_success'] = "Registration successful. You can now log in.";
