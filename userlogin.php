@@ -75,6 +75,11 @@ session_start();
                 </div>
 
                 <div class="mb-4">
+                    <label for="email" class="block text-sm font-medium text-gray-700 mb-1">Email</label>
+                    <input type="email" id="email" name="email" placeholder="Enter your email" class="border w-full px-4 py-2 rounded-lg focus:ring-green-500 focus:border-green-500" required>
+                </div>
+
+                <div class="mb-4">
                     <label for="fullname" class="block text-sm font-medium text-gray-700 mb-1">Full Name</label>
                     <input type="text" id="fullname" name="fullname" placeholder="Enter your full name" class="border w-full px-4 py-2 rounded-lg focus:ring-green-500 focus:border-green-500" required>
                 </div>
