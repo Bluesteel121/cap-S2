@@ -36,13 +36,10 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
     }
     $stmt_check->close();
 
-    // Hash the password
-    $hashed_password = password_hash($password, PASSWORD_DEFAULT);
-
     // Insert user into the database
     $insert_user_sql = "INSERT INTO users (username, full_name, password, contact_number) VALUES (?, ?, ?, ?)";
     $stmt_insert = $conn->prepare($insert_user_sql);
-    $stmt_insert->bind_param("ssss", $username, $fullname, $hashed_password, $contact_number);
+    $stmt_insert->bind_param("ssss", $username, $fullname, $password, $contact_number);
 
     if ($stmt_insert->execute()) {
         $_SESSION['registration_success'] = "Registration successful. You can now log in.";
