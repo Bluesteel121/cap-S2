@@ -49,13 +49,11 @@
                     Login
                 </button>
             </form>
-
-            <!-- Centered Back Button (Optional, keep if needed) -->
-            <!-- <div class="mt-6 text-center">
+            <div class="mt-6 text-center">
                 <a href="account.php" class="inline-block bg-gray-200 text-gray-800 px-4 py-2 rounded-lg hover:bg-gray-300 transition-colors duration-200">
                     ← Back to Account Selection
                 </a>
-            </div> -->
+            </div>
         </div>
     </div>
 </body>
