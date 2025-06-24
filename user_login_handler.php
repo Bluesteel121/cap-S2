@@ -48,7 +48,7 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
                 debugLog("Password match. Redirecting to userpage.php");
                 
                 ob_clean();
-                header("Location: index.php");
+                header("Location: loggedin_index.php");
                 exit();
             } else {
                 debugLog("Password mismatch for user: $username");
