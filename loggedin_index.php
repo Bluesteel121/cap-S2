@@ -15,55 +15,58 @@
 			border-radius: 5px;
 		}
 
-        /* Added styles for the profile picture and sidebar */
-        .profile-pic-container {
-            width: 40px;
-            height: 40px;
-            border-radius: 50%;
-            overflow: hidden;
-            cursor: pointer;
-            margin-right: 10px;
-        }
+		/* Added styles for the profile picture and sidebar */
+		.profile-pic-container {
+			width: 40px;
+			height: 40px;
+			border-radius: 50%;
+			overflow: hidden;
+			cursor: pointer;
+			margin-right: 10px;
+			display: flex; /* Use flexbox to easily center content */
+			justify-content: center; /* Center horizontally */
+			align-items: center; /* Center vertically */
+		}
 
-        .profile-pic {
-            width: 100%;
-            height: 100%;
-            object-fit: cover;
-        }
+		.profile-pic {
+			width: 100%;
+			height: 100%;
+			object-fit: cover;
+		}
 
-        .sidebar {
-            height: 100%;
-            width: 0;
-            position: fixed;
-            z-index: 1;
-            top: 0;
-            left: 0;
-            background-color: #f1f1f1;
-            overflow-x: hidden;
-            transition: 0.5s;
-            padding-top: 60px;
-        }
+		.sidebar {
+			height: 100%;
+			width: 0;
+			position: fixed;
+			z-index: 1;
+			top: 0;
+			left: 0;
+			background-color: #f1f1f1;
+			overflow-x: hidden;
+			transition: 0.5s;
+			padding-top: 60px;
+		}
 
-        .sidebar a {
-            padding: 8px 8px 8px 32px;
-            text-decoration: none;
-            font-size: 25px;
-            color: #818181;
-            display: block;
-            transition: 0.3s;
-        }
+		.sidebar a {
+			padding: 8px 8px 8px 32px;
+			text-decoration: none;
+			font-size: 25px;
+			color: #818181;
+			display: block;
+			transition: 0.3s;
+		}
 
-        .sidebar a:hover {
-            color: #f1f1f1;
-        }
+		.sidebar a:hover {
+			color: #f1f1f1;
+		}
 
-        .sidebar .closebtn {
-            position: absolute;
-            top: 0;
-            right: 25px;
-            font-size: 36px;
-            margin-left: 50px;
-        }
+		.sidebar .closebtn {
+			position: absolute;
+			top: 0;
+			right: 25px;
+			font-size: 36px;
+			margin-left: 50px;
+		}
 
 	</style>
 
@@ -75,10 +78,10 @@
 				<a class="navbar-brand" href="loggedin_index.php">Library Management System</a>
 			</div>
 			<ul class="nav navbar-nav navbar-right">
-                <li class="nav-item">
-                    <div class="profile-pic-container" onclick="toggleSidebar()">
-                        <!-- Replace with the actual user's initial profile picture -->
-                        <img src="Images/initials profile/a.png" alt="Profile Picture" class="profile-pic">
+				<li class="nav-item">
+					<div class="profile-pic-container" onclick="toggleSidebar()">
+						<!-- Replace with the actual user's initial profile picture -->
+						<img src="Images/initials profile/a.png" alt="Profile Picture" class="profile-pic">
                     </div>
                 </li>
 			</ul>
@@ -86,10 +89,10 @@
 	</nav>
 
     <div id="mySidebar" class="sidebar">
-        <a href="javascript:void(0)" class="closebtn" onclick="closeSidebar()">&times;</a>
-        <a href="#">Settings</a>
-        <a href="#">Profile</a>
-        <a href="index.php">Log Out</a>
+		<a href="javascript:void(0)" class="closebtn" onclick="closeSidebar()">&times;</a>
+		<a href="#">Settings</a>
+		<a href="#">Profile</a>
+		<a href="index.php">Log Out</a>
     </div>
 
 	<div class="row">
@@ -164,18 +167,18 @@
 	</div>
 
     <script>
-        function toggleSidebar() {
-            var sidebar = document.getElementById("mySidebar");
-            if (sidebar.style.width === "250px") {
-                sidebar.style.width = "0";
-            } else {
-                sidebar.style.width = "250px";
-            }
-        }
+		function toggleSidebar() {
+			var sidebar = document.getElementById("mySidebar");
+			if (sidebar.style.width === "250px") {
+				sidebar.style.width = "0";
+			} else {
+				sidebar.style.width = "250px";
+			}
+		}
 
-        function closeSidebar() {
-            document.getElementById("mySidebar").style.width = "0";
-        }
+		function closeSidebar() {
+			document.getElementById("mySidebar").style.width = "0";
+		}
     </script>
 
 </body>
