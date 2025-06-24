@@ -16,3 +16,9 @@
 [2025-06-22 13:25:22] Stored Password: pass
 [2025-06-22 13:25:22] Submitted Password: pass
 [2025-06-22 13:25:22] Password match. Redirecting to userpage.php
+[2025-06-22 13:40:33] Database Connection Status: Connected
+[2025-06-22 13:40:33] Attempting user login - Username: budzy, Expected Role: user
+[2025-06-22 13:40:33] Query result rows: 1
+[2025-06-22 13:40:33] Stored Password: pass
+[2025-06-22 13:40:33] Submitted Password: pass
+[2025-06-22 13:40:33] Password match. Redirecting to userpage.php
