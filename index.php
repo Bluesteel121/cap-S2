@@ -19,8 +19,7 @@
       <h1 class="text-xl font-bold  leading-tight">Camarines Norte Lowland <br class="hidden sm:block" /> Rainfed Research Station</h1>
     </div>
 
-    <!-- Hamburger Button -->
-    <button id="menu-toggle" class="xl:hidden text-black text-3xl focus:outline-none">☰</button>
+   
 
   
     <img src="Images/Ph.png" alt="PH Logo" class="h-20 w-auto object-contain">
@@ -35,10 +34,44 @@
       <img src="Images/Bago.png" alt="Bagong Pilipinas Logo" class="h-20 w-auto object-contain">
   </div>
 </header>
+ 
+   <nav class="bg-white border-b py-10 px-10">
+  <div class="max-w-7xl mx-auto px-4 flex flex-wrap justify-between items-center gap-4">
+    
+    <!-- Search with Advance -->
+    <div class="flex flex-grow max-w-xl border border-green-900 rounded-full overflow-hidden">
+      <input
+        type="text"
+        placeholder="Search publications, articles, keywords, etc."
+        class="flex-grow px-4 py-2 text-sm text-gray-700 placeholder-gray-500 focus:outline-none"
+      />
+      <button class="px-4 text-green-900 text-xl">
+        🔍
+      </button>
+      <button class="bg-transparent px-4 font-semibold text-green-900 hover:underline">
+        Advance
+      </button>
+    </div>
+
+    <!-- Navigation Links -->
+    <div class="flex items-center gap-6 text-green-900 font-semibold text-sm">
+      <a href="#" class="hover:underline">Home</a>
+      <a href="#" class="hover:underline">Our Services</a>
+      <a href="#" class="hover:underline">About Us</a>
+    </div>
+
+    <!-- Log In Button -->
+    <button class="bg-green-900 text-white px-6 py-2 rounded-xl font-semibold">
+      Log In
+    </button>
+  </div>
+</nav>
+
+
 
   <!-- Main Content -->
   <section class="relative">
-    <img src="Images/Banner.png" alt="Pineapple Farm" class="w-full h-[750px] object-cover" />
+    <img src="Images/Banner.png" alt="Pineapple Farm" class="py-20 w-full h-[750px] object-cover" />
     <div class="absolute inset-0 flex flex-col items-center justify-center text-center text-white bg-black bg-opacity-50">
       <h2 class="text-3xl font-bold">Welcome to Camarines Norte Lowland Rainfed Research Station</h2>
       <p class="mt-2 text-lg">Learn and Discover the Secrets Behind the Sweetest Pineapple in Camarines Norte</p>
