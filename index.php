@@ -60,7 +60,9 @@
     </div>
 
     <!-- Log In Button -->
-    <button class="bg-green-900 text-white px-6 py-2 rounded-xl font-semibold">Log In</button>
+    <a href="account.php" class="bg-green-900 text-white px-6 py-2 rounded-xl font-semibold">
+      Log In
+    </a>
   </div>
 </nav>
 
