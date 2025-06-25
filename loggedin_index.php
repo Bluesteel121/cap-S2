@@ -106,7 +106,7 @@
     </div>
 
     <!-- Profile Picture (replaces Log In Button) -->
-    <img src="Images/initials profile/a.png" alt="Profile Picture" class="profile-pic" onclick="toggleSidebar()">
+    <img src="Images/initials profile/<?php echo strtolower(substr($_SESSION['name'], 0, 1)); ?>.png" alt="Profile Picture" class="profile-pic" onclick="toggleSidebar()">
   </div>
 </nav>
 
