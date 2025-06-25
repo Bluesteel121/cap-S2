@@ -44,6 +44,7 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
             if ($password === $row["password"]) {
                 $_SESSION["username"] = $username;
                 $_SESSION["role"] = $role;
+                $_SESSION['name'] = $row['name']; // Store the user's name in the session
                 
                 debugLog("Password match. Redirecting to userpage.php");
                 

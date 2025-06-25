@@ -52,3 +52,15 @@
 [2025-06-24 17:01:48] Stored Password: pass
 [2025-06-24 17:01:48] Submitted Password: pass
 [2025-06-24 17:01:48] Password match. Redirecting to userpage.php
+[2025-06-25 10:53:14] Database Connection Status: Connected
+[2025-06-25 10:53:14] Attempting user login - Username: nemz, Expected Role: user
+[2025-06-25 10:53:14] Query result rows: 1
+[2025-06-25 10:53:14] Stored Password: pass
+[2025-06-25 10:53:14] Submitted Password: pass
+[2025-06-25 10:53:14] Password match. Redirecting to userpage.php
+[2025-06-25 19:07:37] Database Connection Status: Connected
+[2025-06-25 19:07:37] Attempting user login - Username: nemz, Expected Role: user
+[2025-06-25 19:07:37] Query result rows: 1
+[2025-06-25 19:07:37] Stored Password: pass
+[2025-06-25 19:07:37] Submitted Password: pass
+[2025-06-25 19:07:37] Password match. Redirecting to userpage.php
