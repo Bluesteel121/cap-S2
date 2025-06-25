@@ -122,7 +122,7 @@ if (!isset($_SESSION['name'])) {
     <div id="mySidebar" class="sidebar">
         <a href="javascript:void(0)" class="closebtn" onclick="closeSidebar()">&times;</a>
         <a href="#">Settings</a>
-        <a href="#">Profile</a>
+        <a href="/cap_s2/cap-S2/edit_profile.php">Profile</a>
         <a href="index.php">Log Out</a>
     </div>
 
