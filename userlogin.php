@@ -113,7 +113,7 @@ session_start();
                 <div class="mb-4">
                     <label class="block text-sm font-medium text-gray-700 mb-1">Address</label>
                     <div class="flex items-center mb-2">
-                        <input type="checkbox" id="outsidePhilippines" name="outside_philippines" class="mr-2">
+                        <input type="checkbox" id="outsidePhilippines" name="outside_philippines" value="true" class="mr-2">
                         <label for="outsidePhilippines" class="text-sm text-gray-700">Outside Philippines</label>
                     </div>
                     <div id="philippine-address">
