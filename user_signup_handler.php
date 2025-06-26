@@ -14,7 +14,7 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
     $contact_number = $_POST['contact_number'] ?? '';
     $email = $_POST['email'] ?? '';    
     $confirm_password = $_POST['confirm_password'] ?? '';
-    $birth_date = $_POST['birth_date'] ?? '';
+    $birth_date = $_POST['birth_date'] ?? null; // Use null if no date is provided
     $is_outside_philippines = $_POST['is_outside_philippines'] ?? 'false';
     $general_address = $_POST['general_address'] ?? '';
     $barangay = $_POST['barangay'] ?? '';
@@ -54,21 +54,21 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
     $stmt_check->close();
 
     $role = 'user'; // Set the role to 'user'
-
     // Determine the address to save
     $address = ($is_outside_philippines === 'true') ? $general_address : implode(', ', array_filter([$barangay, $municipality, $province]));
 
     // Validate address based on selection
     if ($is_outside_philippines === 'false' && (empty($barangay) || empty($municipality) || empty($province))) {
          $_SESSION['registration_error'] = "Please select your complete address or indicate if you are outside the Philippines.";
- header("Location: userlogin.php");
+         // Redirect back to the signup form section
+         header("Location: userlogin.php");
         exit();
     }
 
     // Insert user into the database
     $insert_user_sql = "INSERT INTO accounts (username, name, password, contact, email, role, birth_date, address) VALUES (?, ?, ?, ?, ?, ?, ?, ?)";
  $stmt_insert = $conn->prepare($insert_user_sql);
-    $stmt_insert->bind_param("ssssssss", $username, $fullname, $password, $contact_number, $email, $role, $birth_date, $address); // Assuming all are strings
+    $stmt_insert->bind_param("ssssssss", $username, $fullname, $password, $contact_number, $email, $role, $birth_date, $address);
 
     if ($stmt_insert->execute()) {
         $_SESSION['registration_success'] = "Registration successful. You can now log in.";
