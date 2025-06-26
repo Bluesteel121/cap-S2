@@ -8,11 +8,11 @@
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
 </head>
 
-<body class="bg-gray-100 pt-20">
+<body class="bg-white pt-20">
 
   <!-- Header -->
 <!-- <header id="main-header" class="bg-white text-[#103625] px-6 py-3 shadow-lg fixed top-0 left-0 w-full z-50 transition-transform duration-300"> -->
-  <div class="container mx-auto flex justify-between items-center">
+  <div class="container mx-auto flex justify-between items-center px-6 py-3 ">
     <!-- Logo and Title -->
     <div class="flex items-center space-x-4">
       <img src="Images/Logo.jpg" alt="CNLRRS Logo" class="h-20 w-auto object-contain">
