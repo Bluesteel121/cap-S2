@@ -5,6 +5,11 @@ session_start();
 // Include the database connection file
 require_once 'connect.php';
 
+// Function to log errors
+function logError($message) {
+    file_put_contents('signup_errors.log', date('Y-m-d H:i:s') . ' - ' . $message . \"\n\", FILE_APPEND);
+}
+
 // Check if the form is submitted
 if ($_SERVER["REQUEST_METHOD"] == "POST") {
     // Retrieve form data
@@ -39,7 +44,11 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
 
     // Check if username already exists
     $check_username_sql = "SELECT id FROM accounts WHERE username = ?";
-    $stmt_check = $conn->prepare($check_username_sql);
+    if (!($stmt_check = $conn->prepare($check_username_sql))) {
+        logError(\"Prepare failed: (\" . $conn->errno . \") \" . $conn->error);
+        $_SESSION['registration_error'] = "An internal error occurred. Please try again later.";
+        header("Location: userlogin.php");
+    }
     $stmt_check->bind_param("s", $username); // Assuming username is a string
     $stmt_check->execute();
     $stmt_check->store_result();
@@ -67,10 +76,18 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
 
     // Insert user into the database
     $insert_user_sql = "INSERT INTO accounts (username, name, password, contact, email, role, birth_date, address) VALUES (?, ?, ?, ?, ?, ?, ?, ?)";
- $stmt_insert = $conn->prepare($insert_user_sql);
-    $stmt_insert->bind_param("ssssssss", $username, $fullname, $password, $contact_number, $email, $role, $birth_date, $address);
+ if (!($stmt_insert = $conn->prepare($insert_user_sql))) {
+ logError(\"Prepare failed: (\" . $conn->errno . \") \" . $conn->error);
+ $_SESSION['registration_error'] = "An internal error occurred. Please try again later.";
+ header("Location: userlogin.php");
+    }
+    if (!$stmt_insert->bind_param("ssssssss", $username, $fullname, $password, $contact_number, $email, $role, $birth_date, $address)) {
+ logError(\"Bind failed: (\" . $stmt_insert->errno . \") \" . $stmt_insert->error);
+ $_SESSION['registration_error'] = "An internal error occurred. Please try again later.";
+ header("Location: userlogin.php");
+    }
 
-    if ($stmt_insert->execute()) {
+ if ($stmt_insert->execute()) {
         $_SESSION['registration_success'] = "Registration successful. You can now log in.";
     } else {
         $_SESSION['registration_error'] = "Error during registration: " . $stmt_insert->error;
