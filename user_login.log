@@ -100,3 +100,15 @@
 [2025-06-25 19:52:30] Stored Password: padd
 [2025-06-25 19:52:30] Submitted Password: padd
 [2025-06-25 19:52:30] Password match. Redirecting to userpage.php
+[2025-06-26 12:52:09] Database Connection Status: Connected
+[2025-06-26 12:52:09] Attempting user login - Username: , Expected Role: user
+[2025-06-26 12:52:09] Query result rows: 0
+[2025-06-26 12:52:09] No matching user found for Username: , Role: user
+[2025-06-26 13:25:49] Database Connection Status: Connected
+[2025-06-26 13:25:49] Attempting user login - Username: slime, Expected Role: user
+[2025-06-26 13:25:49] Query result rows: 0
+[2025-06-26 13:25:49] No matching user found for Username: slime, Role: user
+[2025-06-26 13:25:59] Database Connection Status: Connected
+[2025-06-26 13:25:59] Attempting user login - Username: slime, Expected Role: user
+[2025-06-26 13:25:59] Query result rows: 0
+[2025-06-26 13:25:59] No matching user found for Username: slime, Role: user
