@@ -11,8 +11,8 @@
 <body class="bg-white pt-20">
 
   <!-- Header -->
-<!-- <header id="main-header" class="bg-white text-[#103625] px-6 py-3 shadow-lg fixed top-0 left-0 w-full z-50 transition-transform duration-300"> -->
-  <div class="container mx-auto flex justify-between items-center px-6 py-3 ">
+<header id="main-header" class="bg-white text-[#103625] px-6 py-3 shadow-lg fixed top-0 left-0 w-full z-50 transition-transform duration-300">
+ <div class="w-full mt-2 mx-auto flex justify-between items-center">
     <!-- Logo and Title -->
     <div class="flex items-center space-x-4">
       <img src="Images/Logo.jpg" alt="CNLRRS Logo" class="h-20 w-auto object-contain">
@@ -32,7 +32,7 @@
 
       <img src="Images/Bago.png" alt="Bagong Pilipinas Logo" class="h-20 w-auto object-contain">
   </div>
-<!-- </header> -->
+ </header>
  
    <nav class="bg-white border-b py-10 px-10">
   <div class="max-w-7xl mx-auto px-4 flex flex-wrap justify-between items-center gap-4">
