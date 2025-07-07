@@ -8,7 +8,6 @@ require_once 'connect.php';
 // Function to log errors
 function logError($message) {
     file_put_contents('signup_errors.log', date('Y-m-d H:i:s') . ' - ' . $message . \"\n\", FILE_APPEND);
-
 }
 
 // Check if the form is submitted
@@ -50,7 +49,7 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
     // Check if username already exists
     $check_username_sql = "SELECT id FROM accounts WHERE username = ?";
     if (!($stmt_check = $conn->prepare($check_username_sql))) {
-        logError(\"Prepare failed: (\" . $conn->errno . \") \" . $conn->error);
+        logError("Prepare failed: (" . $conn->errno . ") " . $conn->error);
         $_SESSION['registration_error'] = "An internal error occurred. Please try again later.";
         header("Location: userlogin.php");
     }
