@@ -32,7 +32,7 @@
 
       <img src="Images/Bago.png" alt="Bagong Pilipinas Logo" class="h-20 w-auto object-contain">
   </div>
- </header>
+
  
    <nav class="bg-white border-b py-10 px-10">
   <div class="max-w-7xl mx-auto px-4 flex flex-wrap justify-between items-center gap-4">
@@ -65,7 +65,7 @@
     </a>
   </div>
 </nav>
-
+ </header>
 
 
   <!-- Main Content -->
