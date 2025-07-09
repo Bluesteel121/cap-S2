@@ -10,7 +10,6 @@ function debugLog($message) {
     error_log($message);
     file_put_contents('user_login.log', date('[Y-m-d H:i:s] ') . $message . PHP_EOL, FILE_APPEND);
 }
-
 include "connect.php"; 
 
 if ($_SERVER["REQUEST_METHOD"] == "POST") {
