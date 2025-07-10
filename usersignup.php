@@ -99,19 +99,25 @@
             <div id="philippines-address">
                 <div class="mb-4">
                     <label for="province" class="block text-sm font-medium text-gray-700 mb-1">Province</label>
-                    <input type="text" id="province" name="province" placeholder="Enter province" class="border w-full px-4 py-2 rounded-lg focus:ring-green-500 focus:border-green-500">
+ <select id="province" name="province" class="border w-full px-4 py-2 rounded-lg focus:ring-green-500 focus:border-green-500" required>
+ <option value="">Select Province</option>
+ </select>
                 </div>
                 <div class="mb-4">
                     <label for="municipality" class="block text-sm font-medium text-gray-700 mb-1">Municipality/City</label>
-                    <input type="text" id="municipality" name="municipality" placeholder="Enter municipality/city" class="border w-full px-4 py-2 rounded-lg focus:ring-green-500 focus:border-green-500">
+ <select id="municipality" name="municipality" class="border w-full px-4 py-2 rounded-lg focus:ring-green-500 focus:border-green-500" required disabled>
+ <option value="">Select Municipality/City</option>
+ </select>
                 </div>
                 <div class="mb-4">
                     <label for="barangay" class="block text-sm font-medium text-gray-700 mb-1">Barangay</label>
-                    <input type="text" id="barangay" name="barangay" placeholder="Enter barangay" class="border w-full px-4 py-2 rounded-lg focus:ring-green-500 focus:border-green-500">
+ <select id="barangay" name="barangay" class="border w-full px-4 py-2 rounded-lg focus:ring-green-500 focus:border-green-500" required disabled>
+ <option value="">Select Barangay</option>
+ </select>
                 </div>
             </div>
 
-            <div id="general-address" style="display: none;">
+ <div id="general-address" style="display: none;">
                  <div class="mb-4">
                     <label for="general_address" class="block text-sm font-medium text-gray-700 mb-1">General Address</label>
                     <textarea id="general_address" name="general_address" rows="3" placeholder="Enter your general address" class="border w-full px-4 py-2 rounded-lg focus:ring-green-500 focus:border-green-500"></textarea>
@@ -181,12 +187,74 @@
              generalFields.forEach(field => field.removeAttribute('required'));
          }
 
-    // Add a basic check for required fields before allowing submission
- signupForm.addEventListener('submit', function(event) {
- if (!this.checkValidity()) {
- event.preventDefault(); // Prevent form submission if built-in validation fails
- }
- });
+        // Location dropdowns
+        var provinceSelect = document.getElementById('province');
+        var municipalitySelect = document.getElementById('municipality');
+        var barangaySelect = document.getElementById('barangay');
+
+        // Function to populate dropdowns
+        function populateDropdown(selectElement, data) {
+            selectElement.innerHTML = ''; // Clear existing options
+            var defaultOptionText = '';
+            if (selectElement.id === 'province') defaultOptionText = 'Select Province';
+            if (selectElement.id === 'municipality') defaultOptionText = 'Select Municipality/City';
+            if (selectElement.id === 'barangay') defaultOptionText = 'Select Barangay';
+            var defaultOption = document.createElement('option');
+            defaultOption.value = '';
+            defaultOption.textContent = defaultOptionText;
+            selectElement.appendChild(defaultOption);
+
+            data.forEach(item => {
+                var option = document.createElement('option');
+                option.value = item.id;
+                option.textContent = item.name;
+                selectElement.appendChild(option);
+            });
+        }
+
+        // Fetch provinces on page load
+        fetch('/get_locations.php?level=province')
+            .then(response => response.json())
+            .then(data => {
+                populateDropdown(provinceSelect, data);
+            })
+            .catch(error => console.error('Error fetching provinces:', error));
+
+        // Event listener for province selection
+        provinceSelect.addEventListener('change', function() {
+            var provinceId = this.value;
+            municipalitySelect.disabled = true;
+            barangaySelect.disabled = true;
+            populateDropdown(municipalitySelect, []); // Clear municipalities
+            populateDropdown(barangaySelect, []); // Clear barangays
+
+            if (provinceId) {
+                fetch('/get_locations.php?level=municipality&parent_id=' + provinceId)
+                    .then(response => response.json())
+                    .then(data => {
+                        populateDropdown(municipalitySelect, data);
+                        municipalitySelect.disabled = false;
+                    })
+                    .catch(error => console.error('Error fetching municipalities:', error));
+            }
+        });
+
+        // Event listener for municipality selection
+        municipalitySelect.addEventListener('change', function() {
+            var municipalityId = this.value;
+            barangaySelect.disabled = true;
+            populateDropdown(barangaySelect, []); // Clear barangays
+
+            if (municipalityId) {
+                fetch('/get_locations.php?level=barangay&parent_id=' + municipalityId)
+                    .then(response => response.json())
+                    .then(data => {
+                        populateDropdown(barangaySelect, data);
+                        barangaySelect.disabled = false;
+                    })
+                    .catch(error => console.error('Error fetching barangays:', error));
+            }
+        });
     </script>
 </body>
 </html>
