@@ -65,7 +65,7 @@ session_start();
             </form>
         </div>
  <div class="mt-4 text-center">
- <a href="usersignup.php" class="text-sm text-green-600 hover:underline">Don't have an account? Sign Up</a>
+ <a href="/usersignup.php" class="text-sm text-green-600 hover:underline">Don't have an account? Sign Up</a>
  </div>
 
                 <div class="mb-4">
@@ -99,68 +99,9 @@ session_start();
                     <p id="passwordMatchError" class="text-red-500 text-sm mt-1 hidden">Passwords do not match.</p>
                 </div>
  
-                <div class="mb-4">
-                    <label for="birthDate" class="block text-sm font-medium text-gray-700 mb-1">Birth Date</label>
-                    <input type="date" id="birthDate" name="birth_date" class="border w-full px-4 py-2 rounded-lg focus:ring-green-500 focus:border-green-500" required>
-                </div>
-
-                <div class="mb-4">
-                    <label class="block text-sm font-medium text-gray-700 mb-1">Address</label>
-                    <div class="flex items-center mb-2">
-                        <input type="checkbox" id="outsidePhilippines" name="outside_philippines" value="true" class="mr-2">
-                        <label for="outsidePhilippines" class="text-sm text-gray-700">Outside Philippines</label>
-                    </div>
-                    <div id="philippine-address">
-                        <div class="mb-2">
-                            <label for="province" class="block text-sm font-medium text-gray-700 mb-1">Province</label>
-                            <select id="province" name="province" class="border w-full px-4 py-2 rounded-lg focus:ring-green-500 focus:border-green-500">
-                                <option value="">Select Province</option>
-                                <?php
-                                require_once 'connect.php';
-                                $sql = "SELECT DISTINCT province FROM location ORDER BY province";
-                                $result = $conn->query($sql);
-                                if ($result->num_rows > 0) {
-                                    while($row = $result->fetch_assoc()) {
-                                        echo "<option value='" . htmlspecialchars($row['province']) . "'>" . htmlspecialchars($row['province']) . "</option>";
-                                    }
-                                }
-                                closeConnection();
-                                ?>
-                            </select>
-                        </div>
-                        <div class="mb-2">
-                            <label for="municipality" class="block text-sm font-medium text-gray-700 mb-1">Municipality</label>
-                            <select id="municipality" name="municipality" class="border w-full px-4 py-2 rounded-lg focus:ring-green-500 focus:border-green-500" disabled>
-                                <option value="">Select Municipality</option>
-                            </select>
-                        </div>
-                        <div class="mb-2">
-                            <label for="barangay" class="block text-sm font-medium text-gray-700 mb-1">Barangay</label>
-                            <select id="barangay" name="barangay" class="border w-full px-4 py-2 rounded-lg focus:ring-green-500 focus:border-green-500" disabled>
-                                <option value="">Select Barangay</option>
-                            </select>
-                        </div>
-                    </div>
-                     <div id="outside-philippines-address" class="hidden">
-                        <label for="generalAddress" class="block text-sm font-medium text-gray-700 mb-1">General Address</label>
-                        <input type="text" id="generalAddress" name="general_address" placeholder="Enter your address" class="border w-full px-4 py-2 rounded-lg focus:ring-green-500 focus:border-green-500">
-                    </div>
-                </div>
-
-                <div class="mb-4">
-                    <label for="contactNumber" class="block text-sm font-medium text-gray-700 mb-1">Contact Number</label>
-                    <input type="text" id="contactNumber" name="contact_number" placeholder="Enter your contact number" class="border w-full px-4 py-2 rounded-lg focus:ring-green-500 focus:border-green-500" required>
- </div>
-
-                <button type="submit" class="bg-green-500 text-white w-full py-2 mt-4 rounded-lg hover:bg-green-700 transition-colors duration-200">
-                    Sign Up
-                </button>
-            </form>
-        </div>
-
         <!-- Back to Account Selection Button -->
         <div class="mt-6 text-center">
-            <a href="account.php" class="inline-block bg-gray-200 text-gray-800 px-4 py-2 rounded-lg hover:bg-gray-300 transition-colors duration-200">
+            <a href="/account.php" class="inline-block bg-gray-200 text-gray-800 px-4 py-2 rounded-lg hover:bg-gray-300 transition-colors duration-200">
                 ← Back to Account Selection
             </a>
         </div>
@@ -180,78 +121,6 @@ session_start();
         }
     }
 
-    // Address Dropdown Logic
-    const provinceSelect = document.getElementById('province');
-    const municipalitySelect = document.getElementById('municipality');
-    const barangaySelect = document.getElementById('barangay');
-    const outsidePhilippinesCheckbox = document.getElementById('outsidePhilippines');
-    const philippineAddressDiv = document.getElementById('philippine-address');
-    const outsidePhilippinesAddressDiv = document.getElementById('outside-philippines-address');
-    const generalAddressInput = document.getElementById('generalAddress');
-
-    outsidePhilippinesCheckbox.addEventListener('change', function() {
-        if (this.checked) {
-            philippineAddressDiv.classList.add('hidden');
-            outsidePhilippinesAddressDiv.classList.remove('hidden');
-            provinceSelect.disabled = true;
-            municipalitySelect.disabled = true;
-            barangaySelect.disabled = true;
-            generalAddressInput.required = true;
-        } else {
-            philippineAddressDiv.classList.remove('hidden');
-            outsidePhilippinesAddressDiv.classList.add('hidden');
-            provinceSelect.disabled = false;
-            municipalitySelect.disabled = true; // Still disabled until province is selected
-            barangaySelect.disabled = true; // Still disabled until municipality is selected
-            generalAddressInput.required = false;
-        }
-    });
-
-    provinceSelect.addEventListener('change', function() {
-        const selectedProvince = this.value;
-        municipalitySelect.innerHTML = '<option value="">Select Municipality</option>';
-        barangaySelect.innerHTML = '<option value="">Select Barangay</option>';
-        municipalitySelect.disabled = true;
-        barangaySelect.disabled = true;
-
-        if (selectedProvince) {
-            // Fetch municipalities based on selected province
-            fetch(`get_locations.php?type=municipality&province=${encodeURIComponent(selectedProvince)}`)
-                .then(response => response.json())
-                .then(data => {
-                    data.forEach(location => {
-                        const option = document.createElement('option');
-                        option.value = location.municipality;
-                        option.textContent = location.municipality;
-                        municipalitySelect.appendChild(option);
-                    });
-                    municipalitySelect.disabled = false;
-                });
-        }
-    });
-
-    municipalitySelect.addEventListener('change', function() {
-        const selectedProvince = provinceSelect.value;
-        const selectedMunicipality = this.value;
-        barangaySelect.innerHTML = '<option value="">Select Barangay</option>';
-        barangaySelect.disabled = true;
-
-        if (selectedMunicipality) {
-            // Fetch barangays based on selected province and municipality
-            fetch(`get_locations.php?type=barangay&province=${encodeURIComponent(selectedProvince)}&municipality=${encodeURIComponent(selectedMunicipality)}`)
-                .then(response => response.json())
-                .then(data => {
-                    data.forEach(location => {
-                        const option = document.createElement('option');
-                        option.value = location.barangay;
-                        option.textContent = location.barangay;
-                        barangaySelect.appendChild(option);
-                    });
-                    barangaySelect.disabled = false;
-                });
-        }
-    });
-
     // Password Confirmation Logic
     const signupPassword = document.getElementById('signupPassword');
     const confirmPassword = document.getElementById('confirmPassword');
@@ -270,27 +139,6 @@ session_start();
 
     signupPassword.addEventListener('input', validatePassword);
     confirmPassword.addEventListener('input', validatePassword);
-
-    signupForm.addEventListener('submit', function(event) {
-        validatePassword(); // Run validation on submit as well
-        if (!confirmPassword.validity.valid) {
-            event.preventDefault(); // Prevent form submission if passwords don't match
-        }
-         // If Outside Philippines is selected, ensure general address is not empty
-        if (outsidePhilippinesCheckbox.checked && generalAddressInput.value.trim() === '') {
-            generalAddressInput.reportValidity(); // Show validation message
-            event.preventDefault(); // Prevent form submission
-        }
-
-        // If Philippine address is selected, ensure all dropdowns have a value
-        if (!outsidePhilippinesCheckbox.checked && (provinceSelect.value === '' || municipalitySelect.value === '' || barangaySelect.value === '')) {
-             if (provinceSelect.value === '') provinceSelect.reportValidity();
-             else if (municipalitySelect.value === '') municipalitySelect.reportValidity();
-             else if (barangaySelect.value === '') barangaySelect.reportValidity();
-             event.preventDefault(); // Prevent form submission
-        }
-
-    });
 
     // Add a basic check for required fields before allowing submission
     signupForm.addEventListener('submit', function(event) {
