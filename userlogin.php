@@ -64,6 +64,9 @@ session_start();
                 </button>
             </form>
         </div>
+ <div class="mt-4 text-center">
+ <a href="usersignup.php" class="text-sm text-green-600 hover:underline">Don't have an account? Sign Up</a>
+ </div>
 
                 <div class="mb-4">
                     <label for="email" class="block text-sm font-medium text-gray-700 mb-1">Email</label>
@@ -155,19 +158,6 @@ session_start();
             </form>
         </div>
 
-        <!-- Toggle Buttons and Back to Account Selection -->
-        <div class="mt-4 text-center">
-            <button id="toggle-button" class="text-sm text-green-600 hover:underline" onclick="toggleForm()">
-                Don't have an account? Sign Up
-            </button>
-        </div>
-
-        <div class="mt-2 text-center">
-            <button id="toggle-button-back" class="text-sm text-green-600 hover:underline hidden" onclick="toggleFormBack()">
-                Already have an account? Login
-            </button>
-        </div>
-
         <!-- Back to Account Selection Button -->
         <div class="mt-6 text-center">
             <a href="account.php" class="inline-block bg-gray-200 text-gray-800 px-4 py-2 rounded-lg hover:bg-gray-300 transition-colors duration-200">
@@ -177,39 +167,6 @@ session_start();
     </div>
 
     <script>
-    // Determine the initial form to display based on URL or session data
-    const urlParams = new URLSearchParams(window.location.search);
-    const showSignup = urlParams.get('showSignup');
-    const loginSection = document.getElementById('login-section');
-    const signupSection = document.getElementById('signup-section');
-
-    if (showSignup === 'true') {
-        toggleForm(); // Show signup form
-    }
-    </script>
-
-    <script>
-    function toggleForm() {
-        const loginSection = document.getElementById('login-section');
-        const signupSection = document.getElementById('signup-section');
-        const toggleButton = document.getElementById('toggle-button');
-        const toggleButtonBack = document.getElementById('toggle-button-back');
-
-        loginSection.classList.add('hidden');
-        signupSection.classList.remove('hidden');
-        toggleButton.classList.add('hidden');
-        toggleButtonBack.classList.remove('hidden');
-    }
-      function toggleFormBack() {
-        const loginSection = document.getElementById('login-section');
-        const signupSection = document.getElementById('signup-section');
-         const toggleButton = document.getElementById('toggle-button');
-        const toggleButtonBack = document.getElementById('toggle-button-back');
-        loginSection.classList.remove('hidden');
-        signupSection.classList.add('hidden');
-        toggleButton.classList.remove('hidden');
-        toggleButtonBack.classList.add('hidden');
-    }
     function togglePassword(passwordFieldId, iconId) {
         const passwordField = document.getElementById(passwordFieldId);
         const icon = document.getElementById(iconId);
