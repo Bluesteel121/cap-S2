@@ -72,11 +72,11 @@ session_start();
                 <div class="mb-4">
                     <label for="signupUsername" class="block text-sm font-medium text-gray-700 mb-1">Username</label>
                     <input type="text" id="signupUsername" name="username" placeholder="Choose a username" class="border w-full px-4 py-2 rounded-lg focus:ring-green-500 focus:border-green-500" required>
-                </div>
+ </div>
 
                 <div class="mb-4">
                     <label for="email" class="block text-sm font-medium text-gray-700 mb-1">Email</label>
-                    <input type="email" id="email" name="email" placeholder="Enter your email" class="border w-full px-4 py-2 rounded-lg focus:ring-green-500 focus:border-green-500" required>
+                    <input type="email" id="email" name="email" placeholder="Enter your email" class="border w-full px-4 py-2 rounded-lg focus:ring-green-500 focus:border-green-500">
                 </div>
 
                 <div class="mb-4">
@@ -104,7 +104,7 @@ session_start();
                     </div>
                     <p id="passwordMatchError" class="text-red-500 text-sm mt-1 hidden">Passwords do not match.</p>
                 </div>
-
+ 
                  <div class="mb-4">
                     <label for="birthDate" class="block text-sm font-medium text-gray-700 mb-1">Birth Date</label>
                     <input type="date" id="birthDate" name="birth_date" class="border w-full px-4 py-2 rounded-lg focus:ring-green-500 focus:border-green-500" required>
@@ -156,7 +156,7 @@ session_start();
                  <div class="mb-4">
                     <label for="contactNumber" class="block text-sm font-medium text-gray-700 mb-1">Contact Number</label>
                     <input type="text" id="contactNumber" name="contact_number" placeholder="Enter your contact number" class="border w-full px-4 py-2 rounded-lg focus:ring-green-500 focus:border-green-500" required>
-                </div>
+ </div>
 
                 <button type="submit" class="bg-green-500 text-white w-full py-2 mt-4 rounded-lg hover:bg-green-700 transition-colors duration-200">
                     Sign Up
