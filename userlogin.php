@@ -66,7 +66,7 @@ session_start();
         </div>
  <div class="mt-4 text-center">
  <a href="/usersignup.php" class="text-sm text-green-600 hover:underline">Don't have an account? Sign Up</a>
- </div>
+ </div><!-- Back to Account Selection Button -->
 
         <!-- Back to Account Selection Button -->
         <div class="mt-6 text-center">
