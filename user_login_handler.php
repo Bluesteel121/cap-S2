@@ -1,72 +1,123 @@
 <?php
-error_reporting(E_ALL);
-ini_set('display_errors', 1);
-
-ob_start();
-
 session_start();
 
-function debugLog($message) {
-    error_log($message);
-    file_put_contents('user_login.log', date('[Y-m-d H:i:s] ') . $message . PHP_EOL, FILE_APPEND);
+// Include the database connection file
+require_once 'connect.php';
+
+// Function to log errors
+function logError($message) {
+    // Corrected concatenation for logging
+    file_put_contents('signup_errors.log', date('Y-m-d H:i:s') . ' - ' . $message . "\n", FILE_APPEND);
 }
-include "connect.php"; 
 
+// Check if the form is submitted
 if ($_SERVER["REQUEST_METHOD"] == "POST") {
-    $username = $_POST["username"] ?? "";
-    $password = $_POST["password"] ?? "";
-    // We are explicitly setting the role to 'user' for this handler
-    $role = "user"; 
+    logError('Script started.');
+    // Log the POST data for debugging
+    logError('$_POST data: ' . print_r($_POST, true));
 
-    debugLog("Database Connection Status: " . ($conn ? "Connected" : "Failed"));
-    debugLog("Attempting user login - Username: $username, Expected Role: $role");
+    // Retrieve form data, using null coalescing operator for safety
+    $username = $_POST['username'] ?? '';
+    $fullname = $_POST['fullname'] ?? '';
+    $password = $_POST['password'] ?? '';
+    $contact_number = $_POST['contact_number'] ?? '';
+    $email = $_POST['email'] ?? '';    
+    $confirm_password = $_POST['confirm_password'] ?? '';
+    $birth_date = $_POST['birth_date'] ?? null; // Use null if no date is provided
+    $is_outside_philippines = $_POST['is_outside_philippines'] ?? 'false';
+    $general_address = $_POST['general_address'] ?? '';
+    $barangay = $_POST['barangay'] ?? '';
+    $municipality = $_POST['municipality'] ?? '';
+    $province = $_POST['province'] ?? '';
 
-    try {
-        $stmt = $conn->prepare("SELECT * FROM accounts WHERE username = ? AND role = ?");
-        if ($stmt === false) {
-            throw new Exception("Prepare failed: " . $conn->error);
-        }
 
-        $stmt->bind_param("ss", $username, $role);
-        $stmt->execute();
-        $result = $stmt->get_result();
-
-        debugLog("Query result rows: " . $result->num_rows);
-
-        if ($result->num_rows === 1) {
-            $row = $result->fetch_assoc();
-            
-            debugLog("Stored Password: " . $row["password"]);
-            debugLog("Submitted Password: " . $password);
-
-            // Direct password comparison (as per original code, hashing is recommended)
-            if ($password === $row["password"]) {
-                $_SESSION["username"] = $username;
-                $_SESSION["role"] = $role;
-                $_SESSION['name'] = $row['name']; // Store the user's name in the session
-                
-                debugLog("Password match. Redirecting to userpage.php");
-                
-                ob_clean();
-                header("Location: loggedin_index.php");
-                exit();
-            } else {
-                debugLog("Password mismatch for user: $username");
-                $_SESSION['login_error'] = "Invalid password";
-                header("Location: userlogin.php");
-                exit();
-            }
-        } else {
-            debugLog("No matching user found for Username: $username, Role: $role");
-            $_SESSION['login_error'] = "Invalid username or role";
-            header("Location: userlogin.php");
-            exit();
-        }
-    } catch (Exception $e) {
-        debugLog("Exception: " . $e->getMessage());
-        $_SESSION['login_error'] = "An error occurred during login";
+    // Validate input
+    if (empty($username) || empty($fullname) || empty($password) || empty($confirm_password) || empty($contact_number) || empty($email) || empty($birth_date)) {
+        $_SESSION['registration_error'] = "All fields are required.";
         header("Location: userlogin.php");
         exit();
     }
+
+    // Check if passwords match
+    if ($password !== $confirm_password) {
+        logError('Passwords do not match.');
+        $_SESSION['registration_error'] = "Passwords do not match.";
+        // Redirect back to the signup form section
+        header("Location: userlogin.php");
+        exit();
+    }
+
+    // Check if username already exists
+    $check_username_sql = "SELECT id FROM accounts WHERE username = ?";
+    if (!($stmt_check = $conn->prepare($check_username_sql))) {
+        logError("Prepare failed: (" . $conn->errno . ") " . $conn->error);
+        $_SESSION['registration_error'] = "An internal error occurred. Please try again later.";
+        header("Location: userlogin.php");
+        exit(); // Added exit after header
+    }
+    $stmt_check->bind_param("s", $username); // Assuming username is a string
+    $stmt_check->execute();
+    $stmt_check->store_result();
+
+    if ($stmt_check->num_rows > 0) {
+        $_SESSION['registration_error'] = "Username already exists.";
+        $stmt_check->close();
+        closeConnection();
+        header("Location: userlogin.php");
+        exit();
+    }
+    $stmt_check->close();
+
+    $role = 'user'; // Set the role to 'user'
+
+    // Determine the address to save
+    $address = ($is_outside_philippines === 'true') ? $general_address : implode(', ', array_filter([$barangay, $municipality, $province]));
+    logError('Determined address: ' . $address);
+
+    // Validate address based on selection
+    if ($is_outside_philippines === 'false' && (empty($barangay) || empty($municipality) || empty($province))) {
+         $_SESSION['registration_error'] = "Please select your complete address or indicate if you are outside the Philippines.";
+         // Redirect back to the signup form section
+         header("Location: userlogin.php");
+         exit(); // Added exit after header
+    }
+
+    logError('Address validation passed.');
+
+    // Insert user into the database
+    $insert_user_sql = "INSERT INTO accounts (username, name, password, contact, email, role, birth_date, address) VALUES (?, ?, ?, ?, ?, ?, ?, ?)";
+    if (!($stmt_insert = $conn->prepare($insert_user_sql))) {
+        logError("Prepare failed: (" . $conn->errno . ") " . $conn->error);
+        $_SESSION['registration_error'] = "An internal error occurred. Please try again later.";
+        header("Location: userlogin.php");
+        exit(); // Added exit after header
+    }
+
+    // Corrected bind_param to match the number of placeholders and variable types
+    if (!$stmt_insert->bind_param("ssssssss", $username, $fullname, $password, $contact_number, $email, $role, $birth_date, $address)) {
+        logError("Bind failed: (" . $stmt_insert->errno . ") " . $stmt_insert->error);
+        $_SESSION['registration_error'] = "An internal error occurred. Please try again later.";
+        header("Location: userlogin.php");
+        exit(); // Added exit after header
+    }
+
+    if ($stmt_insert->execute()) {
+        $_SESSION['registration_success'] = "Registration successful. You can now log in.";
+    } else {
+        // Log the specific database error
+        logError("Error during registration: " . $stmt_insert->error);
+        $_SESSION['registration_error'] = "Error during registration. Please try again later.";
+    }
+
+    $stmt_insert->close();
+} else {
+    $_SESSION['registration_error'] = "Invalid request method.";
 }
+
+// Close the database connection
+closeConnection();
+
+// Redirect back to the login page
+header("Location: userlogin.php");
+exit(); // Added exit after header
 ?>
