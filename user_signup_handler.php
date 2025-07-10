@@ -6,7 +6,8 @@ require_once 'connect.php';
 
 // Function to log errors
 function logError($message) {
-    file_put_contents('signup_errors.log', date('Y-m-d H:i:s') . ' - ' . $message . "\n\", FILE_APPEND);
+    // Corrected the newline character concatenation
+    file_put_contents('signup_errors.log', date('Y-m-d H:i:s') . ' - ' . $message . "\n", FILE_APPEND);
 }
 
 // Check if the form is submitted
@@ -32,7 +33,7 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
     // Validate input
     if (empty($username) || empty($fullname) || empty($password) || empty($confirm_password) || empty($contact_number) || empty($email) || empty($birth_date)) {
         $_SESSION['registration_error'] = "All fields are required.";
- header("Location: userlogin.php");
+        header("Location: userlogin.php");
         exit();
     }
 
@@ -40,8 +41,7 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
     if ($password !== $confirm_password) {
         logError('Passwords do not match.');
         $_SESSION['registration_error'] = "Passwords do not match.";
- // Redirect back to the signup form section
- header("Location: userlogin.php");
+        header("Location: userlogin.php");
         exit();
     }
 
@@ -51,6 +51,7 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
         logError("Prepare failed: (" . $conn->errno . ") " . $conn->error);
         $_SESSION['registration_error'] = "An internal error occurred. Please try again later.";
         header("Location: userlogin.php");
+        exit();
     }
     $stmt_check->bind_param("s", $username); // Assuming username is a string
     $stmt_check->execute();
@@ -74,31 +75,33 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
     // Validate address based on selection
     if ($is_outside_philippines === 'false' && (empty($barangay) || empty($municipality) || empty($province))) {
          $_SESSION['registration_error'] = "Please select your complete address or indicate if you are outside the Philippines.";
-         // Redirect back to the signup form section
          header("Location: userlogin.php");
-        exit();
+         exit();
     }
 
     logError('Address validation passed.');
 
     // Insert user into the database
     $insert_user_sql = "INSERT INTO accounts (username, name, password, contact, email, role, birth_date, address) VALUES (?, ?, ?, ?, ?, ?, ?, ?)";
- if (!($stmt_insert = $conn->prepare($insert_user_sql))) {
- logError("Prepare failed: (" . $conn->errno . ") " . $conn->error);
- $_SESSION['registration_error'] = "An internal error occurred. Please try again later.";
- header("Location: userlogin.php");
+    if (!($stmt_insert = $conn->prepare($insert_user_sql))) {
+        logError("Prepare failed: (" . $conn->errno . ") " . $conn->error);
+        $_SESSION['registration_error'] = "An internal error occurred. Please try again later.";
+        header("Location: userlogin.php");
+        exit();
     }
     if (!$stmt_insert->bind_param("ssssssss", $username, $fullname, $password, $contact_number, $email, $role, $birth_date, $address)) {
- logError("Bind failed: (" . $stmt_insert->errno . ") " . $stmt_insert->error);
- $_SESSION['registration_error'] = "An internal error occurred. Please try again later.";
- header("Location: userlogin.php");
+        logError("Bind failed: (" . $stmt_insert->errno . ") " . $stmt_insert->error);
+        $_SESSION['registration_error'] = "An internal error occurred. Please try again later.";
+        header("Location: userlogin.php");
+        exit();
     }
 
 
- if ($stmt_insert->execute()) {
+    if ($stmt_insert->execute()) {
         $_SESSION['registration_success'] = "Registration successful. You can now log in.";
     } else {
-        $_SESSION['registration_error'] = "Error during registration: " . $stmt_insert->error;
+        logError("Error during registration: " . $stmt_insert->error);
+        $_SESSION['registration_error'] = "Error during registration. Please try again later.";
     }
 
     $stmt_insert->close();
