@@ -64,10 +64,10 @@ session_start();
                 </button>
             </form>
         </div>
- <div class="mt-4 text-center">
- <a href="/usersignup.php" class="text-sm text-green-600 hover:underline">Don't have an account? Sign Up</a>
- </div><!-- Back to Account Selection Button -->
 
+ <div class="mt-4 text-center">
+ <a href="usersignup.php" class="text-sm text-green-600 hover:underline">Don't have an account? Sign Up</a>
+ </div>
         <!-- Back to Account Selection Button -->
         <div class="mt-6 text-center">
             <a href="/account.php" class="inline-block bg-gray-200 text-gray-800 px-4 py-2 rounded-lg hover:bg-gray-300 transition-colors duration-200">
