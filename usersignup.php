@@ -213,7 +213,7 @@
         }
 
         // Fetch provinces on page load
-        fetch('/get_locations.php?level=province')
+        fetch('get_locations.php?level=province')
             .then(response => response.json())
             .then(data => {
                 populateDropdown(provinceSelect, data);
@@ -229,7 +229,7 @@
             populateDropdown(barangaySelect, []); // Clear barangays
 
             if (provinceId) {
-                fetch('/get_locations.php?level=municipality&parent_id=' + provinceId)
+                fetch('get_locations.php?level=municipality&parent_id=' + provinceId)
                     .then(response => response.json())
                     .then(data => {
                         populateDropdown(municipalitySelect, data);
@@ -246,7 +246,7 @@
             populateDropdown(barangaySelect, []); // Clear barangays
 
             if (municipalityId) {
-                fetch('/get_locations.php?level=barangay&parent_id=' + municipalityId)
+                fetch('get_locations.php?level=barangay&parent_id=' + municipalityId)
                     .then(response => response.json())
                     .then(data => {
                         populateDropdown(barangaySelect, data);
