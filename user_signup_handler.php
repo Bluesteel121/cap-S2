@@ -1,4 +1,3 @@
-php
 <?php
 session_start();
 
@@ -7,7 +6,7 @@ require_once 'connect.php';
 
 // Function to log errors
 function logError($message) {
-    file_put_contents('signup_errors.log', date('Y-m-d H:i:s') . ' - ' . $message . \"\n\", FILE_APPEND);
+    file_put_contents('signup_errors.log', date('Y-m-d H:i:s') . ' - ' . $message . "\n\", FILE_APPEND);
 }
 
 // Check if the form is submitted
