@@ -246,7 +246,7 @@
             populateDropdown(barangaySelect, []); // Clear barangays
 
             if (municipalityId) {
-                fetch('get_locations.php?level=barangay&parent_id=' + municipalityId)
+                fetch('get_locations.php?level=barangay&province=' + provinceSelect.value + '&parent_id=' + municipalityId)
                     .then(response => response.json())
                     .then(data => {
                         populateDropdown(barangaySelect, data);
