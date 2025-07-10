@@ -65,15 +65,6 @@ session_start();
             </form>
         </div>
 
-        <!-- Sign-up Form (initially hidden) -->
-        <div id="signup-section" class="hidden">
-            <h2 class="text-2xl font-bold text-center mb-4">User Sign Up</h2>
-            <form id="signup-form" method="POST" action="user_signup_handler.php" autocomplete="off" novalidate>
-                <div class="mb-4">
-                    <label for="signupUsername" class="block text-sm font-medium text-gray-700 mb-1">Username</label>
-                    <input type="text" id="signupUsername" name="username" placeholder="Choose a username" class="border w-full px-4 py-2 rounded-lg focus:ring-green-500 focus:border-green-500" required>
- </div>
-
                 <div class="mb-4">
                     <label for="email" class="block text-sm font-medium text-gray-700 mb-1">Email</label>
                     <input type="email" id="email" name="email" placeholder="Enter your email" class="border w-full px-4 py-2 rounded-lg focus:ring-green-500 focus:border-green-500">
@@ -105,7 +96,7 @@ session_start();
                     <p id="passwordMatchError" class="text-red-500 text-sm mt-1 hidden">Passwords do not match.</p>
                 </div>
  
-                 <div class="mb-4">
+                <div class="mb-4">
                     <label for="birthDate" class="block text-sm font-medium text-gray-700 mb-1">Birth Date</label>
                     <input type="date" id="birthDate" name="birth_date" class="border w-full px-4 py-2 rounded-lg focus:ring-green-500 focus:border-green-500" required>
                 </div>
@@ -153,7 +144,7 @@ session_start();
                     </div>
                 </div>
 
-                 <div class="mb-4">
+                <div class="mb-4">
                     <label for="contactNumber" class="block text-sm font-medium text-gray-700 mb-1">Contact Number</label>
                     <input type="text" id="contactNumber" name="contact_number" placeholder="Enter your contact number" class="border w-full px-4 py-2 rounded-lg focus:ring-green-500 focus:border-green-500" required>
  </div>
@@ -164,26 +155,38 @@ session_start();
             </form>
         </div>
 
-        <!-- Toggle Button -->
+        <!-- Toggle Buttons and Back to Account Selection -->
         <div class="mt-4 text-center">
             <button id="toggle-button" class="text-sm text-green-600 hover:underline" onclick="toggleForm()">
                 Don't have an account? Sign Up
             </button>
         </div>
 
-        <div class="mt-4 text-center">
-             <button id="toggle-button-back" class="text-sm text-green-600 hover:underline hidden" onclick="toggleFormBack()">
+        <div class="mt-2 text-center">
+            <button id="toggle-button-back" class="text-sm text-green-600 hover:underline hidden" onclick="toggleFormBack()">
                 Already have an account? Login
             </button>
+        </div>
 
-            <!-- Centered Back Button -->
-            <div class="mt-6 text-center">
-                <a href="account.php" class="inline-block bg-gray-200 text-gray-800 px-4 py-2 rounded-lg hover:bg-gray-300 transition-colors duration-200">
-                    ← Back to Account Selection
-                </a>
-            </div>
+        <!-- Back to Account Selection Button -->
+        <div class="mt-6 text-center">
+            <a href="account.php" class="inline-block bg-gray-200 text-gray-800 px-4 py-2 rounded-lg hover:bg-gray-300 transition-colors duration-200">
+                ← Back to Account Selection
+            </a>
         </div>
     </div>
+
+    <script>
+    // Determine the initial form to display based on URL or session data
+    const urlParams = new URLSearchParams(window.location.search);
+    const showSignup = urlParams.get('showSignup');
+    const loginSection = document.getElementById('login-section');
+    const signupSection = document.getElementById('signup-section');
+
+    if (showSignup === 'true') {
+        toggleForm(); // Show signup form
+    }
+    </script>
 
     <script>
     function toggleForm() {
