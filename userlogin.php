@@ -68,37 +68,6 @@ session_start();
  <a href="/usersignup.php" class="text-sm text-green-600 hover:underline">Don't have an account? Sign Up</a>
  </div>
 
-                <div class="mb-4">
-                    <label for="email" class="block text-sm font-medium text-gray-700 mb-1">Email</label>
-                    <input type="email" id="email" name="email" placeholder="Enter your email" class="border w-full px-4 py-2 rounded-lg focus:ring-green-500 focus:border-green-500">
-                </div>
-
-                <div class="mb-4">
-                    <label for="fullname" class="block text-sm font-medium text-gray-700 mb-1">Full Name</label>
-                    <input type="text" id="fullname" name="fullname" placeholder="Enter your full name" class="border w-full px-4 py-2 rounded-lg focus:ring-green-500 focus:border-green-500" required>
-                </div>
-
-                <div class="mb-4">
-                    <label for="signupPassword" class="block text-sm font-medium text-gray-700 mb-1">Password</label>
-                    <div class="relative">
-                        <input type="password" name="password" id="signupPassword" placeholder="Create a password" class="border w-full px-4 py-2 rounded-lg pr-10 focus:ring-green-500 focus:border-green-500" required>
-                        <button type="button" onclick="togglePassword('signupPassword', 'signupToggleIcon')" class="absolute right-3 top-3 text-gray-500">
-                            <i class="far fa-eye" id="signupToggleIcon"></i>
-                        </button>
-                    </div>
-                </div>
-
-                <div class="mb-4">
-                    <label for="confirmPassword" class="block text-sm font-medium text-gray-700 mb-1">Confirm Password</label>
-                    <div class="relative">
-                        <input type="password" id="confirmPassword" placeholder="Confirm your password" class="border w-full px-4 py-2 rounded-lg pr-10 focus:ring-green-500 focus:border-green-500" required>
-                        <button type="button" onclick="togglePassword('confirmPassword', 'confirmToggleIcon')" class="absolute right-3 top-3 text-gray-500">
-                            <i class="far fa-eye" id="confirmToggleIcon"></i>
-                        </button>
-                    </div>
-                    <p id="passwordMatchError" class="text-red-500 text-sm mt-1 hidden">Passwords do not match.</p>
-                </div>
- 
         <!-- Back to Account Selection Button -->
         <div class="mt-6 text-center">
             <a href="/account.php" class="inline-block bg-gray-200 text-gray-800 px-4 py-2 rounded-lg hover:bg-gray-300 transition-colors duration-200">
@@ -120,25 +89,6 @@ session_start();
             icon.classList.replace('fa-eye-slash', 'fa-eye');
         }
     }
-
-    // Password Confirmation Logic
-    const signupPassword = document.getElementById('signupPassword');
-    const confirmPassword = document.getElementById('confirmPassword');
-    const passwordMatchError = document.getElementById('passwordMatchError');
-    const signupForm = document.getElementById('signup-form');
-
-    function validatePassword() {
-        if (signupPassword.value !== confirmPassword.value) {
-            passwordMatchError.classList.remove('hidden');
-            confirmPassword.setCustomValidity("Passwords do not match.");
-        } else {
-            passwordMatchError.classList.add('hidden');
-            confirmPassword.setCustomValidity("");
-        }
-    }
-
-    signupPassword.addEventListener('input', validatePassword);
-    confirmPassword.addEventListener('input', validatePassword);
 
     // Add a basic check for required fields before allowing submission
     signupForm.addEventListener('submit', function(event) {
