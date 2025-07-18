@@ -2,6 +2,7 @@
 session_start();
 
 require_once 'connect.php';
+require_once 'includes/debug.php'; // Include your logging function if you want to keep logging
 
 // Check if the form is submitted
 if ($_SERVER["REQUEST_METHOD"] == "POST") {
@@ -25,13 +26,11 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
         $stmt->store_result();
 
         if ($stmt->num_rows == 1) {
-            $stmt->bind_result($id, $name, $hashed_password);
+            $stmt->bind_result($id, $name, $stored_password);
             $stmt->fetch();
 
-            // Verify the password
-            // Note: Your current code stores plain passwords. It is highly recommended to hash passwords.
-            // If you implement hashing, use password_verify($password, $hashed_password) instead of a direct comparison.
-            if ($password === $hashed_password) { // Replace with password_verify if using hashed passwords
+            // Verify the password (direct comparison as requested)
+            if ($password === $stored_password) {
                 // Login successful
                 $_SESSION['id'] = $id;
                 $_SESSION['name'] = $name;
@@ -41,21 +40,32 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
                 exit();
             } else {
                 // Incorrect password
+                logError("Failed user login attempt: Incorrect password for user '{$username}'"); // Example logging
                 $_SESSION['login_error'] = "Invalid username or password."; // Set error message
+                header("Location: userlogin.php"); // Redirect back to login page
+                exit();
             }
         } else {
             // User not found
+            logError("Failed user login attempt: No user found with username '{$username}'"); // Example logging
             $_SESSION['login_error'] = "Invalid username or password."; // Set error message
+            header("Location: userlogin.php"); // Redirect back to login page
+            exit();
         }
 
         $stmt->close();
     } else {
         // Error preparing the statement
+        logError("Database error during user login: " . $conn->error); // Example logging
         $_SESSION['login_error'] = "An internal error occurred. Please try again later."; // Set error message
+        header("Location: userlogin.php"); // Redirect back to login page
+        exit();
     }
 } else {
     // Not a POST request
     $_SESSION['login_error'] = "Invalid request method."; // Set error message
+    header("Location: userlogin.php"); // Redirect back to login page
+    exit();
 }
 
 // Close database connection
