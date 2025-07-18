@@ -61,7 +61,4 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
 // Close database connection
 closeConnection();
 
-// Redirect back to the login page with messages
-header("Location: userlogin.php");
-exit();
 ?>
