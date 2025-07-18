@@ -1,44 +1,71 @@
 <?php
 session_start();
 
-// Include the database connection file
 require_once 'connect.php';
-
-// Function to log errors
-function logError($message) {
-    file_put_contents('signup_errors.log', date('Y-m-d H:i:s') . ' - ' . $message . "\n", FILE_APPEND);
-}
 
 // Check if the form is submitted
 if ($_SERVER["REQUEST_METHOD"] == "POST") {
-    logError('Script started.');
-    logError('$_POST data: ' . print_r($_POST, true));
-
     // Retrieve form data, using null coalescing operator for safety
     $username = $_POST['username'] ?? '';
-    $fullname = $_POST['fullname'] ?? '';
     $password = $_POST['password'] ?? '';
-    $contact_number = $_POST['contact_number'] ?? '';
-    $email = $_POST['email'] ?? '';    
-    $confirm_password = $_POST['confirm_password'] ?? '';
-    $birth_date = $_POST['birth_date'] ?? null; // Use null if no date is provided
-    $is_outside_philippines = $_POST['is_outside_philippines'] ?? 'false';
-    $general_address = $_POST['general_address'] ?? '';
-    $barangay = $_POST['barangay'] ?? '';
-    $municipality = $_POST['municipality'] ?? '';
-    $province = $_POST['province'] ?? '';
+    $role = $_POST['role'] ?? ''; // Should be 'user' from the form
 
-    // Validate input
-    if (empty($username) || empty($fullname) || empty($password) || empty($confirm_password) || empty($contact_number) || empty($email) || empty($birth_date)) {
-        $_SESSION['registration_error'] = "All fields are required.";
+    // Basic validation
+    if (empty($username) || empty($password) || $role !== 'user') {
+        $_SESSION['login_error'] = "Invalid request. Please try again.";
         header("Location: userlogin.php");
         exit();
     }
 
-    // Check if passwords match
-    if ($password !== $confirm_password) {
-        logError('Passwords do not match.');
-        $_SESSION['registration_error'] = "Passwords do not match.";
+    // Prepare and execute the SQL query to find the user
+    $sql = "SELECT id, name, password FROM accounts WHERE username = ? AND role = ?";
+    if ($stmt = $conn->prepare($sql)) {
+        $stmt->bind_param("ss", $username, $role);
+        $stmt->execute();
+        $stmt->store_result();
+
+        if ($stmt->num_rows == 1) {
+            $stmt->bind_result($id, $name, $hashed_password);
+            $stmt->fetch();
+
+            // Verify the password
+            // Note: Your current code stores plain passwords. It is highly recommended to hash passwords.
+            // If you implement hashing, use password_verify($password, $hashed_password) instead of a direct comparison.
+            if ($password === $hashed_password) { // Replace with password_verify if using hashed passwords
+                // Login successful
+                $_SESSION['id'] = $id;
+                $_SESSION['name'] = $name;
+                $_SESSION['role'] = $role;
+                $_SESSION['login_success'] = "Login successful!"; // Set success message
+                header("Location: loggedin_index.php"); // Redirect to logged-in page
+                exit();
+            } else {
+                // Incorrect password
+                $_SESSION['login_error'] = "Invalid username or password."; // Set error message
+            }
+        } else {
+            // User not found
+            $_SESSION['login_error'] = "Invalid username or password."; // Set error message
+        }
+
+        $stmt->close();
+    } else {
+        // Error preparing the statement
+        $_SESSION['login_error'] = "An internal error occurred. Please try again later."; // Set error message
+    }
+} else {
+    // Not a POST request
+    $_SESSION['login_error'] = "Invalid request method."; // Set error message
+}
+
+// Close database connection
+closeConnection();
+
+// Redirect back to the login page with messages
+header("Location: userlogin.php");
+exit();
+?>
+
         header("Location: userlogin.php");
         exit();
     }
