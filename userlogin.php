@@ -78,7 +78,7 @@ session_start();
  </div>
         <!-- Back to Account Selection Button -->
         <div class="mt-6 text-center">
-            <a href="account.php" class="inline-block bg-gray-200 text-gray-800 px-4 py-2 rounded-lg hover:bg-gray-300 transition-colors duration-200">
+            <a href="/cap_s2/cap-S2/account.php" class="inline-block bg-gray-200 text-gray-800 px-4 py-2 rounded-lg hover:bg-gray-300 transition-colors duration-200">
                 ← Back to Account Selection
             </a>
         </div>
