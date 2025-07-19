@@ -27,20 +27,22 @@ session_start();
         if (isset($_SESSION['login_error'])) {
             echo "<div class='bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded relative mb-4' role='alert'>" .
                  htmlspecialchars($_SESSION['login_error']) .
-                 "</div>\n";
+                 "</div>
+";
             unset($_SESSION['login_error']);
         }
         if (isset($_SESSION['registration_success'])) {
             echo "<div class='bg-green-100 border border-green-400 text-green-700 px-4 py-3 rounded relative mb-4' role='alert'>" .
                  htmlspecialchars($_SESSION['registration_success']) .
-                 "</div>\n";
+                 "</div>
+";
             unset($_SESSION['registration_success']);
         }
  if (isset($_SESSION['login_success'])) {
             echo "<div class='bg-green-100 border border-green-400 text-green-700 px-4 py-3 rounded relative mb-4' role='alert'>" .
-                 htmlspecialchars($_SESSION['registration_success']) .
+                 htmlspecialchars($_SESSION['login_success']) .
                  "</div>";
-            unset($_SESSION['registration_success']);
+            unset($_SESSION['login_success']);
         }
         ?>
 
@@ -76,7 +78,7 @@ session_start();
  </div>
         <!-- Back to Account Selection Button -->
         <div class="mt-6 text-center">
-            <a href="/account.php" class="inline-block bg-gray-200 text-gray-800 px-4 py-2 rounded-lg hover:bg-gray-300 transition-colors duration-200">
+            <a href="account.php" class="inline-block bg-gray-200 text-gray-800 px-4 py-2 rounded-lg hover:bg-gray-300 transition-colors duration-200">
                 ← Back to Account Selection
             </a>
         </div>
@@ -95,13 +97,6 @@ session_start();
             icon.classList.replace('fa-eye-slash', 'fa-eye');
         }
     }
-
-    // Add a basic check for required fields before allowing submission
-    signupForm.addEventListener('submit', function(event) {
-        if (!this.checkValidity()) {
-            event.preventDefault(); // Prevent form submission if built-in validation fails
-        }
-    });
     </script>
 </body>
 </html>
