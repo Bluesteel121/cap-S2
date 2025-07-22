@@ -19,7 +19,7 @@
             border-radius: 8px;
             box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
             width: 100%;
- max-width: 500px;
+            max-width: 500px;
         }
 
         .input-group-append {
@@ -50,7 +50,7 @@
         }
         ?>
 
-        <form action="user_signup_handler.php" method="POST">
+        <form action="user_signup_handler.php" method="POST" id="signupForm">
             <h2 class="text-2xl font-bold text-center mb-4">User Sign Up</h2>
             <div class="mb-4">
                 <label for="username" class="block text-sm font-medium text-gray-700 mb-1">Username</label>
@@ -99,26 +99,26 @@
             <div id="philippines-address">
                 <div class="mb-4">
                     <label for="province" class="block text-sm font-medium text-gray-700 mb-1">Province</label>
- <select id="province" name="province" class="border w-full px-4 py-2 rounded-lg focus:ring-green-500 focus:border-green-500" required>
- <option value="">Select Province</option>
- </select>
+                    <select id="province" name="province" class="border w-full px-4 py-2 rounded-lg focus:ring-green-500 focus:border-green-500" required>
+                        <option value="">Select Province</option>
+                    </select>
                 </div>
                 <div class="mb-4">
                     <label for="municipality" class="block text-sm font-medium text-gray-700 mb-1">Municipality/City</label>
- <select id="municipality" name="municipality" class="border w-full px-4 py-2 rounded-lg focus:ring-green-500 focus:border-green-500" required disabled>
- <option value="">Select Municipality/City</option>
- </select>
+                    <select id="municipality" name="municipality" class="border w-full px-4 py-2 rounded-lg focus:ring-green-500 focus:border-green-500" required disabled>
+                        <option value="">Select Municipality/City</option>
+                    </select>
                 </div>
                 <div class="mb-4">
                     <label for="barangay" class="block text-sm font-medium text-gray-700 mb-1">Barangay</label>
- <select id="barangay" name="barangay" class="border w-full px-4 py-2 rounded-lg focus:ring-green-500 focus:border-green-500" required disabled>
- <option value="">Select Barangay</option>
- </select>
+                    <select id="barangay" name="barangay" class="border w-full px-4 py-2 rounded-lg focus:ring-green-500 focus:border-green-500" required disabled>
+                        <option value="">Select Barangay</option>
+                    </select>
                 </div>
             </div>
 
- <div id="general-address" style="display: none;">
-                 <div class="mb-4">
+            <div id="general-address" style="display: none;">
+                <div class="mb-4">
                     <label for="general_address" class="block text-sm font-medium text-gray-700 mb-1">General Address</label>
                     <textarea id="general_address" name="general_address" rows="3" placeholder="Enter your general address" class="border w-full px-4 py-2 rounded-lg focus:ring-green-500 focus:border-green-500"></textarea>
                 </div>
@@ -131,9 +131,9 @@
         <div class="mt-4 text-center">
             <a href="userlogin.php" class="text-sm text-green-600 hover:underline">Already have an account? Login</a>
         </div>
-        <!-- Back to Account Selection Button -->
+        <!-- Back to Account Selection Button - FIXED PATH -->
         <div class="mt-6 text-center">
-            <a href="/account.php" class="inline-block bg-gray-200 text-gray-800 px-4 py-2 rounded-lg hover:bg-gray-300 transition-colors duration-200">
+            <a href="account.php" class="inline-block bg-gray-200 text-gray-800 px-4 py-2 rounded-lg hover:bg-gray-300 transition-colors duration-200">
                 ← Back to Account Selection
             </a>
         </div>
@@ -153,44 +153,47 @@
             }
         }
 
- var isOutsideCheckbox = document.getElementById('is_outside_philippines');
- var philippinesAddress = document.getElementById('philippines-address');
- var generalAddress = document.getElementById('general-address');
- var philippinesFields = philippinesAddress.querySelectorAll('input, textarea');
- var generalFields = generalAddress.querySelectorAll('input, textarea');
- var signupForm = document.querySelector('form'); // Assuming the form is the first form element
-
-        isOutsideCheckbox.addEventListener('change', function() {
-            if (this.checked) {
-                philippinesAddress.style.display = 'none';
-                generalAddress.style.display = 'block';
-                 philippinesFields.forEach(field => field.removeAttribute('required'));
-                 generalFields.forEach(field => field.setAttribute('required', 'required'));
-            } else {
-                philippinesAddress.style.display = 'block';
-                generalAddress.style.display = 'none';
-                philippinesFields.forEach(field => field.setAttribute('required', 'required'));
-                generalFields.forEach(field => field.removeAttribute('required'));
-            }
-        });
-
-         // Initial state check
-         if (isOutsideCheckbox.checked) {
-            philippinesAddress.style.display = 'none';
-            generalAddress.style.display = 'block';
-             philippinesFields.forEach(field => field.removeAttribute('required'));
-             generalFields.forEach(field => field.setAttribute('required', 'required'));
-         } else {
-             philippinesAddress.style.display = 'block';
-             generalAddress.style.display = 'none';
-             philippinesFields.forEach(field => field.setAttribute('required', 'required'));
-             generalFields.forEach(field => field.removeAttribute('required'));
-         }
-
-        // Location dropdowns
+        var isOutsideCheckbox = document.getElementById('is_outside_philippines');
+        var philippinesAddress = document.getElementById('philippines-address');
+        var generalAddress = document.getElementById('general-address');
         var provinceSelect = document.getElementById('province');
         var municipalitySelect = document.getElementById('municipality');
         var barangaySelect = document.getElementById('barangay');
+        var generalAddressField = document.getElementById('general_address');
+
+        function toggleAddressFields() {
+            if (isOutsideCheckbox.checked) {
+                // Show general address, hide Philippines address
+                philippinesAddress.style.display = 'none';
+                generalAddress.style.display = 'block';
+                
+                // Remove required from Philippines fields
+                provinceSelect.removeAttribute('required');
+                municipalitySelect.removeAttribute('required');
+                barangaySelect.removeAttribute('required');
+                
+                // Add required to general address
+                generalAddressField.setAttribute('required', 'required');
+            } else {
+                // Show Philippines address, hide general address
+                philippinesAddress.style.display = 'block';
+                generalAddress.style.display = 'none';
+                
+                // Add required to Philippines fields
+                provinceSelect.setAttribute('required', 'required');
+                municipalitySelect.setAttribute('required', 'required');
+                barangaySelect.setAttribute('required', 'required');
+                
+                // Remove required from general address
+                generalAddressField.removeAttribute('required');
+            }
+        }
+
+        // Event listener for checkbox change
+        isOutsideCheckbox.addEventListener('change', toggleAddressFields);
+
+        // Initial state setup
+        toggleAddressFields();
 
         // Function to populate dropdowns
         function populateDropdown(selectElement, data) {
@@ -253,6 +256,23 @@
                         barangaySelect.disabled = false;
                     })
                     .catch(error => console.error('Error fetching barangays:', error));
+            }
+        });
+
+        // Form validation before submit
+        document.getElementById('signupForm').addEventListener('submit', function(e) {
+            if (isOutsideCheckbox.checked) {
+                if (!generalAddressField.value.trim()) {
+                    e.preventDefault();
+                    alert('Please enter your general address.');
+                    return false;
+                }
+            } else {
+                if (!provinceSelect.value || !municipalitySelect.value || !barangaySelect.value) {
+                    e.preventDefault();
+                    alert('Please complete your Philippines address selection.');
+                    return false;
+                }
             }
         });
     </script>
