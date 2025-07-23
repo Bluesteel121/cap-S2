@@ -1,0 +1,34 @@
+2025-07-22 13:37:27 - Script started.
+2025-07-22 13:37:27 - $_POST data: Array
+(
+    [username] => nemz
+    [fullname] => glaz nemz
+    [contact_number] => 09239123
+    [email] => emal@email.com
+    [password] => pass
+    [confirm_password] => pass
+    [birth_date] => 2025-07-22
+    [province] => Apayao
+    [municipality] => Pudtol
+    [barangay] => Lt. Balag
+    [general_address] => 
+)
+
+2025-07-22 13:37:27 - Determined address: Lt. Balag, Pudtol, Apayao
+2025-07-22 13:37:27 - Address validation passed.
+2025-07-22 13:37:27 - Script started.
+2025-07-22 13:37:27 - $_POST data: Array
+(
+    [username] => nemz
+    [fullname] => glaz nemz
+    [contact_number] => 09239123
+    [email] => emal@email.com
+    [password] => pass
+    [confirm_password] => pass
+    [birth_date] => 2025-07-22
+    [province] => Apayao
+    [municipality] => Pudtol
+    [barangay] => Lt. Balag
+    [general_address] => 
+)
+
