@@ -1,4 +1,3 @@
-php
 <?php
 
 error_reporting(E_ALL);
@@ -53,7 +52,7 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
             $_SESSION['user_id'] = $user['id'];
 
             ob_clean();
-            header("Location: index.php");
+            header("Location: admin_loggedin_index.php");
             exit();
         } else {
             // Password does not match
