@@ -2,7 +2,8 @@
 session_start();
 
 // Check if user is logged in and has admin role
-if (!isset($_SESSION['name']) || $_SESSION['role'] !== 'admin') {
+// FIXED: Changed from $_SESSION['name'] to $_SESSION['username']
+if (!isset($_SESSION['username']) || $_SESSION['role'] !== 'admin') {
     header('Location: index.php');
     exit();
 }
@@ -146,19 +147,20 @@ if (!isset($_SESSION['name']) || $_SESSION['role'] !== 'admin') {
 
     <!-- Profile Picture with Admin Badge -->
     <div class="relative">
-      <img src="Images/initials profile/<?php echo strtolower(substr($_SESSION['name'], 0, 1)); ?>.png" 
+      <!-- FIXED: Changed from $_SESSION['name'] to $_SESSION['username'] -->
+      <img src="Images/initials profile/<?php echo strtolower(substr($_SESSION['username'], 0, 1)); ?>.png" 
            alt="Profile Picture" 
            class="profile-pic" 
            onclick="toggleSidebar()" 
-           title="<?php echo htmlspecialchars($_SESSION['name']); ?> (Admin)"
+           title="<?php echo htmlspecialchars($_SESSION['username']); ?> (Admin)"
            onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';">
       
       <!-- Fallback div in case image doesn't exist -->
       <div class="profile-pic" 
            onclick="toggleSidebar()" 
-           title="<?php echo htmlspecialchars($_SESSION['name']); ?> (Admin)"
+           title="<?php echo htmlspecialchars($_SESSION['username']); ?> (Admin)"
            style="display: none; background: linear-gradient(135deg, #115D5B, #103625); align-items: center; justify-content: center; color: white; font-size: 16px; font-weight: bold; text-transform: uppercase;">
-        <?php echo strtoupper(substr($_SESSION['name'], 0, 1)); ?>
+        <?php echo strtoupper(substr($_SESSION['username'], 0, 1)); ?>
       </div>
       
       <!-- Admin Badge -->
@@ -186,7 +188,8 @@ if (!isset($_SESSION['name']) || $_SESSION['role'] !== 'admin') {
     <div class="relative max-w-6xl mx-auto px-4 text-center">
       <div class="flex items-center justify-center mb-4">
         <i class="fas fa-crown text-4xl text-yellow-400 mr-4"></i>
-        <h2 class="text-4xl font-bold">Welcome, Admin <?php echo htmlspecialchars($_SESSION['name']); ?>!</h2>
+        <!-- FIXED: Changed from $_SESSION['name'] to $_SESSION['username'] -->
+        <h2 class="text-4xl font-bold">Welcome, Admin <?php echo htmlspecialchars($_SESSION['username']); ?>!</h2>
       </div>
       <p class="text-xl mb-6">Manage the Camarines Norte Lowland Rainfed Research Station Platform</p>
       <div class="flex flex-wrap justify-center gap-4">

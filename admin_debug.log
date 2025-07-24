@@ -1,0 +1,9 @@
+[2025-07-24 10:12:23] admin_loggedin_index.php accessed
+[2025-07-24 10:12:23] Session data: Array
+(
+    [username] => john
+    [role] => admin
+    [user_id] => 2
+)
+
+[2025-07-24 10:12:23] Session check passed - displaying admin dashboard
