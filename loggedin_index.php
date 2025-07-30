@@ -110,6 +110,14 @@ if (!isset($_SESSION['name'])) {
       <a href="#" class="hover:underline">Home</a>
       <a href="#" class="hover:underline">Our Services</a>
       <a href="#" class="hover:underline">About Us</a>
+      <!-- Add My Submissions Link -->
+      <a href="my_submissions.php" class="hover:underline flex items-center">
+        <i class="fas fa-file-alt mr-1"></i>My Submissions
+      </a>
+      <!-- Add Submit Paper Button -->
+      <a href="submit_paper.php" class="bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-md transition-colors">
+        <i class="fas fa-plus mr-2"></i>Submit Paper
+      </a>
     </div>
 
     <!-- Profile Picture with User's Initial Image -->
@@ -136,6 +144,8 @@ if (!isset($_SESSION['name'])) {
     <a href="javascript:void(0)" class="closebtn" onclick="closeSidebar()">&times;</a>
     <a href="#">Settings</a>
     <a href="edit_profile.php">Profile</a>
+    <a href="my_submissions.php"><i class="fas fa-file-alt mr-2"></i>My Submissions</a>
+    <a href="submit_paper.php"><i class="fas fa-plus mr-2"></i>Submit Paper</a>
     <a href="index.php" onclick="logout()">Log Out</a>
 </div>
 
