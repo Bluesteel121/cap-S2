@@ -71,17 +71,34 @@
   </header>
 
   <!-- Banner Section -->
-  <section class="relative">
-    <img src="Images/Library2.png" alt="Library" class="w-full h-[750px] object-cover" />
-    <div class="absolute inset-0 flex flex-col items-center justify-center text-center text-white bg-black bg-opacity-50 px-4">
-      <h2 class="text-3xl md:text-4xl font-bold">Welcome to CNLRRS Research Library</h2>
-      <p class="mt-2 text-lg max-w-2xl">Access the latest research and publications about Queen Pineapple varieties, including cultivation, health benefits, and more.</p>
-      <div class="mt-4 flex gap-4">
-        <a href="#" class="bg-green-600 px-4 py-2 rounded-md font-semibold hover:bg-green-700">Browse Research</a>
-        <a href="#" class="bg-green-600 px-4 py-2 rounded-md font-semibold hover:bg-green-700">Submit Paper</a>
-      </div>
-    </div>
-  </section>
+<style>
+  @layer utilities {
+    .text-outline-white {
+      -webkit-text-stroke: 1px white;
+    }
+  }
+</style>
+
+<section class="relative">
+  <img src="Images/Library2.png" alt="Library" class="w-full h-[450px] object-cover" />
+
+  <div class="absolute inset-0 flex flex-col justify-center px-8 md:px-16 text-left bg-black bg-opacity-40">
+    <h2 class="text-4xl md:text-5xl font-bold text-[#103635] text-outline-white leading-tight">
+      Welcome to CNLPRS Research Library
+    </h2>
+    <p class="font-bold mt-4 text-lg md:text-xl max-w-2xl text-[#103635] text-outline-white">
+      Access the latest research and publication about Queen Pineapple Varieties, cultivation, health benefits, and more.
+    </p>
+    <div class="mt-6 flex gap-4">
+  <a href="#" class="bg-[#1A4D3A] text-white px-6 py-3 rounded-md font-semibold border border-white hover:bg-[#16663F] transition">
+    Browse Research
+  </a>
+  <a href="#" class="bg-[#1A4D3A] border border-white text-white px-6 py-3 rounded-md font-semibold hover:bg-[#16663F] transition">
+    Submit Paper
+  </a>
+</div>
+  </div>
+</section>
 
   <!-- Info Cards -->
   <section class="py-16 bg-gray-100">
