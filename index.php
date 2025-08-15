@@ -95,10 +95,10 @@
       Access the latest research and publication about Queen Pineapple Varieties, cultivation, health benefits, and more.
     </p>
     <div class="mt-6 flex gap-4">
-  <a href="#" class="bg-[#1A4D3A] text-white px-6 py-3 rounded-md font-semibold border border-white hover:bg-[#16663F] transition">
+  <a href="elibrary.php" class="bg-[#1A4D3A] text-white px-6 py-3 rounded-md font-semibold border border-white hover:bg-[#16663F] transition rounded-lg">
     Browse Research
   </a>
-  <a href="#" class="bg-[#1A4D3A] border border-white text-white px-6 py-3 rounded-md font-semibold hover:bg-[#16663F] transition">
+  <a href="userlogin.php" class="bg-[#1A4D3A] border border-white text-white px-6 py-3 rounded-md font-semibold hover:bg-[#16663F] transition rounded-lg">
     Submit Paper
   </a>
 </div>
@@ -153,6 +153,57 @@
     </div>
   </section>
 </main>
+
+<div class="w-full flex justify-center my-12">
+  <img src="Images/Green_holder.png" alt="Section Divider" class="w-full h-30 object-cover" />
+</div>
+
+
+
+<!-- Recommended Research Section -->
+<section class="bg-white py-16 border-t">
+  <div class="max-w-7xl mx-auto px-6">
+    <h2 class="bg-[#103635] text-2xl md:text-3xl font-bold text-white text-center mb-8">
+      Recommended Research By CNLRRS
+    </h2>
+    <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+      
+      <!-- Card 1 -->
+      <div class="bg-gray-100 rounded-lg shadow p-6 hover:shadow-md transition">
+        <img src="Images/Books.png" alt="Books & Collection Services" class="h-32 w-full object-cover rounded mb-4" />
+        <h3 class="font-semibold text-lg mb-2">Books & Collection Services</h3>
+        <p class="text-sm text-gray-700 mb-4">Explore our library collection. Maximize both time and selection with book tools when selecting print books.</p>
+        <a href="#" class="text-[#115D5B] font-semibold hover:underline">Learn more</a>
+      </div>
+
+      <!-- Card 2 -->
+      <div class="bg-gray-100 rounded-lg shadow p-6 hover:shadow-md transition">
+        <img src="Images/Soil.png" alt="Pineapple Soil & Growth Solutions" class="h-32 w-full object-cover rounded mb-4" />
+        <h3 class="font-semibold text-lg mb-2">Pineapple Soil & Growth Solutions</h3>
+        <p class="text-sm text-gray-700 mb-4">Improve your farming knowledge with Pineapple Soil Amendment guides. Learn the needs of pineapple farming.</p>
+        <a href="#" class="text-[#115D5B] font-semibold hover:underline">Learn more</a>
+      </div>
+
+      <!-- Card 3 -->
+      <div class="bg-gray-100 rounded-lg shadow p-6 hover:shadow-md transition">
+        <img src="Images/Pests.png" alt="Pineapple Pest Resources" class="h-32 w-full object-cover rounded mb-4" />
+        <h3 class="font-semibold text-lg mb-2">Pineapple Pest Resources</h3>
+        <p class="text-sm text-gray-700 mb-4">Get updated on pineapple pest management. Discover solutions that protect your crops and enhance productivity.</p>
+        <a href="#" class="text-[#115D5B] font-semibold hover:underline">Browse pest solutions</a>
+      </div>
+
+    </div>
+
+    <!-- Green Background with Choices -->
+    <div class="bg-[#115D5B] mt-12 py-6 flex justify-center items-center gap-4 rounded-lg">
+      <!-- Choice Circles -->
+      <button class="w-4 h-4 rounded-full bg-white hover:bg-gray-300 transition"></button>
+      <button class="w-4 h-4 rounded-full bg-white hover:bg-gray-300 transition"></button>
+      <button class="w-4 h-4 rounded-full bg-white hover:bg-gray-300 transition"></button>
+    </div>
+  </div>
+</section>
+
   
 
 </body>
