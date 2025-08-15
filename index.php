@@ -64,7 +64,7 @@
 
         <!-- Links -->
         <div class="flex items-center gap-6 font-bold">
-          <a href="#" class="hover:underline">Home</a>
+          <a href="index.php" class="hover:underline">Home</a>
           <a href="#" class="hover:underline">Our Services</a>
           <a href="#" class="hover:underline">About Us</a>
         </div>
@@ -203,6 +203,122 @@
     </div>
   </div>
 </section>
+
+<!-- Search Section -->
+        <div class="bg-white rounded-lg p-6 mb-8 shadow-md ">
+            <h2 class="text-xl font-bold text-gray-800 mb-4">Advanced Search</h2>
+            <div class="flex flex-col md:flex-row space-y-4 md:space-y-0 md:space-x-4 mb-8">
+                <div class="flex-1">
+                    <input type="text" placeholder="Search keywords" class="w-full p-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-yellow-500" />
+                </div>
+                <div class="md:w-1/4">
+                    <select class="w-full p-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-yellow-500">
+                        <option value="">Category</option>
+                        <option value="cultivation">Cultivation</option>
+                        <option value="genetics">Genetics</option>
+                        <option value="nutrition">Nutrition</option>
+                        <option value="processing">Processing</option>
+                        <option value="market">Market Research</option>
+                    </select>
+                </div>
+                <div class="md:w-1/4">
+                    <select class="w-full p-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-yellow-500">
+                        <option value="">Publication Year</option>
+                        <option value="2025">2025</option>
+                        <option value="2024">2024</option>
+                        <option value="2023">2023</option>
+                        <option value="2022">2022</option>
+                        <option value="2021">2021</option>
+                        <option value="older">2020 & Older</option>
+                    </select>
+                </div>
+                <button class="bg-[#115D5B] hover:bg-green-600 text-white px-6 py-3 rounded-lg">Search</button>
+            </div>
+
+             <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+      
+      <!-- Card 1 -->
+      <div class="bg-gray-100 rounded-lg shadow p-6 hover:shadow-md transition">
+        <img src="Images/Books.png" alt="Books & Collection Services" class="h-32 w-full object-cover rounded mb-4" />
+        <h3 class="font-semibold text-lg mb-2">Books & Collection Services</h3>
+        <p class="text-sm text-gray-700 mb-4">Explore our library collection. Maximize both time and selection with book tools when selecting print books.</p>
+        <a href="#" class="text-[#115D5B] font-semibold hover:underline">Learn more</a>
+      </div>
+
+      <!-- Card 2 -->
+      <div class="bg-gray-100 rounded-lg shadow p-6 hover:shadow-md transition">
+        <img src="Images/Soil.png" alt="Pineapple Soil & Growth Solutions" class="h-32 w-full object-cover rounded mb-4" />
+        <h3 class="font-semibold text-lg mb-2">Pineapple Soil & Growth Solutions</h3>
+        <p class="text-sm text-gray-700 mb-4">Improve your farming knowledge with Pineapple Soil Amendment guides. Learn the needs of pineapple farming.</p>
+        <a href="#" class="text-[#115D5B] font-semibold hover:underline">Learn more</a>
+      </div>
+
+      <!-- Card 3 -->
+      <div class="bg-gray-100 rounded-lg shadow p-6 hover:shadow-md transition">
+        <img src="Images/Pests.png" alt="Pineapple Pest Resources" class="h-32 w-full object-cover rounded mb-4" />
+        <h3 class="font-semibold text-lg mb-2">Pineapple Pest Resources</h3>
+        <p class="text-sm text-gray-700 mb-4">Get updated on pineapple pest management. Discover solutions that protect your crops and enhance productivity.</p>
+        <a href="#" class="text-[#115D5B] font-semibold hover:underline">Browse pest solutions</a>
+      </div>
+
+      <!-- Card 4 -->
+      <div class="bg-gray-100 rounded-lg shadow p-6 hover:shadow-md transition">
+        <img src="Images/Books.png" alt="Books & Collection Services" class="h-32 w-full object-cover rounded mb-4" />
+        <h3 class="font-semibold text-lg mb-2">Books & Collection Services</h3>
+        <p class="text-sm text-gray-700 mb-4">Explore our library collection. Maximize both time and selection with book tools when selecting print books.</p>
+        <a href="#" class="text-[#115D5B] font-semibold hover:underline">Learn more</a>
+      </div>
+
+      <!-- Card 5 -->
+      <div class="bg-gray-100 rounded-lg shadow p-6 hover:shadow-md transition">
+        <img src="Images/Soil.png" alt="Pineapple Soil & Growth Solutions" class="h-32 w-full object-cover rounded mb-4" />
+        <h3 class="font-semibold text-lg mb-2">Pineapple Soil & Growth Solutions</h3>
+        <p class="text-sm text-gray-700 mb-4">Improve your farming knowledge with Pineapple Soil Amendment guides. Learn the needs of pineapple farming.</p>
+        <a href="#" class="text-[#115D5B] font-semibold hover:underline">Learn more</a>
+      </div>
+
+      <!-- Card 6 -->
+      <div class="bg-gray-100 rounded-lg shadow p-6 hover:shadow-md transition">
+        <img src="Images/Pests.png" alt="Pineapple Pest Resources" class="h-32 w-full object-cover rounded mb-4" />
+        <h3 class="font-semibold text-lg mb-2">Pineapple Pest Resources</h3>
+        <p class="text-sm text-gray-700 mb-4">Get updated on pineapple pest management. Discover solutions that protect your crops and enhance productivity.</p>
+        <a href="#" class="text-[#115D5B] font-semibold hover:underline">Browse pest solutions</a>
+      </div>
+
+      <!-- Card 7 -->
+      <div class="bg-gray-100 rounded-lg shadow p-6 hover:shadow-md transition">
+        <img src="Images/Books.png" alt="Books & Collection Services" class="h-32 w-full object-cover rounded mb-4" />
+        <h3 class="font-semibold text-lg mb-2">Books & Collection Services</h3>
+        <p class="text-sm text-gray-700 mb-4">Explore our library collection. Maximize both time and selection with book tools when selecting print books.</p>
+        <a href="#" class="text-[#115D5B] font-semibold hover:underline">Learn more</a>
+      </div>
+
+      <!-- Card 8 -->
+      <div class="bg-gray-100 rounded-lg shadow p-6 hover:shadow-md transition">
+        <img src="Images/Soil.png" alt="Pineapple Soil & Growth Solutions" class="h-32 w-full object-cover rounded mb-4" />
+        <h3 class="font-semibold text-lg mb-2">Pineapple Soil & Growth Solutions</h3>
+        <p class="text-sm text-gray-700 mb-4">Improve your farming knowledge with Pineapple Soil Amendment guides. Learn the needs of pineapple farming.</p>
+        <a href="#" class="text-[#115D5B] font-semibold hover:underline">Learn more</a>
+      </div>
+
+      <!-- Card 9 -->
+      <div class="bg-gray-100 rounded-lg shadow p-6 hover:shadow-md transition">
+        <img src="Images/Pests.png" alt="Pineapple Pest Resources" class="h-32 w-full object-cover rounded mb-4" />
+        <h3 class="font-semibold text-lg mb-2">Pineapple Pest Resources</h3>
+        <p class="text-sm text-gray-700 mb-4">Get updated on pineapple pest management. Discover solutions that protect your crops and enhance productivity.</p>
+        <a href="#" class="text-[#115D5B] font-semibold hover:underline">Browse pest solutions</a>
+      </div>
+
+    
+    </div>
+
+    <div class="mt-6 flex justify-center items-center gap-4">
+      <a href="elibrary.php" class="bg-[#115D5B] text-white px-6 py-3 rounded-md font-semibold border border-white hover:bg-[#16663F] transition rounded-lg">
+        Browse Research
+      </a>
+    </div>
+
+  </div>
 
   
 
