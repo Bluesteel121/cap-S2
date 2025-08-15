@@ -10,41 +10,46 @@
 
 <body class="bg-white pt-24 text-[#103625] font-sans">
 
-  <!-- Header -->
-  <header id="main-header" class="fixed top-0 left-0 w-full z-50 bg-white shadow-lg">
-    <div class="max-w-7xl mx-auto px-6 py-4 flex flex-wrap justify-between items-center gap-4">
-      <!-- Logo and Title -->
-      <div class="flex items-center space-x-4">
-        <img src="Images/Logo.jpg" alt="CNLRRS Logo" class="h-16 object-contain" />
-        <h1 class="text-lg font-bold leading-tight">
-          Camarines Norte Lowland <br class="hidden sm:block" />
-          Rainfed Research Station
-        </h1>
-      </div>
 
-      <!-- Partner Logos -->
-      <div class="flex items-center space-x-4">
-        <img src="Images/Ph.png" alt="Philippines Logo" class="h-16 object-contain" />
-        <img src="Images/Da.png" alt="Department of Agriculture Logo" class="h-16 object-contain" />
-
-      </div>
-
-      <!-- Contact Info Section -->
-<div class="flex items-center justify-start space-x-4">
-
-  <!-- Text Info -->
-  <div class="text-sm font-semibold text-center">
-    <p>DEPARTMENT OF AGRICULTURE</p>
-    <p>Calasgasan, Daet, Philippines</p>
-    <p>Email: <a href="mailto:dacnlrrs@gmail.com" class="underline">dacnlrrs@gmail.com</a></p>
-    <p>Contact No.: 0951 609 9599</p>
-  </div>
-  <!-- Logo -->
-  <img src="Images/Bago.png" alt="Bagong Pilipinas Logo" class="h-16 object-contain" />
-
-</div>
+<!-- Header -->
+<header id="main-header" class="fixed top-0 left-0 w-full z-50 bg-white shadow-lg h-28">
+  <div class="max-w-7xl mx-auto px-6 flex flex-wrap justify-between items-center gap-4 h-full">
+    
+  
+  <!-- Logo and Title -->
+    <div class="flex items-center space-x-4">
+      <img src="Images/Logo.jpg" alt="CNLRRS Logo"class="h-16 sm:h-20 md:h-24 object-contain" />
+      <h1 class="text-lg font-bold leading-tight">
+        Camarines Norte Lowland <br class="hidden sm:block" />
+        Rainfed Research Station
+      </h1>
     </div>
 
+    <!-- Partner Logos -->
+    <div class="flex items-center space-x-4">
+      <img src="Images/Ph.png" alt="Philippines Logo" class="h-16 sm:h-20 md:h-24 object-contain"/>
+      <img src="Images/Da.png" alt="CNLRRS Logo" class="h-16 sm:h-20 md:h-24 object-contain" />
+
+    </div>
+
+    <!-- Contact Info Section -->
+    <div class="flex items-center justify-start space-x-4">
+      <!-- Text Info -->
+      <div class="text-sm font-semibold text-center">
+        <p>DEPARTMENT OF AGRICULTURE</p>
+        <p>Calasgasan, Daet, Philippines</p>
+        <p>Email: <a href="mailto:dacnlrrs@gmail.com" class="underline">dacnlrrs@gmail.com</a></p>
+        <p>Contact No.: 0951 609 9599</p>
+      </div>
+      <!-- Logo -->
+      <img src="Images/Bago.png" alt="Bagong Pilipinas Logo" class="h-16 sm:h-20 md:h-24 object-contain" />
+    </div>
+  </div>
+</header>
+
+<!-- Main Content -->
+<main class="pt-17">
+  <!-- Your page content goes here -->
     <!-- Navigation -->
     <nav class="border-t mt-2">
       <div class="max-w-7xl mx-auto px-6 py-4 flex flex-wrap justify-between items-center gap-4">
@@ -84,7 +89,7 @@
 
   <div class="absolute inset-0 flex flex-col justify-center px-8 md:px-16 text-left bg-black bg-opacity-40">
     <h2 class="text-4xl md:text-5xl font-bold text-[#103635] text-outline-white leading-tight">
-      Welcome to CNLPRS Research Library
+      Welcome to CNLRRS Research Library
     </h2>
     <p class="font-bold mt-4 text-lg md:text-xl max-w-2xl text-[#103635] text-outline-white">
       Access the latest research and publication about Queen Pineapple Varieties, cultivation, health benefits, and more.
@@ -147,6 +152,8 @@
 
     </div>
   </section>
+</main>
+  
 
 </body>
 </html>
