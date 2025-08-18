@@ -311,7 +311,7 @@
 
     
     </div>
-
+ <!-- Browse Research button -->
     <div class="mt-6 flex justify-center items-center gap-4">
       <a href="elibrary.php" class="bg-[#115D5B] text-white px-6 py-3 rounded-md font-semibold border border-white hover:bg-[#16663F] transition rounded-lg">
         Browse Research

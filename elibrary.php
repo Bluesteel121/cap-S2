@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.5">
     <title>Queen Pineapple Research E-Library</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/js/all.min.js"></script>
@@ -17,7 +17,7 @@
                 <span class="text-xl font-bold">CNLRRS Rainfed Research Station</span>
             </div>
             <div class="space-x-4">
-                <a href="#" class="hover:underline">Home</a>
+                <a href="index.php" class="hover:underline">Home</a>
                 <a href="#" class="hover:underline">Our Services</a>
                 <a href="#" class="hover:underline">About Us</a>
             </div>
