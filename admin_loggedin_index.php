@@ -285,7 +285,7 @@ if (!isset($_SESSION['username']) || $_SESSION['role'] !== 'admin') {
             <a href="admin_review_papers.php" class="bg-yellow-500 hover:bg-yellow-600 text-black px-4 py-2 rounded-lg transition-colors">
               <i class="fas fa-eye mr-1"></i>Reviews
             </a>
-            <a href="#" class="border-2 border-green-900 hover:bg-green-900 hover:text-white px-4 py-2 rounded-lg transition-colors">
+            <a href="admin_user_management.php" class="border-2 border-green-900 hover:bg-green-900 hover:text-white px-4 py-2 rounded-lg transition-colors">
               <i class="fas fa-users mr-1"></i>Users
             </a>
             <a href="#" class="hover:text-green-700 transition-colors">Publications</a>
@@ -324,7 +324,7 @@ if (!isset($_SESSION['username']) || $_SESSION['role'] !== 'admin') {
     </div>
     <a href="#"><i class="fas fa-tachometer-alt mr-3"></i>Dashboard</a>
     <a href="admin_review_papers.php"><i class="fas fa-eye mr-3"></i>Review Submissions</a>
-    <a href="#"><i class="fas fa-users mr-3"></i>Manage Users</a>
+    <a href="admin_user_management.php"><i class="fas fa-users mr-3"></i>Manage Users</a>
     <a href="#"><i class="fas fa-book mr-3"></i>Publications</a>
     <a href="#"><i class="fas fa-chart-bar mr-3"></i>Reports & Analytics</a>
     <a href="#"><i class="fas fa-cog mr-3"></i>System Settings</a>
@@ -426,7 +426,7 @@ if (!isset($_SESSION['username']) || $_SESSION['role'] !== 'admin') {
       </h3>
       <div class="admin-tools-grid grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
 
-        <a href="#" class="admin-card p-6 shadow-lg transition-all">
+        <a href="admin_user_management.php" class="admin-card p-6 shadow-lg transition-all">
           <div class="text-center">
             <div class="bg-white bg-opacity-20 p-4 rounded-full w-16 h-16 mx-auto flex items-center justify-center mb-4">
               <i class="fas fa-users-cog text-2xl"></i>
