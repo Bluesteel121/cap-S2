@@ -347,10 +347,10 @@ if (!isset($_SESSION['username']) || $_SESSION['role'] !== 'admin') {
         </div>
         <p class="text-xl mb-8 opacity-90">Manage the CNLRRS Research Platform</p>
         <div class="flex flex-wrap justify-center gap-4">
-          <a href="#" class="bg-yellow-500 hover:bg-yellow-600 text-black px-6 py-3 rounded-lg font-semibold transition-all hover:scale-105">
+          <a href="admin_review_papers.php" class="bg-yellow-500 hover:bg-yellow-600 text-black px-6 py-3 rounded-lg font-semibold transition-all hover:scale-105">
             <i class="fas fa-plus mr-2"></i>Add Publication
           </a>
-          <a href="#" class="bg-transparent border-2 border-white hover:bg-white hover:text-[#115D5B] px-6 py-3 rounded-lg font-semibold transition-all hover:scale-105">
+          <a href="admin_user_management.php" class="bg-transparent border-2 border-white hover:bg-white hover:text-[#115D5B] px-6 py-3 rounded-lg font-semibold transition-all hover:scale-105">
             <i class="fas fa-users mr-2"></i>Manage Users
           </a>
         </div>
@@ -436,7 +436,7 @@ if (!isset($_SESSION['username']) || $_SESSION['role'] !== 'admin') {
           </div>
         </a>
 
-        <a href="#" class="admin-card p-6 shadow-lg transition-all">
+        <a href="admin_review_papers.php" class="admin-card p-6 shadow-lg transition-all">
           <div class="text-center">
             <div class="bg-white bg-opacity-20 p-4 rounded-full w-16 h-16 mx-auto flex items-center justify-center mb-4">
               <i class="fas fa-file-alt text-2xl"></i>
