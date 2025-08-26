@@ -446,7 +446,7 @@ if (!isset($_SESSION['username']) || $_SESSION['role'] !== 'admin') {
           </div>
         </a>
 
-        <a href="#" class="admin-card p-6 shadow-lg transition-all">
+        <a href="admin_analytics.php" class="admin-card p-6 shadow-lg transition-all">
           <div class="text-center">
             <div class="bg-white bg-opacity-20 p-4 rounded-full w-16 h-16 mx-auto flex items-center justify-center mb-4">
               <i class="fas fa-chart-bar text-2xl"></i>
