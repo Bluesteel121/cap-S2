@@ -2,6 +2,10 @@
 session_start();
 include 'connect.php';
 
+// Enable error reporting for debugging
+error_reporting(E_ALL);
+ini_set('display_errors', 1);
+
 // Check if user is admin
 if (!isset($_SESSION['username']) || $_SESSION['role'] !== 'admin') {
     http_response_code(403);
@@ -14,6 +18,11 @@ $startDate = isset($_GET['start']) ? $_GET['start'] : date('Y-m-d', strtotime('-
 $endDate = isset($_GET['end']) ? $_GET['end'] : date('Y-m-d');
 
 try {
+    // Test database connection
+    if (!$conn) {
+        throw new Exception("Database connection failed");
+    }
+
     // Prepare response array
     $response = [
         'metrics' => getKeyMetrics($conn, $startDate, $endDate),
@@ -32,7 +41,7 @@ try {
 } catch (Exception $e) {
     error_log("Analytics error: " . $e->getMessage());
     http_response_code(500);
-    echo json_encode(['error' => 'Database error occurred']);
+    echo json_encode(['error' => 'Database error: ' . $e->getMessage()]);
     exit();
 }
 
@@ -41,84 +50,119 @@ function getKeyMetrics($conn, $startDate, $endDate) {
     
     try {
         // Total users
-        $result = $conn->query("SELECT COUNT(*) as total FROM accounts");
-        $metrics['totalUsers'] = $result ? $result->fetch_assoc()['total'] : 0;
+        $stmt = $conn->prepare("SELECT COUNT(*) as total FROM accounts");
+        $stmt->execute();
+        $result = $stmt->get_result();
+        $metrics['totalUsers'] = (int)$result->fetch_assoc()['total'];
         
-        // User growth calculation (simplified)
-        $metrics['userGrowth'] = 5.2; // Placeholder value
+        // User growth calculation
+        $prevStartDate = date('Y-m-d', strtotime($startDate . ' -' . (strtotime($endDate) - strtotime($startDate)) . ' seconds'));
+        
+        // Current period users (using created_at from schema)
+        $stmt = $conn->prepare("SELECT COUNT(*) as total FROM accounts WHERE DATE(created_at) BETWEEN ? AND ?");
+        $stmt->bind_param("ss", $startDate, $endDate);
+        $stmt->execute();
+        $currentPeriodUsers = (int)$stmt->get_result()->fetch_assoc()['total'];
+        
+        // Previous period users
+        $stmt = $conn->prepare("SELECT COUNT(*) as total FROM accounts WHERE DATE(created_at) BETWEEN ? AND ?");
+        $stmt->bind_param("ss", $prevStartDate, $startDate);
+        $stmt->execute();
+        $prevPeriodUsers = (int)$stmt->get_result()->fetch_assoc()['total'];
+        
+        $metrics['userGrowth'] = $prevPeriodUsers > 0 ? round((($currentPeriodUsers - $prevPeriodUsers) / $prevPeriodUsers) * 100, 1) : 0;
         
         // Total publications
-        $result = $conn->query("SELECT COUNT(*) as total FROM paper_submissions");
-        $metrics['totalPublications'] = $result ? $result->fetch_assoc()['total'] : 0;
+        $stmt = $conn->prepare("SELECT COUNT(*) as total FROM paper_submissions");
+        $stmt->execute();
+        $result = $stmt->get_result();
+        $metrics['totalPublications'] = (int)$result->fetch_assoc()['total'];
         
-        // Publication growth (placeholder)
-        $metrics['publicationGrowth'] = 8.1;
+        // Publication growth (using submission_date from schema)
+        $stmt = $conn->prepare("SELECT COUNT(*) as total FROM paper_submissions WHERE DATE(submission_date) BETWEEN ? AND ?");
+        $stmt->bind_param("ss", $startDate, $endDate);
+        $stmt->execute();
+        $currentPeriodPubs = (int)$stmt->get_result()->fetch_assoc()['total'];
         
-        // Total views (placeholder since metrics table might not exist)
-        $metrics['totalViews'] = 12450;
-        $metrics['viewsGrowth'] = 15.3;
+        $stmt = $conn->prepare("SELECT COUNT(*) as total FROM paper_submissions WHERE DATE(submission_date) BETWEEN ? AND ?");
+        $stmt->bind_param("ss", $prevStartDate, $startDate);
+        $stmt->execute();
+        $prevPeriodPubs = (int)$stmt->get_result()->fetch_assoc()['total'];
+        
+        $metrics['publicationGrowth'] = $prevPeriodPubs > 0 ? round((($currentPeriodPubs - $prevPeriodPubs) / $prevPeriodPubs) * 100, 1) : 0;
+        
+        // Total views from paper_metrics table
+        $stmt = $conn->prepare("SELECT COUNT(*) as total FROM paper_metrics WHERE metric_type = 'view'");
+        $stmt->execute();
+        $result = $stmt->get_result();
+        $metrics['totalViews'] = (int)$result->fetch_assoc()['total'];
+        
+        // Views growth
+        $stmt = $conn->prepare("SELECT COUNT(*) as total FROM paper_metrics WHERE metric_type = 'view' AND DATE(created_at) BETWEEN ? AND ?");
+        $stmt->bind_param("ss", $startDate, $endDate);
+        $stmt->execute();
+        $currentViews = (int)$stmt->get_result()->fetch_assoc()['total'];
+        
+        $stmt = $conn->prepare("SELECT COUNT(*) as total FROM paper_metrics WHERE metric_type = 'view' AND DATE(created_at) BETWEEN ? AND ?");
+        $stmt->bind_param("ss", $prevStartDate, $startDate);
+        $stmt->execute();
+        $prevViews = (int)$stmt->get_result()->fetch_assoc()['total'];
+        
+        $metrics['viewsGrowth'] = $prevViews > 0 ? round((($currentViews - $prevViews) / $prevViews) * 100, 1) : 0;
         
         // Pending reviews
-        $result = $conn->query("SELECT COUNT(*) as total FROM paper_submissions WHERE status = 'pending' OR status = 'under_review'");
-        $metrics['pendingReviews'] = $result ? $result->fetch_assoc()['total'] : 0;
+        $stmt = $conn->prepare("SELECT COUNT(*) as total FROM paper_submissions WHERE status IN ('pending', 'under_review')");
+        $stmt->execute();
+        $result = $stmt->get_result();
+        $metrics['pendingReviews'] = (int)$result->fetch_assoc()['total'];
         
-        // Average review time (placeholder)
-        $metrics['avgReviewTime'] = 4.5;
+        // Average review time
+        $stmt = $conn->prepare("
+            SELECT AVG(DATEDIFF(review_date, submission_date)) as avg_time 
+            FROM paper_submissions 
+            WHERE review_date IS NOT NULL AND submission_date IS NOT NULL
+        ");
+        $stmt->execute();
+        $result = $stmt->get_result();
+        $avgTime = $result->fetch_assoc()['avg_time'];
+        $metrics['avgReviewTime'] = $avgTime ? round($avgTime, 1) : 0;
         
         return $metrics;
     } catch (Exception $e) {
         error_log("Error in getKeyMetrics: " . $e->getMessage());
-        return [
-            'totalUsers' => 0,
-            'userGrowth' => 0,
-            'totalPublications' => 0,
-            'publicationGrowth' => 0,
-            'totalViews' => 0,
-            'viewsGrowth' => 0,
-            'pendingReviews' => 0,
-            'avgReviewTime' => 0
-        ];
+        throw $e;
     }
 }
 
 function getSubmissionsOverTime($conn, $startDate, $endDate) {
-    $submissions = [];
-    
     try {
-        // Check if submission_date column exists, fall back to created_at or id
-        $columns = $conn->query("SHOW COLUMNS FROM paper_submissions LIKE 'submission_date'");
-        $dateColumn = $columns && $columns->num_rows > 0 ? 'submission_date' : 'id';
+        $submissions = [];
         
-        if ($dateColumn === 'submission_date') {
-            $query = "
-                SELECT DATE(submission_date) as date, COUNT(*) as count
-                FROM paper_submissions 
-                WHERE submission_date BETWEEN '$startDate' AND '$endDate'
-                GROUP BY DATE(submission_date)
-                ORDER BY date
-            ";
-            $result = $conn->query($query);
-        } else {
-            // Generate sample data if no proper date column
-            $result = false;
+        $stmt = $conn->prepare("
+            SELECT DATE(submission_date) as date, COUNT(*) as count
+            FROM paper_submissions 
+            WHERE DATE(submission_date) BETWEEN ? AND ?
+            GROUP BY DATE(submission_date)
+            ORDER BY date
+        ");
+        $stmt->bind_param("ss", $startDate, $endDate);
+        $stmt->execute();
+        $result = $stmt->get_result();
+        
+        $data = [];
+        while ($row = $result->fetch_assoc()) {
+            $data[$row['date']] = (int)$row['count'];
         }
         
-        // Fill in missing dates with 0 or generate sample data
+        // Fill in missing dates with 0
         $current = new DateTime($startDate);
         $end = new DateTime($endDate);
-        $data = [];
-        
-        if ($result && $result->num_rows > 0) {
-            while ($row = $result->fetch_assoc()) {
-                $data[$row['date']] = (int)$row['count'];
-            }
-        }
         
         while ($current <= $end) {
             $dateStr = $current->format('Y-m-d');
             $submissions[] = [
                 'date' => $dateStr,
-                'count' => isset($data[$dateStr]) ? $data[$dateStr] : rand(0, 5) // Sample data if no real data
+                'count' => isset($data[$dateStr]) ? $data[$dateStr] : 0
             ];
             $current->add(new DateInterval('P1D'));
         }
@@ -126,34 +170,39 @@ function getSubmissionsOverTime($conn, $startDate, $endDate) {
         return $submissions;
     } catch (Exception $e) {
         error_log("Error in getSubmissionsOverTime: " . $e->getMessage());
-        // Return sample data
-        $submissions = [];
-        $current = new DateTime($startDate);
-        $end = new DateTime($endDate);
-        
-        while ($current <= $end) {
-            $submissions[] = [
-                'date' => $current->format('Y-m-d'),
-                'count' => rand(0, 8)
-            ];
-            $current->add(new DateInterval('P1D'));
-        }
-        
-        return $submissions;
+        return [];
     }
 }
 
 function getUserGrowthOverTime($conn, $startDate, $endDate) {
     try {
-        // Similar to submissions, check for proper date column
         $userGrowth = [];
+        
+        $stmt = $conn->prepare("
+            SELECT DATE(created_at) as date, COUNT(*) as count
+            FROM accounts 
+            WHERE DATE(created_at) BETWEEN ? AND ?
+            GROUP BY DATE(created_at)
+            ORDER BY date
+        ");
+        $stmt->bind_param("ss", $startDate, $endDate);
+        $stmt->execute();
+        $result = $stmt->get_result();
+        
+        $data = [];
+        while ($row = $result->fetch_assoc()) {
+            $data[$row['date']] = (int)$row['count'];
+        }
+        
+        // Fill in missing dates with 0
         $current = new DateTime($startDate);
         $end = new DateTime($endDate);
         
         while ($current <= $end) {
+            $dateStr = $current->format('Y-m-d');
             $userGrowth[] = [
-                'date' => $current->format('Y-m-d'),
-                'count' => rand(5, 25) // Sample data
+                'date' => $dateStr,
+                'count' => isset($data[$dateStr]) ? $data[$dateStr] : 0
             ];
             $current->add(new DateInterval('P1D'));
         }
@@ -166,218 +215,273 @@ function getUserGrowthOverTime($conn, $startDate, $endDate) {
 }
 
 function getStatusDistribution($conn) {
-    $distribution = [
-        'pending' => 0,
-        'under_review' => 0,
-        'approved' => 0,
-        'rejected' => 0,
-        'published' => 0
-    ];
-    
     try {
-        $query = "SELECT status, COUNT(*) as count FROM paper_submissions GROUP BY status";
-        $result = $conn->query($query);
+        $stmt = $conn->prepare("SELECT status, COUNT(*) as count FROM paper_submissions GROUP BY status");
+        $stmt->execute();
+        $result = $stmt->get_result();
         
-        if ($result) {
-            while ($row = $result->fetch_assoc()) {
-                if (isset($distribution[$row['status']])) {
-                    $distribution[$row['status']] = (int)$row['count'];
-                }
+        $distribution = [
+            'pending' => 0,
+            'under_review' => 0,
+            'approved' => 0,
+            'rejected' => 0,
+            'published' => 0
+        ];
+        
+        while ($row = $result->fetch_assoc()) {
+            $status = strtolower(str_replace(' ', '_', $row['status']));
+            if (isset($distribution[$status])) {
+                $distribution[$status] = (int)$row['count'];
             }
         }
+        
+        return $distribution;
     } catch (Exception $e) {
         error_log("Error in getStatusDistribution: " . $e->getMessage());
+        return [];
     }
-    
-    return $distribution;
 }
 
 function getCategoriesDistribution($conn) {
-    $categories = [];
-    
     try {
-        $query = "SELECT research_type, COUNT(*) as count FROM paper_submissions WHERE research_type IS NOT NULL GROUP BY research_type ORDER BY count DESC LIMIT 10";
-        $result = $conn->query($query);
+        $stmt = $conn->prepare("
+            SELECT research_type as category, COUNT(*) as count 
+            FROM paper_submissions 
+            WHERE research_type IS NOT NULL AND research_type != '' 
+            GROUP BY research_type 
+            ORDER BY count DESC 
+            LIMIT 8
+        ");
+        $stmt->execute();
+        $result = $stmt->get_result();
         
-        if ($result) {
-            while ($row = $result->fetch_assoc()) {
-                $categories[$row['research_type']] = (int)$row['count'];
-            }
+        $categories = [];
+        while ($row = $result->fetch_assoc()) {
+            $categories[$row['category']] = (int)$row['count'];
         }
         
-        // Add some sample categories if empty
-        if (empty($categories)) {
-            $categories = [
-                'Agricultural Research' => 45,
-                'Crop Science' => 32,
-                'Soil Science' => 28,
-                'Plant Pathology' => 19,
-                'Food Technology' => 15
-            ];
-        }
+        return $categories;
     } catch (Exception $e) {
         error_log("Error in getCategoriesDistribution: " . $e->getMessage());
-        $categories = ['No Data Available' => 1];
+        return [];
     }
-    
-    return $categories;
 }
 
 function getRatingsDistribution($conn) {
-    $ratings = [1 => 2, 2 => 8, 3 => 25, 4 => 45, 5 => 67]; // Sample data
-    
     try {
-        // Check if reviews table exists
-        $result = $conn->query("SHOW TABLES LIKE 'paper_reviews'");
-        if ($result && $result->num_rows > 0) {
-            $query = "SELECT rating, COUNT(*) as count FROM paper_reviews WHERE rating IS NOT NULL GROUP BY rating";
-            $result = $conn->query($query);
-            
-            if ($result) {
-                $ratings = [1 => 0, 2 => 0, 3 => 0, 4 => 0, 5 => 0];
-                while ($row = $result->fetch_assoc()) {
-                    $ratingVal = (int)$row['rating'];
-                    if ($ratingVal >= 1 && $ratingVal <= 5) {
-                        $ratings[$ratingVal] = (int)$row['count'];
-                    }
-                }
-            }
+        $stmt = $conn->prepare("SELECT rating, COUNT(*) as count FROM paper_reviews WHERE rating IS NOT NULL AND rating BETWEEN 1 AND 5 GROUP BY rating ORDER BY rating");
+        $stmt->execute();
+        $result = $stmt->get_result();
+        
+        $ratings = [1 => 0, 2 => 0, 3 => 0, 4 => 0, 5 => 0];
+        while ($row = $result->fetch_assoc()) {
+            $ratings[(int)$row['rating']] = (int)$row['count'];
         }
+        
+        return $ratings;
     } catch (Exception $e) {
         error_log("Error in getRatingsDistribution: " . $e->getMessage());
+        return [];
     }
-    
-    return $ratings;
 }
 
 function getTopPublications($conn) {
-    $publications = [];
-    
     try {
-        $query = "SELECT paper_title as title, author_name as author FROM paper_submissions WHERE status IN ('approved', 'published') ORDER BY id DESC LIMIT 5";
-        $result = $conn->query($query);
+        $stmt = $conn->prepare("
+            SELECT 
+                ps.id,
+                ps.paper_title as title, 
+                ps.author_name as author,
+                COALESCE(pm_views.view_count, 0) as views,
+                COALESCE(pm_downloads.download_count, 0) as downloads,
+                COALESCE(pr.avg_rating, 0) as rating
+            FROM paper_submissions ps
+            LEFT JOIN (
+                SELECT paper_id, COUNT(*) as view_count 
+                FROM paper_metrics 
+                WHERE metric_type = 'view' 
+                GROUP BY paper_id
+            ) pm_views ON ps.id = pm_views.paper_id
+            LEFT JOIN (
+                SELECT paper_id, COUNT(*) as download_count 
+                FROM paper_metrics 
+                WHERE metric_type = 'download' 
+                GROUP BY paper_id
+            ) pm_downloads ON ps.id = pm_downloads.paper_id
+            LEFT JOIN (
+                SELECT paper_id, AVG(rating) as avg_rating 
+                FROM paper_reviews 
+                WHERE rating IS NOT NULL 
+                GROUP BY paper_id
+            ) pr ON ps.id = pr.paper_id
+            WHERE ps.status IN ('approved', 'published') 
+            ORDER BY views DESC, downloads DESC
+            LIMIT 5
+        ");
+        $stmt->execute();
+        $result = $stmt->get_result();
         
-        if ($result) {
-            while ($row = $result->fetch_assoc()) {
-                $publications[] = [
-                    'title' => $row['title'],
-                    'author' => $row['author'],
-                    'views' => rand(100, 2000),
-                    'downloads' => rand(50, 800),
-                    'rating' => round(rand(35, 50) / 10, 1)
-                ];
-            }
-        }
-        
-        // Add sample data if no publications found
-        if (empty($publications)) {
-            $publications = [
-                [
-                    'title' => 'Sample Agricultural Research Paper',
-                    'author' => 'Sample Author',
-                    'views' => 456,
-                    'downloads' => 123,
-                    'rating' => 4.2
-                ]
+        $publications = [];
+        while ($row = $result->fetch_assoc()) {
+            $publications[] = [
+                'title' => $row['title'] ?: 'Untitled',
+                'author' => $row['author'] ?: 'Unknown Author',
+                'views' => (int)$row['views'],
+                'downloads' => (int)$row['downloads'],
+                'rating' => $row['rating'] ? round($row['rating'], 1) : 0
             ];
         }
+        
+        return $publications;
     } catch (Exception $e) {
         error_log("Error in getTopPublications: " . $e->getMessage());
-        $publications = [];
+        return [];
     }
-    
-    return $publications;
 }
 
 function getMostActiveUsers($conn) {
-    $users = [];
-    
     try {
-        $query = "
+        $stmt = $conn->prepare("
             SELECT 
                 a.name,
-                COUNT(ps.id) as submissions
+                a.username,
+                COUNT(ps.id) as submissions,
+                COALESCE(pm.total_views, 0) as views,
+                MAX(ual.created_at) as last_activity
             FROM accounts a
-            LEFT JOIN paper_submissions ps ON a.username = ps.user_name
+            LEFT JOIN paper_submissions ps ON a.username = ps.user_name OR a.name = ps.author_name
+            LEFT JOIN (
+                SELECT ps.author_name, COUNT(pm.id) as total_views
+                FROM paper_submissions ps
+                JOIN paper_metrics pm ON ps.id = pm.paper_id
+                WHERE pm.metric_type = 'view'
+                GROUP BY ps.author_name
+            ) pm ON a.name = pm.author_name
+            LEFT JOIN user_activity_logs ual ON a.id = ual.user_id
             WHERE a.role = 'user'
-            GROUP BY a.id, a.name
+            GROUP BY a.id, a.name, a.username
             HAVING submissions > 0
-            ORDER BY submissions DESC
+            ORDER BY submissions DESC, views DESC
             LIMIT 5
-        ";
+        ");
+        $stmt->execute();
+        $result = $stmt->get_result();
         
-        $result = $conn->query($query);
-        
-        if ($result) {
-            while ($row = $result->fetch_assoc()) {
-                $users[] = [
-                    'name' => $row['name'],
-                    'submissions' => (int)$row['submissions'],
-                    'views' => rand(1000, 5000),
-                    'lastActivity' => rand(1, 24) . ' hours ago'
-                ];
-            }
-        }
-        
-        // Add sample data if no users found
-        if (empty($users)) {
-            $users = [
-                [
-                    'name' => 'Sample User',
-                    'submissions' => 3,
-                    'views' => 1234,
-                    'lastActivity' => '2 hours ago'
-                ]
+        $users = [];
+        while ($row = $result->fetch_assoc()) {
+            $lastActivity = $row['last_activity'] ? date('M j, Y', strtotime($row['last_activity'])) : 'Unknown';
+            $users[] = [
+                'name' => $row['name'] ?: $row['username'],
+                'submissions' => (int)$row['submissions'],
+                'views' => (int)$row['views'],
+                'lastActivity' => $lastActivity
             ];
         }
+        
+        return $users;
     } catch (Exception $e) {
         error_log("Error in getMostActiveUsers: " . $e->getMessage());
-        $users = [];
+        return [];
     }
-    
-    return $users;
 }
 
 function getRecentActivity($conn) {
-    $activities = [];
-    
     try {
+        $activities = [];
+        
         // Get recent submissions
-        $query = "SELECT user_name as user, paper_title, id FROM paper_submissions ORDER BY id DESC LIMIT 5";
-        $result = $conn->query($query);
+        $stmt = $conn->prepare("
+            SELECT 'submission' as type, user_name as user, paper_title as title, created_at
+            FROM paper_submissions 
+            ORDER BY created_at DESC 
+            LIMIT 5
+        ");
+        $stmt->execute();
+        $result = $stmt->get_result();
         
-        if ($result) {
-            while ($row = $result->fetch_assoc()) {
-                $activities[] = [
-                    'type' => 'submission',
-                    'user' => $row['user'] ?: 'Unknown User',
-                    'description' => 'Submitted new paper: "' . substr($row['paper_title'], 0, 50) . '"',
-                    'time' => rand(1, 48) . ' hours ago',
-                    'icon' => 'fas fa-file-upload',
-                    'color' => 'blue'
-                ];
-            }
-        }
-        
-        // Add some sample activities if none found
-        if (empty($activities)) {
-            $activities = [
-                [
-                    'type' => 'submission',
-                    'user' => 'Sample User',
-                    'description' => 'Submitted new research paper',
-                    'time' => '2 hours ago',
-                    'icon' => 'fas fa-file-upload',
-                    'color' => 'blue'
-                ]
+        while ($row = $result->fetch_assoc()) {
+            $timeAgo = getTimeAgo($row['created_at']);
+            $activities[] = [
+                'type' => 'submission',
+                'user' => $row['user'] ?: 'Anonymous',
+                'description' => 'Submitted: "' . substr($row['title'], 0, 50) . (strlen($row['title']) > 50 ? '...' : '') . '"',
+                'time' => $timeAgo,
+                'icon' => 'fas fa-file-upload',
+                'color' => 'blue',
+                'timestamp' => $row['created_at']
             ];
         }
+        
+        // Get recent reviews
+        $stmt = $conn->prepare("
+            SELECT 'review' as type, pr.reviewer_name as user, ps.paper_title as title, pr.created_at
+            FROM paper_reviews pr
+            JOIN paper_submissions ps ON pr.paper_id = ps.id
+            WHERE pr.review_status = 'completed'
+            ORDER BY pr.created_at DESC 
+            LIMIT 3
+        ");
+        $stmt->execute();
+        $result = $stmt->get_result();
+        
+        while ($row = $result->fetch_assoc()) {
+            $timeAgo = getTimeAgo($row['created_at']);
+            $activities[] = [
+                'type' => 'review',
+                'user' => $row['user'],
+                'description' => 'Completed review for "' . substr($row['title'], 0, 40) . (strlen($row['title']) > 40 ? '...' : '') . '"',
+                'time' => $timeAgo,
+                'icon' => 'fas fa-star',
+                'color' => 'yellow',
+                'timestamp' => $row['created_at']
+            ];
+        }
+        
+        // Get recent user registrations
+        $stmt = $conn->prepare("
+            SELECT 'registration' as type, name as user, created_at
+            FROM accounts 
+            WHERE role = 'user'
+            ORDER BY created_at DESC 
+            LIMIT 2
+        ");
+        $stmt->execute();
+        $result = $stmt->get_result();
+        
+        while ($row = $result->fetch_assoc()) {
+            $timeAgo = getTimeAgo($row['created_at']);
+            $activities[] = [
+                'type' => 'registration',
+                'user' => 'System',
+                'description' => $row['user'] . ' registered as a new researcher',
+                'time' => $timeAgo,
+                'icon' => 'fas fa-user-plus',
+                'color' => 'purple',
+                'timestamp' => $row['created_at']
+            ];
+        }
+        
+        // Sort by timestamp and return top 10
+        usort($activities, function($a, $b) {
+            return strtotime($b['timestamp']) - strtotime($a['timestamp']);
+        });
+        
+        return array_slice($activities, 0, 10);
     } catch (Exception $e) {
         error_log("Error in getRecentActivity: " . $e->getMessage());
-        $activities = [];
+        return [];
     }
+}
+
+function getTimeAgo($datetime) {
+    $time = time() - strtotime($datetime);
     
-    return $activities;
+    if ($time < 60) return 'just now';
+    if ($time < 3600) return floor($time/60) . ' minutes ago';
+    if ($time < 86400) return floor($time/3600) . ' hours ago';
+    if ($time < 2592000) return floor($time/86400) . ' days ago';
+    if ($time < 31536000) return floor($time/2592000) . ' months ago';
+    return floor($time/31536000) . ' years ago';
 }
 
 // Close connection
