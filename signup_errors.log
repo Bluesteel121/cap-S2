@@ -32,3 +32,21 @@
     [general_address] => 
 )
 
+2025-08-27 15:39:44 - Script started.
+2025-08-27 15:39:44 - $_POST data: Array
+(
+    [username] => jane
+    [fullname] => jane doe
+    [contact_number] => 09876453671
+    [email] => jane@gmail.com
+    [password] => pass
+    [confirm_password] => pass
+    [birth_date] => 2025-08-01
+    [province] => Camarines Norte
+    [municipality] => Basud
+    [barangay] => Matnog
+    [general_address] => 
+)
+
+2025-08-27 15:39:44 - Determined address: Matnog, Basud, Camarines Norte
+2025-08-27 15:39:44 - Address validation passed.
