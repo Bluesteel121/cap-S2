@@ -76,28 +76,31 @@ if (!isset($_SESSION['name'])) {
           <a href="index.php" class="hover:underline">Home</a>
           <a href="#" class="hover:underline">Our Services</a>
           <a href="#" class="hover:underline">About Us</a>
+          <!-- Add My Submissions Link -->
+      <a href="my_submissions.php" class="hover:underline flex items-center">
+        <i class="fas fa-file-alt mr-1"></i>My Submissions
+      </a>
+      <!-- Add Submit Paper Button -->
+      <a href="submit_paper.php" class="bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-md transition-colors">
+        <i class="fas fa-plus mr-2"></i>Submit Paper
+      </a>
         </div>
 
-        <!-- Submission -->
-          <i class="fas fa-file-alt mr-1"></i>My Submissions
-        </a>
-        <a href="submit_paper.php" class="bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-md transition-colors">
-          <i class="fas fa-plus mr-2"></i>Submit Paper
-        </a>
+        
 
-        <!-- Profile Picture -->
+        <!-- Profile Picture with User's Initial Image -->
         <img src="Images/initials profile/<?php echo strtolower(substr($_SESSION['name'], 0, 1)); ?>.png" 
-            alt="Profile Picture" 
-            class="w-8 h-8 rounded-full cursor-pointer object-cover"
-            onclick="toggleSidebar()" 
-            title="<?php echo htmlspecialchars($_SESSION['name']); ?>"
-            onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';">
+             alt="Profile Picture" 
+             class="profile-pic w-10 h-10 rounded-full cursor-pointer object-cover"
+             onclick="toggleSidebar()" 
+             title="<?php echo htmlspecialchars($_SESSION['name']); ?>"
+             onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';">
 
         <!-- Fallback div -->
-        <div class="w-8 h-8 rounded-full cursor-pointer flex items-center justify-center bg-gradient-to-br from-[#115D5B] to-[#103625] text-white font-bold text-sm uppercase"
-            onclick="toggleSidebar()" 
-            title="<?php echo htmlspecialchars($_SESSION['name']); ?>"
-            style="display: none;">
+        <div class="profile-pic w-10 h-10 rounded-full cursor-pointer flex items-center justify-center bg-gradient-to-br from-[#115D5B] to-[#103625] text-white font-bold text-lg uppercase"
+             onclick="toggleSidebar()" 
+             title="<?php echo htmlspecialchars($_SESSION['name']); ?>"
+             style="display: none;">
           <?php echo strtoupper(substr($_SESSION['name'], 0, 1)); ?>
         </div>
 
@@ -114,7 +117,9 @@ if (!isset($_SESSION['name'])) {
     <a href="index.php" onclick="logout()">Log Out</a>
 </div>
 
-    <!-- Banner Section -->
+<!-- MAIN INTERFACE  -->
+
+    <!-- Banner Section  -->
 <style>
   @layer utilities {
     .text-outline-white {
