@@ -71,6 +71,8 @@
         </p>
     </div>
 </div>
+
+ <!-- LOG-In Script -->
   <script>
     function redirectToLogin(role) {
       const routes = {
