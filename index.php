@@ -73,7 +73,7 @@
         <a href="account.php" class="bg-[#103635] text-white px-6 py-2 rounded-xl font-semibold">Log In</a>
       </div>
     </nav>
-  </header>
+  
 
   <!-- Banner Section -->
 <style>
