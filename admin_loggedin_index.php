@@ -6,7 +6,95 @@ if (!isset($_SESSION['username']) || $_SESSION['role'] !== 'admin') {
     header('Location: index.php');
     exit();
 }
+
+include 'connect.php';
+
+// Get total users count
+$result = $conn->query("SELECT COUNT(*) as total_users FROM accounts");
+$total_users = $result->fetch_assoc()['total_users'];
+
+// Get total publications count (approved + published)
+$result = $conn->query("SELECT COUNT(*) as total_publications FROM paper_submissions WHERE status IN ('approved', 'published')");
+$total_publications = $result->fetch_assoc()['total_publications'];
+
+// Get pending reviews count
+$result = $conn->query("SELECT COUNT(*) as pending_reviews FROM paper_submissions WHERE status IN ('pending', 'under_review')");
+$pending_reviews = $result->fetch_assoc()['pending_reviews'];
+
+// Get current month views from paper_metrics
+$current_month = date('Y-m');
+$stmt = $conn->prepare("
+    SELECT COUNT(*) as monthly_views 
+    FROM paper_metrics 
+    WHERE metric_type = 'view' 
+    AND DATE_FORMAT(created_at, '%Y-%m') = ?
+");
+$stmt->bind_param("s", $current_month);
+$stmt->execute();
+$monthly_views = $stmt->get_result()->fetch_assoc()['monthly_views'];
+
+// Calculate percentage changes (comparing with previous month)
+$previous_month = date('Y-m', strtotime('-1 month'));
+
+// Users growth calculation
+$stmt = $conn->prepare("SELECT COUNT(*) as prev_users FROM accounts WHERE DATE_FORMAT(created_at, '%Y-%m') = ?");
+$stmt->bind_param("s", $previous_month);
+$stmt->execute();
+$prev_month_users = $stmt->get_result()->fetch_assoc()['prev_users'];
+
+$stmt = $conn->prepare("SELECT COUNT(*) as curr_users FROM accounts WHERE DATE_FORMAT(created_at, '%Y-%m') = ?");
+$stmt->bind_param("s", $current_month);
+$stmt->execute();
+$curr_month_users = $stmt->get_result()->fetch_assoc()['curr_users'];
+
+$user_growth = $prev_month_users > 0 ? round((($curr_month_users - $prev_month_users) / $prev_month_users) * 100) : 0;
+
+// Publications growth calculation
+$stmt = $conn->prepare("
+    SELECT COUNT(*) as prev_publications 
+    FROM paper_submissions 
+    WHERE status IN ('approved', 'published') 
+    AND DATE_FORMAT(submission_date, '%Y-%m') = ?
+");
+$stmt->bind_param("s", $previous_month);
+$stmt->execute();
+$prev_publications = $stmt->get_result()->fetch_assoc()['prev_publications'];
+
+$stmt = $conn->prepare("
+    SELECT COUNT(*) as curr_publications 
+    FROM paper_submissions 
+    WHERE status IN ('approved', 'published') 
+    AND DATE_FORMAT(submission_date, '%Y-%m') = ?
+");
+$stmt->bind_param("s", $current_month);
+$stmt->execute();
+$curr_publications = $stmt->get_result()->fetch_assoc()['curr_publications'];
+
+$publication_growth = $prev_publications > 0 ? round((($curr_publications - $prev_publications) / $prev_publications) * 100) : 0;
+
+// Views growth calculation
+$stmt = $conn->prepare("
+    SELECT COUNT(*) as prev_views 
+    FROM paper_metrics 
+    WHERE metric_type = 'view' 
+    AND DATE_FORMAT(created_at, '%Y-%m') = ?
+");
+$stmt->bind_param("s", $previous_month);
+$stmt->execute();
+$prev_views = $stmt->get_result()->fetch_assoc()['prev_views'];
+
+$views_growth = $prev_views > 0 ? round((($monthly_views - $prev_views) / $prev_views) * 100) : 0;
+
+// Format numbers for display
+function formatNumber($number) {
+    if ($number >= 1000) {
+        return number_format($number / 1000, 1) . 'k';
+    }
+    return number_format($number);
+}
 ?>
+
+
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -358,63 +446,75 @@ if (!isset($_SESSION['username']) || $_SESSION['role'] !== 'admin') {
     </section>
 
     <!-- Quick Stats -->
-    <section class="max-w-6xl mx-auto px-4 mb-12">
-      <h3 class="text-2xl font-bold text-[#115D5B] mb-6">
-        <i class="fas fa-chart-line mr-2"></i>System Overview
-      </h3>
-      <div class="stats-grid grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-        
-        <div class="stats-card p-6 rounded-lg shadow-md">
-          <div class="flex items-center justify-between">
-            <div>
-              <p class="text-sm text-gray-600 font-medium">Total Users</p>
-              <p class="text-3xl font-bold text-[#115D5B]">2,847</p>
-              <p class="text-xs text-green-600 font-medium mt-1">↑ 12% from last month</p>
-            </div>
-            <div class="bg-[#115D5B] p-3 rounded-full">
-              <i class="fas fa-users text-white text-xl"></i>
-            </div>
-          </div>
+<section class="max-w-6xl mx-auto px-4 mb-12">
+  <h3 class="text-2xl font-bold text-[#115D5B] mb-6">
+    <i class="fas fa-chart-line mr-2"></i>System Overview
+  </h3>
+  <div class="stats-grid grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+    
+    <!-- Total Users Card -->
+    <div class="stats-card p-6 rounded-lg shadow-md">
+      <div class="flex items-center justify-between">
+        <div>
+          <p class="text-sm text-gray-600 font-medium">Total Users</p>
+          <p class="text-3xl font-bold text-[#115D5B]"><?php echo formatNumber($total_users); ?></p>
+          <p class="text-xs <?php echo $user_growth >= 0 ? 'text-green-600' : 'text-red-600'; ?> font-medium mt-1">
+            <?php echo $user_growth >= 0 ? '↑' : '↓'; ?> <?php echo abs($user_growth); ?>% from last month
+          </p>
         </div>
+        <div class="bg-[#115D5B] p-3 rounded-full">
+          <i class="fas fa-users text-white text-xl"></i>
+        </div>
+      </div>
+    </div>
 
-        <div class="stats-card p-6 rounded-lg shadow-md">
-          <div class="flex items-center justify-between">
-            <div>
-              <p class="text-sm text-gray-600 font-medium">Publications</p>
-              <p class="text-3xl font-bold text-[#115D5B]">1,234</p>
-              <p class="text-xs text-green-600 font-medium mt-1">↑ 8% from last month</p>
-            </div>
-            <div class="bg-green-600 p-3 rounded-full">
-              <i class="fas fa-book text-white text-xl"></i>
-            </div>
-          </div>
+    <!-- Total Publications Card -->
+    <div class="stats-card p-6 rounded-lg shadow-md">
+      <div class="flex items-center justify-between">
+        <div>
+          <p class="text-sm text-gray-600 font-medium">Publications</p>
+          <p class="text-3xl font-bold text-[#115D5B]"><?php echo formatNumber($total_publications); ?></p>
+          <p class="text-xs <?php echo $publication_growth >= 0 ? 'text-green-600' : 'text-red-600'; ?> font-medium mt-1">
+            <?php echo $publication_growth >= 0 ? '↑' : '↓'; ?> <?php echo abs($publication_growth); ?>% from last month
+          </p>
         </div>
+        <div class="bg-green-600 p-3 rounded-full">
+          <i class="fas fa-book text-white text-xl"></i>
+        </div>
+      </div>
+    </div>
 
-        <div class="stats-card p-6 rounded-lg shadow-md">
-          <div class="flex items-center justify-between">
-            <div>
-              <p class="text-sm text-gray-600 font-medium">Pending Reviews</p>
-              <p class="text-3xl font-bold text-orange-600">45</p>
-              <p class="text-xs text-orange-600 font-medium mt-1">Needs attention</p>
-            </div>
-            <div class="bg-orange-500 p-3 rounded-full">
-              <i class="fas fa-clock text-white text-xl"></i>
-            </div>
-          </div>
+    <!-- Pending Reviews Card -->
+    <div class="stats-card p-6 rounded-lg shadow-md">
+      <div class="flex items-center justify-between">
+        <div>
+          <p class="text-sm text-gray-600 font-medium">Pending Reviews</p>
+          <p class="text-3xl font-bold text-orange-600"><?php echo $pending_reviews; ?></p>
+          <p class="text-xs text-orange-600 font-medium mt-1">
+            <?php echo $pending_reviews > 0 ? 'Needs attention' : 'All caught up!'; ?>
+          </p>
         </div>
+        <div class="bg-orange-500 p-3 rounded-full">
+          <i class="fas fa-clock text-white text-xl"></i>
+        </div>
+      </div>
+    </div>
 
-        <div class="stats-card p-6 rounded-lg shadow-md">
-          <div class="flex items-center justify-between">
-            <div>
-              <p class="text-sm text-gray-600 font-medium">Monthly Views</p>
-              <p class="text-3xl font-bold text-blue-600">89.2k</p>
-              <p class="text-xs text-blue-600 font-medium mt-1">↑ 24% from last month</p>
-            </div>
-            <div class="bg-blue-500 p-3 rounded-full">
-              <i class="fas fa-eye text-white text-xl"></i>
-            </div>
-          </div>
+    <!-- Monthly Views Card -->
+    <div class="stats-card p-6 rounded-lg shadow-md">
+      <div class="flex items-center justify-between">
+        <div>
+          <p class="text-sm text-gray-600 font-medium">Monthly Views</p>
+          <p class="text-3xl font-bold text-blue-600"><?php echo formatNumber($monthly_views); ?></p>
+          <p class="text-xs <?php echo $views_growth >= 0 ? 'text-blue-600' : 'text-red-600'; ?> font-medium mt-1">
+            <?php echo $views_growth >= 0 ? '↑' : '↓'; ?> <?php echo abs($views_growth); ?>% from last month
+          </p>
         </div>
+        <div class="bg-blue-500 p-3 rounded-full">
+          <i class="fas fa-eye text-white text-xl"></i>
+        </div>
+      </div>
+    </div>
 
       </div>
     </section>
