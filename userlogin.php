@@ -24,25 +24,29 @@ session_start();
 
         <!-- Error/Success Messages -->
         <?php
-        if (isset($_SESSION['login_error'])) {
-            echo "<div class='bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded relative mb-4' role='alert'>" .
-                 htmlspecialchars($_SESSION['login_error']) .
-                 "</div>";
-            unset($_SESSION['login_error']);
-        }
-        if (isset($_SESSION['registration_success'])) {
-            echo "<div class='bg-green-100 border border-green-400 text-green-700 px-4 py-3 rounded relative mb-4' role='alert'>" .
-                 htmlspecialchars($_SESSION['registration_success']) .
-                 "</div>";
-            unset($_SESSION['registration_success']);
-        }
-        if (isset($_SESSION['login_success'])) {
-            echo "<div class='bg-green-100 border border-green-400 text-green-700 px-4 py-3 rounded relative mb-4' role='alert'>" .
-                 htmlspecialchars($_SESSION['login_success']) .
-                 "</div>";
-            unset($_SESSION['login_success']);
-        }
-        ?>
+if (isset($_SESSION['login_error'])) {
+    echo "<div class='bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded relative mb-4' role='alert'>" .
+         htmlspecialchars($_SESSION['login_error']) .
+         "</div>";
+    unset($_SESSION['login_error']);
+}
+
+if (isset($_SESSION['registration_success'])) {
+    echo "<div class='bg-green-100 border border-green-400 text-green-700 px-4 py-3 rounded relative mb-4' role='alert'>" .
+         htmlspecialchars($_SESSION['registration_success']) .
+         "</div>";
+    unset($_SESSION['registration_success']);
+}
+
+// Show login success only once, immediately after fresh login
+if (isset($_SESSION['login_success'])) {
+    echo "<div class='bg-green-100 border border-green-400 text-green-700 px-4 py-3 rounded relative mb-4' role='alert'>" .
+         htmlspecialchars($_SESSION['login_success']) .
+         "</div>";
+    unset($_SESSION['login_success']); // clears it so it won’t appear on reload/re-login
+}
+?>
+
 
         <!-- Login Form -->
         <div id="login-section">

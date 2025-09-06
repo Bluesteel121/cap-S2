@@ -140,7 +140,7 @@ $is_searching = !empty($search_keyword) || !empty($category_filter) || !empty($y
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.5" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>CNLRRS Research Library</title>
   <script src="https://cdn.tailwindcss.com"></script>
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
@@ -148,36 +148,48 @@ $is_searching = !empty($search_keyword) || !empty($category_filter) || !empty($y
 
 <body class="bg-white pt-24 text-[#103625] font-sans">
 
+
 <!-- Header -->
-<header id="main-header" class="fixed top-0 left-0 w-full z-50 bg-white shadow-lg h-28">
-  <div class="max-w-7xl mx-auto px-6 flex flex-wrap justify-between items-center gap-4 h-full">
+<header id="main-header" class="fixed top-0 left-0 w-full z-50 bg-white shadow-lg h-16 sm:h-20 md:h-24 lg:h-28">
+  <div class="max-w-7xl mx-auto px-1 sm:px-3 md:px-6 flex flex-wrap justify-between items-center gap-1 sm:gap-2 md:gap-4 h-full">
     
     <!-- Logo and Title -->
-    <div class="flex items-center space-x-4">
-      <img src="Images/Logo.jpg" alt="CNLRRS Logo" class="h-16 sm:h-20 md:h-24 object-contain" />
-      <h1 class="text-lg font-bold leading-tight">
-        Camarines Norte Lowland <br class="hidden sm:block" />
-        Rainfed Research Station
+    <div class="flex items-center space-x-1 sm:space-x-2 md:space-x-4 flex-shrink-0">
+      <img src="Images/Logo.jpg" alt="CNLRRS Logo" class="h-8 sm:h-12 md:h-16 lg:h-20 xl:h-24 object-contain" />
+      <h1 class="text-[10px] sm:text-xs md:text-sm lg:text-lg font-bold leading-tight">
+        <span class="block sm:hidden">CNLRRS</span>
+        <span class="hidden sm:block">
+          Camarines Norte Lowland <br class="hidden sm:block" />
+          Rainfed Research Station
+        </span>
       </h1>
     </div>
 
     <!-- Partner Logos -->
-    <div class="flex items-center space-x-4">
-      <img src="Images/Ph.png" alt="Philippines Logo" class="h-16 sm:h-20 md:h-24 object-contain"/>
-      <img src="Images/Da.png" alt="CNLRRS Logo" class="h-16 sm:h-20 md:h-24 object-contain" />
+    <div class="flex items-center space-x-1 sm:space-x-2 md:space-x-4 flex-shrink-0">
+      <img src="Images/Ph.png" alt="Philippines Logo" class="h-8 sm:h-12 md:h-16 lg:h-20 xl:h-24 object-contain"/>
+      <img src="Images/Da.png" alt="CNLRRS Logo" class="h-8 sm:h-12 md:h-16 lg:h-20 xl:h-24 object-contain" />
     </div>
 
     <!-- Contact Info Section -->
-    <div class="flex items-center justify-start space-x-4">
+    <div class="flex items-center space-x-1 sm:space-x-2 md:space-x-4 flex-shrink-0 min-w-0">
       <!-- Text Info -->
-      <div class="text-sm font-semibold text-center">
-        <p>DEPARTMENT OF AGRICULTURE</p>
-        <p>Calasgasan, Daet, Philippines</p>
-        <p>Email: <a href="mailto:dacnlrrs@gmail.com" class="underline">dacnlrrs@gmail.com</a></p>
-        <p>Contact No.: 0951 609 9599</p>
+      <div class="text-[8px] sm:text-xs md:text-sm font-semibold text-center leading-tight">
+        <p class="md:hidden">DA</p>
+        <p class="hidden md:block">DEPARTMENT OF AGRICULTURE</p>
+        
+        <p class="sm:hidden">Daet, PH</p>
+        <p class="hidden sm:block">Calasgasan, Daet, Philippines</p>
+        
+        <p class="md:hidden">
+          <a href="mailto:dacnlrrs@gmail.com" class="underline">Email</a>
+        </p>
+        <p class="hidden md:block">Email: <a href="mailto:dacnlrrs@gmail.com" class="underline">dacnlrrs@gmail.com</a></p>
+        
+        <p>0951 609 9599</p>
       </div>
       <!-- Logo -->
-      <img src="Images/Bago.png" alt="Bagong Pilipinas Logo" class="h-16 sm:h-20 md:h-24 object-contain" />
+      <img src="Images/Bago.png" alt="Bagong Pilipinas Logo" class="h-8 sm:h-12 md:h-16 lg:h-20 xl:h-24 object-contain" />
     </div>
   </div>
 </header>
@@ -205,14 +217,6 @@ $is_searching = !empty($search_keyword) || !empty($category_filter) || !empty($y
         <a href="?view=library" class="hover:underline <?php echo $view === 'library' ? 'text-[#115D5B] underline' : ''; ?>">Research Library</a>
         <a href="#" class="hover:underline">Our Services</a>
         <a href="#" class="hover:underline">About Us</a>
-        <!-- Add My Submissions Link -->
-        <a href="my_submissions.php" class="hover:underline flex items-center">
-          <i class="fas fa-file-alt mr-1"></i>My Submissions
-        </a>
-        <!-- Add Submit Paper Button -->
-        <a href="submit_paper.php" class="bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-md transition-colors">
-          <i class="fas fa-plus mr-2"></i>Submit Paper
-        </a>
       </div>
 
       <!-- Profile Picture with User's Initial Image -->
@@ -242,6 +246,7 @@ $is_searching = !empty($search_keyword) || !empty($category_filter) || !empty($y
       <a href="my_submissions.php"><i class="fas fa-file-alt mr-2"></i>My Submissions</a>
       <a href="submit_paper.php"><i class="fas fa-plus mr-2"></i>Submit Paper</a>
       <a href="index.php" onclick="logout()">Log Out</a>
+
   </div>
 
   <!-- Content Based on View -->
@@ -875,6 +880,36 @@ $is_searching = !empty($search_keyword) || !empty($category_filter) || !empty($y
           }
       });
   });
+
+   function setViewport() {
+            // Check if device is mobile
+            function isMobile() {
+                return /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent) 
+                    || window.innerWidth <= 768 
+                    || ('ontouchstart' in window);
+            }
+            
+            // Get or create viewport meta tag
+            let viewport = document.querySelector('meta[name="viewport"]');
+            if (!viewport) {
+                viewport = document.createElement('meta');
+                viewport.name = 'viewport';
+                document.head.appendChild(viewport);
+            }
+            
+            // Set content based on device type
+            if (isMobile()) {
+                viewport.content = 'width=device-width, initial-scale=1.0, maximum-scale=5.0, user-scalable=yes';
+            } else {
+                viewport.content = 'width=device-width, initial-scale=1.5, maximum-scale=5.0, user-scalable=yes';
+            }
+        }
+        
+        // Run immediately
+        setViewport();
+        
+        // Also run on resize (in case device orientation changes)
+        window.addEventListener('resize', setViewport);
 </script>
 
 <style>
@@ -923,6 +958,24 @@ $is_searching = !empty($search_keyword) || !empty($category_filter) || !empty($y
     margin-left: 50px;
     color: white;
   }
+
+  @media (min-width: 475px) {
+  .xs\:inline {
+    display: inline;
+  }
+}
+
+/* Alternative mobile-first approach for very small screens */
+@media (max-width: 374px) {
+  .profile-pic {
+    width: 2rem;
+    height: 2rem;
+  }
+  
+  .text-xs-mobile {
+    font-size: 0.75rem;
+  }
+}
 </style>
 </body>
 </html>

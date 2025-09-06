@@ -10,6 +10,15 @@ function logError($message) {
     file_put_contents('signup_errors.log', date('Y-m-d H:i:s') . ' - ' . $message . "\n", FILE_APPEND);
 }
 
+if ($login_successful) {
+    if (!isset($_SESSION['login_success'])) { 
+        $_SESSION['login_success'] = "Login successful!";
+    }
+    header("Location: user_login.php");
+    exit();
+}
+
+
 // Check if the form is submitted
 if ($_SERVER["REQUEST_METHOD"] == "POST") {
     logError('Script started.');
