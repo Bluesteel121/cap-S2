@@ -1,3 +1,10 @@
+<?php
+session_start();
+require_once 'user_activity_logger.php';
+
+// Log page access
+logPageView('User Signup Page');
+?>
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -39,12 +46,13 @@
         <img src="Images/logo.png" alt="Logo" class="mx-auto h-16 mb-4">
 
         <?php
-        session_start();
         if (isset($_SESSION['registration_error'])) {
+            logActivity('REGISTRATION_ERROR_DISPLAYED', $_SESSION['registration_error']);
             echo "<div class='bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded relative mb-4' role='alert'>" . htmlspecialchars($_SESSION['registration_error']) . "</div>";
             unset($_SESSION['registration_error']);
         }
         if (isset($_SESSION['registration_success'])) {
+            logActivity('REGISTRATION_SUCCESS_DISPLAYED', $_SESSION['registration_success']);
             echo "<div class='bg-green-100 border border-green-400 text-green-700 px-4 py-3 rounded relative mb-4' role='alert'>" . htmlspecialchars($_SESSION['registration_success']) . "</div>";
             unset($_SESSION['registration_success']);
         }
@@ -174,6 +182,9 @@
                 
                 // Add required to general address
                 generalAddressField.setAttribute('required', 'required');
+
+                // Log address preference change
+                logActivityClient('ADDRESS_PREFERENCE_CHANGED', 'User selected outside Philippines');
             } else {
                 // Show Philippines address, hide general address
                 philippinesAddress.style.display = 'block';
@@ -186,6 +197,9 @@
                 
                 // Remove required from general address
                 generalAddressField.removeAttribute('required');
+
+                // Log address preference change
+                logActivityClient('ADDRESS_PREFERENCE_CHANGED', 'User selected Philippines');
             }
         }
 
@@ -220,18 +234,24 @@
             .then(response => response.json())
             .then(data => {
                 populateDropdown(provinceSelect, data);
+                logActivityClient('LOCATION_DATA_LOADED', 'Provinces loaded: ' + data.length);
             })
-            .catch(error => console.error('Error fetching provinces:', error));
+            .catch(error => {
+                console.error('Error fetching provinces:', error);
+                logActivityClient('LOCATION_DATA_ERROR', 'Failed to load provinces');
+            });
 
         // Event listener for province selection
         provinceSelect.addEventListener('change', function() {
             var provinceId = this.value;
+            var provinceName = this.options[this.selectedIndex].text;
             municipalitySelect.disabled = true;
             barangaySelect.disabled = true;
             populateDropdown(municipalitySelect, []); // Clear municipalities
             populateDropdown(barangaySelect, []); // Clear barangays
 
             if (provinceId) {
+                logActivityClient('PROVINCE_SELECTED', 'Province: ' + provinceName);
                 fetch('get_locations.php?level=municipality&parent_id=' + provinceId)
                     .then(response => response.json())
                     .then(data => {
@@ -245,10 +265,12 @@
         // Event listener for municipality selection
         municipalitySelect.addEventListener('change', function() {
             var municipalityId = this.value;
+            var municipalityName = this.options[this.selectedIndex].text;
             barangaySelect.disabled = true;
             populateDropdown(barangaySelect, []); // Clear barangays
 
             if (municipalityId) {
+                logActivityClient('MUNICIPALITY_SELECTED', 'Municipality: ' + municipalityName);
                 fetch('get_locations.php?level=barangay&province=' + provinceSelect.value + '&parent_id=' + municipalityId)
                     .then(response => response.json())
                     .then(data => {
@@ -259,22 +281,49 @@
             }
         });
 
+        // Event listener for barangay selection
+        barangaySelect.addEventListener('change', function() {
+            var barangayName = this.options[this.selectedIndex].text;
+            if (this.value) {
+                logActivityClient('BARANGAY_SELECTED', 'Barangay: ' + barangayName);
+            }
+        });
+
         // Form validation before submit
         document.getElementById('signupForm').addEventListener('submit', function(e) {
+            var username = document.getElementById('username').value;
+            var email = document.getElementById('email').value;
+            
             if (isOutsideCheckbox.checked) {
                 if (!generalAddressField.value.trim()) {
                     e.preventDefault();
                     alert('Please enter your general address.');
+                    logActivityClient('SIGNUP_VALIDATION_ERROR', 'General address required');
                     return false;
                 }
             } else {
                 if (!provinceSelect.value || !municipalitySelect.value || !barangaySelect.value) {
                     e.preventDefault();
                     alert('Please complete your Philippines address selection.');
+                    logActivityClient('SIGNUP_VALIDATION_ERROR', 'Philippines address incomplete');
                     return false;
                 }
             }
+
+            // Log signup attempt
+            logActivityClient('SIGNUP_ATTEMPT', 'Username: ' + username + ', Email: ' + email);
         });
+
+        // Client-side logging function
+        function logActivityClient(action, details) {
+            fetch('log_activity.php', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/x-www-form-urlencoded',
+                },
+                body: 'action=' + encodeURIComponent(action) + '&details=' + encodeURIComponent(details)
+            }).catch(error => console.error('Logging error:', error));
+        }
     </script>
 </body>
 </html>

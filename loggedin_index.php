@@ -1,8 +1,10 @@
 <?php
 session_start();
+require_once 'user_activity_logger.php';
 
 // Check if user is logged in
 if (!isset($_SESSION['name'])) {
+    logSecurityEvent('UNAUTHORIZED_ACCESS_ATTEMPT', 'Attempt to access dashboard without login');
     header('Location: index.php');
     exit();
 }
@@ -12,6 +14,9 @@ require_once 'connect.php';
 
 // Determine which view to show based on URL parameter
 $view = isset($_GET['view']) ? $_GET['view'] : 'home';
+
+// Log page access
+logPageView('Dashboard - ' . ($view === 'library' ? 'Library View' : 'Home View'));
 
 // Get filter parameters for library view
 $search_keyword = isset($_GET['search']) ? $_GET['search'] : '';
@@ -73,6 +78,11 @@ if ($view === 'library') {
     $count_stmt->execute();
     $total_papers = $count_stmt->get_result()->fetch_assoc()['total'];
     $total_pages = ceil($total_papers / $papers_per_page);
+
+    // Log search activity
+    if (!empty($search_keyword) || !empty($category_filter) || !empty($year_filter)) {
+        logSearch($search_keyword, $category_filter, $year_filter, $total_papers);
+    }
 
     // Get papers for current page
     $sql = "SELECT ps.*, 

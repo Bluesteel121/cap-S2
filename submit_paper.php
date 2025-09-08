@@ -1,11 +1,16 @@
 <?php
 session_start();
+require_once 'user_activity_logger.php';
 
 // Check if user is logged in
 if (!isset($_SESSION['name'])) {
+    logSecurityEvent('UNAUTHORIZED_ACCESS_ATTEMPT', 'Attempt to access paper submission without login');
     header('Location: index.php');
     exit();
 }
+
+// Log page access
+logPageView('Paper Submission Form');
 
 // Include database connection
 require_once 'connect.php';
@@ -13,6 +18,7 @@ require_once 'connect.php';
 // Handle form submission
 if ($_POST) {
     try {
+        logActivity('PAPER_SUBMISSION_ATTEMPT', "User: {$_SESSION['name']}, Title: {$_POST['paper_title']}");
 
         // Handle file upload
         $file_path = null;
@@ -20,15 +26,31 @@ if ($_POST) {
             $upload_dir = 'uploads/papers/';
             if (!file_exists($upload_dir)) {
                 mkdir($upload_dir, 0777, true);
+                logSystemEvent('DIRECTORY_CREATED', "Created upload directory: $upload_dir");
             }
             
-            $file_extension = pathinfo($_FILES['paper_file']['name'], PATHINFO_EXTENSION);
+            // Validate file type
+            $allowed_types = ['pdf', 'doc', 'docx'];
+            $file_extension = strtolower(pathinfo($_FILES['paper_file']['name'], PATHINFO_EXTENSION));
+            if (!in_array($file_extension, $allowed_types)) {
+                throw new Exception("Invalid file type. Only PDF, DOC, and DOCX files are allowed.");
+            }
+
+            // Validate file size (10MB limit)
+            $max_size = 10 * 1024 * 1024; // 10MB in bytes
+            if ($_FILES['paper_file']['size'] > $max_size) {
+                throw new Exception("File size exceeds 10MB limit.");
+            }
+            
+            $original_filename = pathinfo($_FILES['paper_file']['name'], PATHINFO_FILENAME);
             $file_name = uniqid() . '_' . time() . '.' . $file_extension;
             $file_path = $upload_dir . $file_name;
             
             if (!move_uploaded_file($_FILES['paper_file']['tmp_name'], $file_path)) {
                 throw new Exception("Failed to upload file");
             }
+
+            logActivity('FILE_UPLOADED', "Original: {$_FILES['paper_file']['name']}, Stored: $file_name, Size: " . $_FILES['paper_file']['size'] . " bytes");
         }
 
         // Insert paper submission into database using MySQLi
@@ -58,6 +80,16 @@ if ($_POST) {
         );
 
         if ($stmt->execute()) {
+            $paper_id = $conn->insert_id;
+            logPaperSubmission($_POST['paper_title'], $_POST['author_name'], true);
+            logActivity('PAPER_SUBMITTED_SUCCESS', "Paper ID: $paper_id, Title: {$_POST['paper_title']}, Research Type: {$_POST['research_type']}");
+            
+            // Log submission metrics
+            $metrics_sql = "INSERT INTO paper_metrics (paper_id, metric_type, user_name, metric_date) VALUES (?, 'submission', ?, NOW())";
+            $metrics_stmt = $conn->prepare($metrics_sql);
+            $metrics_stmt->bind_param("is", $paper_id, $_SESSION['name']);
+            $metrics_stmt->execute();
+            
             $success_message = "Paper submitted successfully! Your submission is now under review.";
         } else {
             throw new Exception("Failed to submit paper: " . $conn->error);
@@ -66,6 +98,8 @@ if ($_POST) {
         $stmt->close();
         
     } catch(Exception $e) {
+        logPaperSubmission($_POST['paper_title'] ?? 'Unknown', $_POST['author_name'] ?? 'Unknown', false);
+        logError($e->getMessage(), 'PAPER_SUBMISSION_ERROR');
         $error_message = "Error: " . $e->getMessage();
     }
 }
@@ -114,7 +148,7 @@ if ($_POST) {
         <div class="bg-white rounded-lg shadow-lg p-8">
             <h2 class="text-2xl font-bold text-[#115D5B] mb-6">Submit Your Research Paper</h2>
             
-            <form action="" method="POST" enctype="multipart/form-data" class="space-y-6">
+            <form action="" method="POST" enctype="multipart/form-data" class="space-y-6" id="paperSubmissionForm">
                 <!-- Author Information -->
                 <div class="border-b pb-6">
                     <h3 class="text-lg font-semibold text-gray-800 mb-4">Author Information</h3>
@@ -124,7 +158,140 @@ if ($_POST) {
                             <label for="author_name" class="block text-sm font-medium text-gray-700 mb-2">
                                 Primary Author Name *
                             </label>
-                            <input type="text" id="author_name" name="author_name" required
+                            <input type="text" id="keywords" name="keywords" required
+                                placeholder="Separate keywords with commas (e.g., pineapple, farming, agriculture)"
+                                class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-[#115D5B] focus:border-transparent">
+                        </div>
+
+                        <div>
+                            <label for="abstract" class="block text-sm font-medium text-gray-700 mb-2">
+                                Abstract *
+                            </label>
+                            <textarea id="abstract" name="abstract" rows="6" required
+                                placeholder="Provide a brief summary of your research paper..."
+                                class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-[#115D5B] focus:border-transparent"></textarea>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- File Upload -->
+                <div class="border-b pb-6">
+                    <h3 class="text-lg font-semibold text-gray-800 mb-4">Paper File</h3>
+                    
+                    <div>
+                        <label for="paper_file" class="block text-sm font-medium text-gray-700 mb-2">
+                            Upload Paper File * (PDF, DOC, DOCX - Max 10MB)
+                        </label>
+                        <input type="file" id="paper_file" name="paper_file" 
+                            accept=".pdf,.doc,.docx" required
+                            class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-[#115D5B] focus:border-transparent">
+                        <p class="text-sm text-gray-500 mt-1">
+                            Accepted formats: PDF, DOC, DOCX. Maximum file size: 10MB
+                        </p>
+                    </div>
+                </div>
+
+                <!-- Submission Guidelines -->
+                <div class="bg-blue-50 p-4 rounded-lg">
+                    <h4 class="font-semibold text-blue-800 mb-2">
+                        <i class="fas fa-info-circle mr-2"></i>Submission Guidelines
+                    </h4>
+                    <ul class="text-sm text-blue-700 space-y-1">
+                        <li>• Ensure your paper follows academic formatting standards</li>
+                        <li>• All research must be original and unpublished</li>
+                        <li>• Papers will undergo peer review process</li>
+                        <li>• You will receive updates on your submission status via email</li>
+                    </ul>
+                </div>
+
+                <!-- Submit Button -->
+                <div class="pt-6">
+                    <button type="submit" 
+                        class="w-full bg-[#115D5B] hover:bg-[#0d4a47] text-white font-semibold py-3 px-6 rounded-md transition-colors">
+                        <i class="fas fa-paper-plane mr-2"></i>
+                        Submit Paper for Review
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Footer -->
+    <footer class="bg-[#115D5B] text-white text-center py-4 mt-12">
+        <p>&copy; 2025 Camarines Norte Lowland Rainfed Research Station. All rights reserved.</p>
+    </footer>
+
+    <script>
+        // File size validation
+        document.getElementById('paper_file').addEventListener('change', function() {
+            const file = this.files[0];
+            if (file) {
+                const maxSize = 10 * 1024 * 1024; // 10MB in bytes
+                if (file.size > maxSize) {
+                    alert('File size must be less than 10MB. Please choose a smaller file.');
+                    this.value = '';
+                    logActivityClient('FILE_SIZE_VALIDATION_ERROR', 'File too large: ' + file.size + ' bytes');
+                } else {
+                    logActivityClient('FILE_SELECTED', 'File: ' + file.name + ', Size: ' + file.size + ' bytes, Type: ' + file.type);
+                }
+            }
+        });
+
+        // Form field change logging
+        document.getElementById('research_type').addEventListener('change', function() {
+            if (this.value) {
+                logActivityClient('RESEARCH_TYPE_SELECTED', 'Type: ' + this.value);
+            }
+        });
+
+        // Form submission logging
+        document.getElementById('paperSubmissionForm').addEventListener('submit', function(e) {
+            const title = document.getElementById('paper_title').value;
+            const author = document.getElementById('author_name').value;
+            const researchType = document.getElementById('research_type').value;
+            const file = document.getElementById('paper_file').files[0];
+            
+            if (!file) {
+                e.preventDefault();
+                alert('Please select a file to upload.');
+                logActivityClient('SUBMISSION_VALIDATION_ERROR', 'No file selected');
+                return false;
+            }
+            
+            // Log the submission attempt
+            logActivityClient('PAPER_SUBMISSION_FORM_SUBMIT', 
+                'Title: ' + title + ', Author: ' + author + ', Type: ' + researchType + ', File: ' + file.name);
+        });
+
+        // Client-side logging function
+        function logActivityClient(action, details) {
+            fetch('log_activity.php', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/x-www-form-urlencoded',
+                },
+                body: 'action=' + encodeURIComponent(action) + '&details=' + encodeURIComponent(details)
+            }).catch(error => console.error('Logging error:', error));
+        }
+
+        // Log form interactions
+        ['author_name', 'paper_title', 'keywords'].forEach(fieldId => {
+            document.getElementById(fieldId).addEventListener('blur', function() {
+                if (this.value.length > 10) { // Only log substantial input
+                    logActivityClient('FORM_FIELD_COMPLETED', 'Field: ' + fieldId + ', Length: ' + this.value.length);
+                }
+            });
+        });
+
+        // Track time spent on page
+        const startTime = Date.now();
+        window.addEventListener('beforeunload', function() {
+            const timeSpent = Math.round((Date.now() - startTime) / 1000);
+            logActivityClient('PAGE_TIME_SPENT', 'Submit Paper Form: ' + timeSpent + ' seconds');
+        });
+    </script>
+</body>
+</html> type="text" id="author_name" name="author_name" required
                                 class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-[#115D5B] focus:border-transparent">
                         </div>
                         
