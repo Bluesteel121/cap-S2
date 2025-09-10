@@ -47,7 +47,17 @@
         <p class="md:hidden">
           <a href="mailto:dacnlrrs@gmail.com" class="underline">Email</a>
         </p>
-        <p class="hidden md:block">Email: <a href="mailto:dacnlrrs@gmail.com" class="underline">dacnlrrs@gmail.com</a></p>
+        <p class="md:hidden">
+          <a href="mailto:dacnlrrs@gmail.com" class="underline">Email</a>
+        </p>
+        <p class="hidden md:block">
+          Email: 
+          <a href="https://mail.google.com/mail/?view=cm&fs=1&to=dacnlrrs@gmail.com" 
+             target="_blank" 
+             class="underline">
+            dacnlrrs@gmail.com
+          </a>
+        </p>
         
         <p>0951 609 9599</p>
       </div>
