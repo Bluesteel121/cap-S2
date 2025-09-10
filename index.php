@@ -120,7 +120,7 @@
     <div class="max-w-7xl mx-auto grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-6 px-4">
       
       <!-- Card Component -->
-      <a href="#" class="text-center bg-white rounded-lg p-6 shadow hover:shadow-md transition">
+      <a href="About.php" class="text-center bg-white rounded-lg p-6 shadow hover:shadow-md transition">
         <div class="bg-gray-200 p-4 rounded-full w-20 h-20 mx-auto flex items-center justify-center mb-3">
           <img src="Images/About CN.png" alt="About CNLRRS" class="h-10" />
         </div>
