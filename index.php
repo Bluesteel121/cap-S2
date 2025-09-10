@@ -27,7 +27,7 @@
         </span>
       </h1>
     </div>
-
+ 
     <!-- Partner Logos -->
     <div class="flex items-center space-x-1 sm:space-x-2 md:space-x-4 flex-shrink-0">
       <img src="Images/Ph.png" alt="Philippines Logo" class="h-8 sm:h-12 md:h-16 lg:h-20 xl:h-24 object-contain"/>
@@ -76,7 +76,7 @@
         <div class="flex items-center gap-6 font-bold">
           <a href="index.php" class="hover:underline">Home</a>
           <a href="#" class="hover:underline">Our Services</a>
-          <a href="#" class="hover:underline">About Us</a>
+          <a href="About.php" class="hover:underline">About Us</a>
         </div>
 
         <!-- Login -->
