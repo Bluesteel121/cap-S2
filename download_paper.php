@@ -9,6 +9,7 @@ if (!isset($_GET['id']) || !is_numeric($_GET['id'])) {
 }
 
 $paper_id = (int)$_GET['id'];
+$view_mode = isset($_GET['view']) ? true : false;
 
 // Get paper details
 $sql = "SELECT * FROM paper_submissions WHERE id = ? AND status IN ('approved', 'published')";
@@ -30,31 +31,33 @@ if (!$paper['file_path'] || !file_exists($paper['file_path'])) {
     exit('Paper file not found');
 }
 
-// Log download metric
+// Log download or view metric
 $user_id = isset($_SESSION['user_id']) ? $_SESSION['user_id'] : null;
 $ip_address = $_SERVER['REMOTE_ADDR'];
+$metric_type = $view_mode ? 'view' : 'download';
 
-$metric_sql = "INSERT INTO paper_metrics (paper_id, metric_type, user_id, ip_address, created_at) VALUES (?, 'download', ?, ?, NOW())";
+$metric_sql = "INSERT INTO paper_metrics (paper_id, metric_type, user_id, ip_address, created_at) VALUES (?, ?, ?, ?, NOW())";
 $metric_stmt = $conn->prepare($metric_sql);
-$metric_stmt->bind_param('iis', $paper_id, $user_id, $ip_address);
+$metric_stmt->bind_param('isis', $paper_id, $metric_type, $user_id, $ip_address);
 $metric_stmt->execute();
 
 // Log user activity if logged in
 if ($user_id && isset($_SESSION['username'])) {
+    $activity_type = $view_mode ? 'view_paper' : 'download_paper';
     $activity_sql = "INSERT INTO user_activity_logs (user_id, username, activity_type, activity_description, ip_address, paper_id, created_at) 
-                     VALUES (?, ?, 'download_paper', ?, ?, ?, NOW())";
+                     VALUES (?, ?, ?, ?, ?, ?, NOW())";
     $activity_stmt = $conn->prepare($activity_sql);
-    $description = "Downloaded paper: " . $paper['paper_title'];
-    $activity_stmt->bind_param('isssi', $user_id, $_SESSION['username'], $description, $ip_address, $paper_id);
+    $description = ($view_mode ? "Viewed paper: " : "Downloaded paper: ") . $paper['paper_title'];
+    $activity_stmt->bind_param('issssi', $user_id, $_SESSION['username'], $activity_type, $description, $ip_address, $paper_id);
     $activity_stmt->execute();
 }
 
-// Prepare file for download
+// Prepare file for download/view
 $file_path = $paper['file_path'];
 $file_name = basename($file_path);
 $file_extension = strtolower(pathinfo($file_name, PATHINFO_EXTENSION));
 
-// Create a clean filename for download
+// Create a clean filename
 $clean_title = preg_replace('/[^a-zA-Z0-9\s]/', '', $paper['paper_title']);
 $clean_title = preg_replace('/\s+/', '_', trim($clean_title));
 $download_name = substr($clean_title, 0, 50) . '.' . $file_extension;
@@ -79,12 +82,23 @@ if (ob_get_level()) {
     ob_end_clean();
 }
 
-// Set headers for file download
+// Set headers
 header('Content-Type: ' . $content_type);
-header('Content-Disposition: attachment; filename="' . $download_name . '"');
 header('Content-Length: ' . filesize($file_path));
-header('Cache-Control: private, max-age=0, must-revalidate');
-header('Pragma: public');
+
+if ($view_mode) {
+    // For viewing (especially PDFs in browser)
+    header('Content-Disposition: inline; filename="' . $download_name . '"');
+    header('Cache-Control: public, max-age=3600');
+    header('Pragma: public');
+} else {
+    // For downloading (your existing logic)
+    header('Content-Disposition: attachment; filename="' . $download_name . '"');
+    header('Cache-Control: private, max-age=0, must-revalidate');
+    header('Pragma: public');
+}
+
+header('Expires: 0');
 
 // Output file
 readfile($file_path);
