@@ -27,7 +27,7 @@
         </span>
       </h1>
     </div>
-
+ 
     <!-- Partner Logos -->
     <div class="flex items-center space-x-1 sm:space-x-2 md:space-x-4 flex-shrink-0">
       <img src="Images/Ph.png" alt="Philippines Logo" class="h-8 sm:h-12 md:h-16 lg:h-20 xl:h-24 object-contain"/>
@@ -47,7 +47,17 @@
         <p class="md:hidden">
           <a href="mailto:dacnlrrs@gmail.com" class="underline">Email</a>
         </p>
-        <p class="hidden md:block">Email: <a href="mailto:dacnlrrs@gmail.com" class="underline">dacnlrrs@gmail.com</a></p>
+        <p class="md:hidden">
+          <a href="mailto:dacnlrrs@gmail.com" class="underline">Email</a>
+        </p>
+        <p class="hidden md:block">
+          Email: 
+          <a href="https://mail.google.com/mail/?view=cm&fs=1&to=dacnlrrs@gmail.com" 
+             target="_blank" 
+             class="underline">
+            dacnlrrs@gmail.com
+          </a>
+        </p>
         
         <p>0951 609 9599</p>
       </div>
@@ -76,7 +86,7 @@
         <div class="flex items-center gap-6 font-bold">
           <a href="index.php" class="hover:underline">Home</a>
           <a href="#" class="hover:underline">Our Services</a>
-          <a href="#" class="hover:underline">About Us</a>
+          <a href="About.php" class="hover:underline">About Us</a>
         </div>
 
         <!-- Login -->
@@ -120,7 +130,7 @@
     <div class="max-w-7xl mx-auto grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-6 px-4">
       
       <!-- Card Component -->
-      <a href="#" class="text-center bg-white rounded-lg p-6 shadow hover:shadow-md transition">
+      <a href="About.php" class="text-center bg-white rounded-lg p-6 shadow hover:shadow-md transition">
         <div class="bg-gray-200 p-4 rounded-full w-20 h-20 mx-auto flex items-center justify-center mb-3">
           <img src="Images/About CN.png" alt="About CNLRRS" class="h-10" />
         </div>
