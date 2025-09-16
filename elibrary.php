@@ -261,7 +261,10 @@ $is_searching = !empty($search_keyword) || !empty($category_filter) || !empty($y
                     <div class="border-b border-gray-200 pb-6 <?php echo $index === count($papers) - 1 ? 'border-b-0 pb-0' : ''; ?>">
                         <div class="flex justify-between items-start mb-3">
                             <h3 class="text-xl font-semibold text-[#115D5B] mb-2 flex-1">
-                                <?php echo htmlspecialchars($paper['paper_title']); ?>
+                                <a href="research_details.php?id=<?php echo $paper['id']; ?>" 
+                                   class="hover:text-[#0e4e4c] hover:underline transition-colors cursor-pointer block">
+                                    <?php echo htmlspecialchars($paper['paper_title']); ?>
+                                </a>
                             </h3>
                             <div class="ml-4">
                                 <span class="px-3 py-1 text-xs rounded-full <?php echo $paper['status'] === 'published' ? 'bg-green-100 text-green-800' : 'bg-blue-100 text-blue-800'; ?>">
@@ -298,6 +301,10 @@ $is_searching = !empty($search_keyword) || !empty($category_filter) || !empty($y
                             </div>
                             
                             <div class="flex items-center space-x-3">
+                                <a href="research_details.php?id=<?php echo $paper['id']; ?>" 
+                                   class="text-[#115D5B] hover:text-[#0e4e4c] font-medium text-sm px-3 py-1 rounded-md hover:bg-blue-50 transition-colors">
+                                    <i class="fas fa-info-circle mr-1"></i>Details
+                                </a>
                                 <button onclick="showAbstract(<?php echo $paper['id']; ?>)" 
                                         class="text-blue-600 hover:text-blue-800 font-medium text-sm px-3 py-1 rounded-md hover:bg-blue-50 transition-colors">
                                     <i class="fas fa-eye mr-1"></i>Abstract
@@ -406,7 +413,12 @@ $is_searching = !empty($search_keyword) || !empty($category_filter) || !empty($y
             <div class="space-y-6">
                 <?php foreach ($featured_papers as $index => $paper): ?>
                 <div class="<?php echo $index < count($featured_papers) - 1 ? 'border-b border-gray-200 pb-6' : ''; ?>">
-                    <h3 class="text-xl font-semibold text-yellow-600 mb-2"><?php echo htmlspecialchars($paper['paper_title']); ?></h3>
+                    <h3 class="text-xl font-semibold text-yellow-600 mb-2">
+                        <a href="research_details.php?id=<?php echo $paper['id']; ?>" 
+                           class="hover:text-yellow-700 hover:underline transition-colors">
+                            <?php echo htmlspecialchars($paper['paper_title']); ?>
+                        </a>
+                    </h3>
                     <div class="flex items-center space-x-2 text-gray-600 mb-2">
                         <span>Authors: <?php echo htmlspecialchars($paper['author_name']); ?><?php if ($paper['co_authors']): ?>, <?php echo htmlspecialchars($paper['co_authors']); ?><?php endif; ?></span>
                         <span>•</span>
@@ -429,6 +441,7 @@ $is_searching = !empty($search_keyword) || !empty($category_filter) || !empty($y
                         <?php endif; ?>
                     </div>
                     <div class="flex items-center space-x-4">
+                        <a href="research_details.php?id=<?php echo $paper['id']; ?>" class="text-[#115D5B] hover:text-[#0e4e4c] font-medium">View Details</a>
                         <button onclick="showAbstract(<?php echo $paper['id']; ?>)" class="text-blue-600 hover:text-blue-800 font-medium">Abstract</button>
                         <?php if ($paper['file_path'] && file_exists($paper['file_path'])): ?>
                         <a href="download_paper.php?id=<?php echo $paper['id']; ?>" class="text-green-600 hover:text-green-800 font-medium">Download PDF</a>
@@ -579,16 +592,29 @@ $is_searching = !empty($search_keyword) || !empty($category_filter) || !empty($y
             document.getElementById('abstractContent').innerHTML = '<p>Loading abstract...</p>';
             document.getElementById('abstractModal').classList.remove('hidden');
             
-            // Here you would make an AJAX call to fetch the full abstract
+            // AJAX call to fetch the full abstract
             fetch(`get_abstract.php?id=${paperId}`)
-               .then(response => response.json())
+                .then(response => response.json())
                 .then(data => {
-                    document.getElementById('abstractContent').innerHTML = `
-                       <h4 class="font-semibold mb-2">${data.title}</h4>
-                        <p class="text-sm text-gray-600 mb-3">Authors: ${data.authors}</p>
-                        <p class="leading-relaxed">${data.abstract}</p>
-                     `;
-                 });
+                    if (data.error) {
+                        document.getElementById('abstractContent').innerHTML = `<p class="text-red-600">${data.error}</p>`;
+                    } else {
+                        document.getElementById('abstractContent').innerHTML = `
+                            <h4 class="font-semibold mb-2">${data.title}</h4>
+                            <p class="text-sm text-gray-600 mb-3">Authors: ${data.authors}</p>
+                            <p class="leading-relaxed mb-4">${data.abstract}</p>
+                            <div class="flex justify-end">
+                                <a href="research_details.php?id=${paperId}" 
+                                   class="bg-[#115D5B] hover:bg-[#0e4e4c] text-white px-4 py-2 rounded-lg text-sm">
+                                    View Full Details
+                                </a>
+                            </div>
+                        `;
+                    }
+                })
+                .catch(error => {
+                    document.getElementById('abstractContent').innerHTML = '<p class="text-red-600">Error loading abstract.</p>';
+                });
         }
 
         function closeAbstract() {
