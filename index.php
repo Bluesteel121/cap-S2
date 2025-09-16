@@ -111,9 +111,16 @@
     <h2 class="text-4xl md:text-5xl font-bold text-[#103635] text-outline-white leading-tight">
       Welcome to CNLRRS Research Library
     </h2>
-    <p class="font-bold mt-4 text-lg md:text-xl max-w-2xl text-[#103635] text-outline-white">
-      Access the latest research and publication about Queen Pineapple Varieties, cultivation, health benefits, and more.
-    </p>
+    <p class="font-bold mt-4 text-lg md:text-xl max-w-2xl text-[#103635]" 
+   style="text-shadow:
+      -1px -1px 0 white,
+       1px -1px 0 white,
+      -1px  1px 0 white,
+       1px  1px 0 white;">
+  Access the latest research and publication about Queen Pineapple Varieties, 
+  cultivation, health benefits, and more.
+</p>
+
     <div class="mt-6 flex gap-4">
   <a href="elibrary.php" class="bg-[#1A4D3A] text-white px-6 py-3 rounded-md font-semibold border border-white hover:bg-[#16663F] transition rounded-lg">
     Browse Research
