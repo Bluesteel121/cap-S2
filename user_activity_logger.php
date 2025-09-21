@@ -200,36 +200,5 @@ function cleanOldLogs($days_to_keep = 90) {
     return true;
 }
 
-// Example usage integration points for your existing files:
-/*
 
-// In userlogin.php - after successful login:
-require_once 'user_activity_logger.php';
-logLogin($username, true, 'user');
-
-// In userlogin.php - after failed login:
-logLogin($username, false, 'user');
-
-// In usersignup.php - after successful registration:
-logRegistration($username, true);
-
-// In submit_paper.php - after successful submission:
-logPaperSubmission($_POST['paper_title'], $_POST['author_name'], true);
-
-// In loggedin_index.php - on page load:
-logPageView('Research Library Dashboard');
-
-// In loggedin_index.php - when performing search:
-logSearch($search_keyword, $category_filter, $year_filter, $total_papers);
-
-// For paper downloads (create download_paper.php):
-logPaperDownload($paper_id, $paper_title);
-
-// For paper views:
-logPaperView($paper_id, $paper_title);
-
-// For logout:
-logLogout($_SESSION['name']);
-
-*/
 ?>

@@ -7,8 +7,13 @@ if (!isset($_SESSION['username']) || $_SESSION['role'] !== 'admin') {
     exit();
 }
 
-// Include database connection
+// Include required files
 require_once 'connect.php';
+require_once 'email_config.php';
+require_once 'user_activity_logger.php';
+
+// Initialize email templates
+initializeDefaultEmailTemplates($conn);
 
 // Handle paper status updates
 if ($_POST && isset($_POST['action'])) {
@@ -33,21 +38,77 @@ if ($_POST && isset($_POST['action'])) {
     }
     
     if ($new_status) {
-        $sql = "UPDATE paper_submissions SET 
-                status = ?, 
-                reviewer_comments = ?, 
-                reviewed_by = ?, 
-                review_date = NOW() 
-                WHERE id = ?";
-        $stmt = $conn->prepare($sql);
-        $stmt->bind_param("sssi", $new_status, $comments, $_SESSION['username'], $paper_id);
+        // Get paper details before updating
+        $paper_sql = "SELECT * FROM paper_submissions WHERE id = ?";
+        $paper_stmt = $conn->prepare($paper_sql);
+        $paper_stmt->bind_param("i", $paper_id);
+        $paper_stmt->execute();
+        $paper_result = $paper_stmt->get_result();
+        $paper_data = $paper_result->fetch_assoc();
         
-        if ($stmt->execute()) {
-            $success_message = "Paper status updated successfully!";
+        if ($paper_data) {
+            // Update paper status
+            $sql = "UPDATE paper_submissions SET 
+                    status = ?, 
+                    reviewer_comments = ?, 
+                    reviewed_by = ?, 
+                    review_date = NOW() 
+                    WHERE id = ?";
+            $stmt = $conn->prepare($sql);
+            $stmt->bind_param("sssi", $new_status, $comments, $_SESSION['username'], $paper_id);
+            
+            if ($stmt->execute()) {
+                // Log the review action
+                logActivity('PAPER_REVIEW_ACTION', "Paper ID: $paper_id, Status: $new_status, Admin: {$_SESSION['username']}");
+                
+                // Send email notification to the author
+                $userEmail = getUserEmail($paper_data['user_name'], $conn);
+                
+                if ($userEmail && in_array($new_status, ['approved', 'rejected', 'published'])) {
+                    // Prepare updated paper data for email
+                    $emailPaperData = array_merge($paper_data, [
+                        'reviewer_comments' => $comments,
+                        'reviewed_by' => $_SESSION['username'],
+                        'status' => $new_status
+                    ]);
+                    
+                    $emailSent = EmailService::sendPaperReviewNotification(
+                        $emailPaperData, 
+                        $userEmail, 
+                        $new_status, 
+                        $conn
+                    );
+                    
+                    if ($emailSent) {
+                        logActivity('EMAIL_REVIEW_NOTIFICATION_SENT', 
+                            "Review notification sent to: $userEmail, Paper ID: $paper_id, Status: $new_status");
+                        $success_message = "Paper status updated successfully! Email notification sent to author.";
+                    } else {
+                        logError("Failed to send review notification email to: $userEmail", 'EMAIL_SEND_FAILED');
+                        $success_message = "Paper status updated successfully! (Email notification failed to send)";
+                    }
+                } else {
+                    $success_message = "Paper status updated successfully!";
+                }
+                
+                // Log metrics
+                $metrics_sql = "INSERT INTO paper_metrics (paper_id, metric_type, user_name, metric_date, additional_data) VALUES (?, ?, ?, NOW(), ?)";
+                $metrics_stmt = $conn->prepare($metrics_sql);
+                $metric_type = 'status_change';
+                $additional_data = json_encode(['old_status' => $paper_data['status'], 'new_status' => $new_status, 'admin' => $_SESSION['username']]);
+                $metrics_stmt->bind_param("isss", $paper_id, $metric_type, $_SESSION['username'], $additional_data);
+                $metrics_stmt->execute();
+                
+            } else {
+                $error_message = "Failed to update paper status: " . $conn->error;
+                logError("Database error updating paper status: " . $conn->error, 'DB_UPDATE_FAILED');
+            }
+            $stmt->close();
         } else {
-            $error_message = "Failed to update paper status: " . $conn->error;
+            $error_message = "Paper not found.";
+            logError("Paper not found for ID: $paper_id", 'PAPER_NOT_FOUND');
         }
-        $stmt->close();
+        $paper_stmt->close();
     }
 }
 
@@ -104,6 +165,7 @@ try {
 
 } catch(Exception $e) {
     $error_message = "Database error: " . $e->getMessage();
+    logError("Database error in admin review: " . $e->getMessage(), 'DB_ERROR');
     $submissions = [];
     $stats = ['total' => 0, 'pending' => 0, 'under_review' => 0, 'approved' => 0, 'rejected' => 0, 'published' => 0];
 }
@@ -149,6 +211,9 @@ function getStatusBadge($status) {
         .action-btn:hover {
             transform: scale(1.05);
         }
+        .email-indicator {
+            animation: pulse 2s infinite;
+        }
     </style>
 </head>
 <body class="bg-gray-50 min-h-screen">
@@ -159,7 +224,7 @@ function getStatusBadge($status) {
                 <img src="Images/Logo.jpg" alt="CNLRRS Logo" class="h-12 w-auto object-contain">
                 <div>
                     <h1 class="text-xl font-bold">Paper Review Dashboard</h1>
-                    <p class="text-sm opacity-75">Admin Panel - Review Submissions</p>
+                    <p class="text-sm opacity-75">Admin Panel - Review Submissions with Email Notifications</p>
                 </div>
             </div>
             <div class="flex items-center space-x-4">
@@ -176,8 +241,13 @@ function getStatusBadge($status) {
         <!-- Success/Error Messages -->
         <?php if (isset($success_message)): ?>
             <div class="bg-green-100 border border-green-400 text-green-700 px-4 py-3 rounded mb-6">
-                <i class="fas fa-check-circle mr-2"></i>
-                <?php echo $success_message; ?>
+                <div class="flex items-center">
+                    <i class="fas fa-check-circle mr-2"></i>
+                    <div>
+                        <p class="font-semibold">Success!</p>
+                        <p><?php echo $success_message; ?></p>
+                    </div>
+                </div>
             </div>
         <?php endif; ?>
 
@@ -187,6 +257,20 @@ function getStatusBadge($status) {
                 <?php echo $error_message; ?>
             </div>
         <?php endif; ?>
+
+        <!-- Email System Status -->
+        <div class="bg-blue-50 border border-blue-200 text-blue-800 px-4 py-3 rounded mb-6">
+            <div class="flex items-center">
+                <i class="fas fa-envelope-open email-indicator mr-3"></i>
+                <div>
+                    <p class="font-semibold">Email Notifications Active</p>
+                    <p class="text-sm">Authors automatically receive email updates when paper status changes</p>
+                    <a href="admin_email_templates.php" class="text-blue-600 hover:text-blue-800 text-sm underline">
+                        Manage Email Templates
+                    </a>
+                </div>
+            </div>
+        </div>
 
         <!-- Statistics Cards -->
         <div class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4 mb-8">
@@ -275,9 +359,14 @@ function getStatusBadge($status) {
                                         <h4 class="text-lg font-semibold text-gray-900 truncate">
                                             <?php echo htmlspecialchars($paper['paper_title']); ?>
                                         </h4>
-                                        <span class="status-badge inline-flex px-3 py-1 text-xs font-semibold rounded-full border <?php echo getStatusBadge($paper['status']); ?> ml-2">
-                                            <?php echo ucfirst(str_replace('_', ' ', $paper['status'])); ?>
-                                        </span>
+                                        <div class="flex items-center space-x-2 ml-2">
+                                            <span class="status-badge inline-flex px-3 py-1 text-xs font-semibold rounded-full border <?php echo getStatusBadge($paper['status']); ?>">
+                                                <?php echo ucfirst(str_replace('_', ' ', $paper['status'])); ?>
+                                            </span>
+                                            <?php if ($paper['reviewer_comments'] || $paper['review_date']): ?>
+                                                <i class="fas fa-envelope text-green-600" title="Email notifications sent"></i>
+                                            <?php endif; ?>
+                                        </div>
                                     </div>
                                     
                                     <div class="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm text-gray-600">
@@ -293,6 +382,7 @@ function getStatusBadge($status) {
                                             <p><strong>Submitted:</strong> <?php echo date('M j, Y g:i A', strtotime($paper['submission_date'])); ?></p>
                                             <?php if ($paper['reviewed_by']): ?>
                                                 <p><strong>Reviewed by:</strong> <?php echo htmlspecialchars($paper['reviewed_by']); ?></p>
+                                                <p><strong>Review date:</strong> <?php echo $paper['review_date'] ? date('M j, Y', strtotime($paper['review_date'])) : 'N/A'; ?></p>
                                             <?php endif; ?>
                                         </div>
                                     </div>
@@ -302,7 +392,7 @@ function getStatusBadge($status) {
                                     </div>
                                     
                                     <?php if ($paper['reviewer_comments']): ?>
-                                        <div class="mt-3 p-3 bg-gray-50 rounded-md">
+                                        <div class="mt-3 p-3 bg-gray-50 rounded-md border-l-4 border-blue-400">
                                             <p class="text-sm"><strong>Review Comments:</strong></p>
                                             <p class="text-sm text-gray-700 mt-1"><?php echo htmlspecialchars($paper['reviewer_comments']); ?></p>
                                         </div>
@@ -325,7 +415,7 @@ function getStatusBadge($status) {
                                     
                                     <button onclick="reviewPaper(<?php echo $paper['id']; ?>, '<?php echo addslashes($paper['paper_title']); ?>')" 
                                         class="action-btn bg-[#115D5B] hover:bg-[#0d4a47] text-white px-4 py-2 rounded-md text-sm transition">
-                                        <i class="fas fa-gavel mr-2"></i>Review
+                                        <i class="fas fa-gavel mr-2"></i>Review & Email
                                     </button>
                                 </div>
                             </div>
@@ -358,42 +448,64 @@ function getStatusBadge($status) {
         <div class="bg-white rounded-lg shadow-xl max-w-2xl w-full mx-4">
             <div class="p-6 border-b">
                 <div class="flex justify-between items-center">
-                    <h3 class="text-xl font-semibold text-gray-800">Review Paper</h3>
+                    <h3 class="text-xl font-semibold text-gray-800">
+                        <i class="fas fa-envelope mr-2"></i>Review Paper & Send Email
+                    </h3>
                     <button onclick="closeReviewModal()" class="text-gray-400 hover:text-gray-600">
                         <i class="fas fa-times text-xl"></i>
                     </button>
                 </div>
             </div>
-            <form method="POST" class="p-6">
+            <form method="POST" class="p-6" onsubmit="return confirmReview(event)">
                 <input type="hidden" name="paper_id" id="reviewPaperId">
                 
                 <div class="mb-4">
                     <h4 class="font-semibold text-gray-800 mb-2" id="reviewPaperTitle"></h4>
                 </div>
 
+                <div class="bg-yellow-50 border border-yellow-200 p-4 rounded-lg mb-6">
+                    <div class="flex items-start">
+                        <i class="fas fa-info-circle text-yellow-600 mr-2 mt-1"></i>
+                        <div class="text-sm text-yellow-800">
+                            <p class="font-semibold">Email Notification</p>
+                            <p>The author will automatically receive an email notification when you approve, reject, or publish this paper.</p>
+                        </div>
+                    </div>
+                </div>
+
                 <div class="mb-6">
-                    <label class="block text-sm font-medium text-gray-700 mb-2">Review Comments</label>
-                    <textarea name="comments" rows="4" 
+                    <label class="block text-sm font-medium text-gray-700 mb-2">
+                        Review Comments
+                        <span class="text-red-500">*</span>
+                    </label>
+                    <textarea name="comments" rows="4" required
                         class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-[#115D5B]"
-                        placeholder="Enter your review comments here..."></textarea>
+                        placeholder="Enter your review comments here... These will be included in the email notification."></textarea>
+                    <p class="text-xs text-gray-500 mt-1">
+                        Your comments will be included in the email notification to the author.
+                    </p>
                 </div>
 
                 <div class="flex flex-wrap gap-3">
                     <button type="submit" name="action" value="review" 
                         class="bg-blue-500 hover:bg-blue-600 text-white px-4 py-2 rounded-md transition">
                         <i class="fas fa-eye mr-2"></i>Set Under Review
+                        <span class="text-xs block">(No email sent)</span>
                     </button>
                     <button type="submit" name="action" value="approve" 
                         class="bg-green-500 hover:bg-green-600 text-white px-4 py-2 rounded-md transition">
                         <i class="fas fa-check mr-2"></i>Approve
+                        <span class="text-xs block">& Send Email</span>
                     </button>
                     <button type="submit" name="action" value="reject" 
                         class="bg-red-500 hover:bg-red-600 text-white px-4 py-2 rounded-md transition">
                         <i class="fas fa-times mr-2"></i>Reject
+                        <span class="text-xs block">& Send Email</span>
                     </button>
                     <button type="submit" name="action" value="publish" 
                         class="bg-purple-500 hover:bg-purple-600 text-white px-4 py-2 rounded-md transition">
                         <i class="fas fa-globe mr-2"></i>Publish
+                        <span class="text-xs block">& Send Email</span>
                     </button>
                 </div>
             </form>
@@ -485,6 +597,18 @@ function getStatusBadge($status) {
                             </div>
                         </div>
                         ` : ''}
+
+                        <div class="bg-blue-50 p-4 rounded-lg border-l-4 border-blue-400">
+                            <h4 class="font-semibold text-blue-800 mb-2">
+                                <i class="fas fa-envelope mr-2"></i>Email Notification Status
+                            </h4>
+                            <p class="text-sm text-blue-700">
+                                ${paper.review_date ? 
+                                    'Email notifications have been sent to the author for status updates.' : 
+                                    'Author will receive email notifications when paper status is updated.'
+                                }
+                            </p>
+                        </div>
                     </div>
                 `;
                 document.getElementById('paperModal').classList.remove('hidden');
@@ -497,6 +621,36 @@ function getStatusBadge($status) {
             document.getElementById('reviewPaperTitle').textContent = paperTitle;
             document.getElementById('reviewModal').classList.remove('hidden');
             document.getElementById('reviewModal').classList.add('flex');
+        }
+
+        function confirmReview(event) {
+            const action = event.submitter.value;
+            const actionLabels = {
+                'approve': 'approve and notify',
+                'reject': 'reject and notify', 
+                'publish': 'publish and notify',
+                'review': 'set under review'
+            };
+            
+            const emailActions = ['approve', 'reject', 'publish'];
+            const willSendEmail = emailActions.includes(action);
+            
+            const message = willSendEmail ? 
+                `Are you sure you want to ${actionLabels[action]} this paper? An email notification will be sent to the author.` :
+                `Are you sure you want to ${actionLabels[action]} this paper?`;
+            
+            if (!confirm(message)) {
+                event.preventDefault();
+                return false;
+            }
+            
+            // Show processing state
+            const submitButton = event.submitter;
+            const originalHTML = submitButton.innerHTML;
+            submitButton.innerHTML = '<i class="fas fa-spinner fa-spin mr-2"></i>Processing...';
+            submitButton.disabled = true;
+            
+            return true;
         }
 
         function closePaperModal() {
@@ -536,9 +690,22 @@ function getStatusBadge($status) {
         // Auto-refresh page after form submission
         <?php if (isset($success_message)): ?>
             setTimeout(() => {
+                // Remove the processing state and redirect
                 window.location.href = window.location.pathname + window.location.search;
-            }, 2000);
+            }, 3000);
         <?php endif; ?>
+
+        // Auto-hide success message
+        const successMessage = document.querySelector('.bg-green-100');
+        if (successMessage) {
+            setTimeout(() => {
+                successMessage.style.transition = 'opacity 0.5s ease-out';
+                successMessage.style.opacity = '0';
+                setTimeout(() => {
+                    successMessage.remove();
+                }, 500);
+            }, 8000);
+        }
     </script>
 </body>
 </html>
