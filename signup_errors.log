@@ -50,3 +50,20 @@
 
 2025-08-27 15:39:44 - Determined address: Matnog, Basud, Camarines Norte
 2025-08-27 15:39:44 - Address validation passed.
+2025-09-21 15:27:54 - Script started.
+2025-09-21 15:27:54 - $_POST data: Array
+(
+    [username] => blue
+    [fullname] => blue
+    [contact_number] => 0982983113
+    [email] => raynesmark721@gmail.com
+    [password] => pass
+    [confirm_password] => pass
+    [birth_date] => 2025-09-04
+    [is_outside_philippines] => true
+    [province] => 
+    [general_address] => kek
+)
+
+2025-09-21 15:27:54 - Determined address: kek
+2025-09-21 15:27:54 - Address validation passed.
