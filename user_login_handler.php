@@ -1,4 +1,6 @@
 <?php
+error_reporting(E_ALL);
+ini_set('display_errors', 1);
 session_start();
 
 require_once 'connect.php';
@@ -40,14 +42,14 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
                 exit();
             } else {
                 // Incorrect password
-                logError("Failed user login attempt: Incorrect password for user '{$username}'"); // Example logging
+                // logError("Failed user login attempt: Incorrect password for user '{$username}'"); // Example logging
                 $_SESSION['login_error'] = "Invalid username or password."; // Set error message
                 header("Location: userlogin.php"); // Redirect back to login page
                 exit();
             }
         } else {
             // User not found
-            logError("Failed user login attempt: No user found with username '{$username}'"); // Example logging
+            // logError("Failed user login attempt: No user found with username '{$username}'"); // Example logging
             $_SESSION['login_error'] = "Invalid username or password."; // Set error message
             header("Location: userlogin.php"); // Redirect back to login page
             exit();
@@ -56,7 +58,7 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
         $stmt->close();
     } else {
         // Error preparing the statement
-        logError("Database error during user login: " . $conn->error); // Example logging
+        // logError("Database error during user login: " . $conn->error); // Example logging
         $_SESSION['login_error'] = "An internal error occurred. Please try again later."; // Set error message
         header("Location: userlogin.php"); // Redirect back to login page
         exit();
