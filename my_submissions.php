@@ -38,6 +38,22 @@ try {
     $submissions = $result->fetch_all(MYSQLI_ASSOC);
     $stmt->close();
 
+    // Debug: Add error checking for submissions
+    if (empty($submissions)) {
+        // Check if user exists in database
+        $check_sql = "SELECT COUNT(*) as count FROM paper_submissions WHERE user_name = ?";
+        $check_stmt = $conn->prepare($check_sql);
+        $check_stmt->bind_param("s", $_SESSION['name']);
+        $check_stmt->execute();
+        $check_result = $check_stmt->get_result();
+        $count = $check_result->fetch_assoc()['count'];
+        $check_stmt->close();
+        
+        if ($count == 0) {
+            $debug_message = "No submissions found for user: " . $_SESSION['name'];
+        }
+    }
+
 } catch(Exception $e) {
     $error_message = "Database error: " . $e->getMessage();
 }
@@ -77,6 +93,134 @@ function isEnhancedSubmission($submission) {
     return !empty($submission['author_email']) || !empty($submission['affiliation']) || 
            !empty($submission['methodology']) || !empty($submission['funding_source']);
 }
+
+// Function to render submission row
+function renderSubmissionRow($submission) {
+    ?>
+    <div class="submission-row p-6 transition-all duration-200">
+        <div class="flex flex-wrap lg:flex-nowrap justify-between items-start gap-4">
+            <!-- Paper Info -->
+            <div class="flex-1 min-w-0">
+                <div class="flex items-start justify-between mb-3">
+                    <div class="flex-1">
+                        <h4 class="text-lg font-semibold text-gray-900 mb-1">
+                            <?php echo htmlspecialchars($submission['paper_title']); ?>
+                            <?php if (isEnhancedSubmission($submission)): ?>
+                                <span class="enhanced-badge inline-flex items-center px-2 py-1 text-xs font-semibold rounded-full bg-blue-100 text-blue-800 ml-2">
+                                    <i class="fas fa-star mr-1"></i>Enhanced
+                                </span>
+                            <?php endif; ?>
+                        </h4>
+                        <div class="flex flex-wrap items-center gap-4 text-sm text-gray-600 mb-2">
+                            <span><strong>Type:</strong> <?php echo getResearchTypeDisplay($submission['research_type']); ?></span>
+                            <span><strong>Submitted:</strong> <?php echo date('M j, Y g:i A', strtotime($submission['submission_date'])); ?></span>
+                            <?php if ($submission['total_views'] > 0 || $submission['total_downloads'] > 0): ?>
+                                <span class="flex items-center space-x-3">
+                                    <span class="flex items-center"><i class="fas fa-eye text-blue-500 mr-1"></i><?php echo $submission['total_views']; ?></span>
+                                    <span class="flex items-center"><i class="fas fa-download text-green-500 mr-1"></i><?php echo $submission['total_downloads']; ?></span>
+                                </span>
+                            <?php endif; ?>
+                        </div>
+                    </div>
+                    <span class="inline-flex px-3 py-1 text-xs font-semibold rounded-full <?php echo getStatusBadge($submission['status']); ?>">
+                        <?php echo ucfirst(str_replace('_', ' ', $submission['status'])); ?>
+                    </span>
+                </div>
+                
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm text-gray-600">
+                    <div>
+                        <p><strong>Primary Author:</strong> <?php echo htmlspecialchars($submission['author_name']); ?></p>
+                        <?php if (!empty($submission['author_email'])): ?>
+                            <p><strong>Email:</strong> <?php echo htmlspecialchars($submission['author_email']); ?></p>
+                        <?php endif; ?>
+                        <?php if (!empty($submission['affiliation'])): ?>
+                            <p><strong>Affiliation:</strong> <?php echo htmlspecialchars($submission['affiliation']); ?></p>
+                        <?php endif; ?>
+                    </div>
+                    <div>
+                        <?php if ($submission['co_authors']): ?>
+                            <p><strong>Co-authors:</strong> <?php echo htmlspecialchars($submission['co_authors']); ?></p>
+                        <?php endif; ?>
+                        <?php if (!empty($submission['funding_source'])): ?>
+                            <p><strong>Funding:</strong> <?php echo htmlspecialchars($submission['funding_source']); ?></p>
+                        <?php endif; ?>
+                        <?php if ($submission['research_start_date'] && $submission['research_end_date']): ?>
+                            <p><strong>Research Period:</strong> 
+                               <?php echo date('M Y', strtotime($submission['research_start_date'])); ?> - 
+                               <?php echo date('M Y', strtotime($submission['research_end_date'])); ?>
+                            </p>
+                        <?php endif; ?>
+                    </div>
+                </div>
+                
+                <div class="mt-3">
+                    <p class="text-sm"><strong>Keywords:</strong> <?php echo htmlspecialchars($submission['keywords']); ?></p>
+                </div>
+                
+                <?php if ($submission['reviewer_comments']): ?>
+                    <div class="mt-4 p-4 bg-gray-50 rounded-lg border-l-4 border-blue-400">
+                        <p class="text-sm font-semibold text-gray-700 mb-1">Reviewer Comments:</p>
+                        <p class="text-sm text-gray-700"><?php echo nl2br(htmlspecialchars($submission['reviewer_comments'])); ?></p>
+                        <?php if ($submission['reviewed_by']): ?>
+                            <p class="text-xs text-gray-500 mt-2">
+                                Reviewed by: <?php echo htmlspecialchars($submission['reviewed_by']); ?>
+                                <?php if ($submission['review_date']): ?>
+                                    on <?php echo date('M j, Y', strtotime($submission['review_date'])); ?>
+                                <?php endif; ?>
+                            </p>
+                        <?php endif; ?>
+                    </div>
+                <?php endif; ?>
+            </div>
+
+            <!-- Actions -->
+            <div class="flex flex-col gap-2 min-w-40">
+                <button onclick="viewPaper(<?php echo $submission['id']; ?>)" 
+                    class="bg-blue-500 hover:bg-blue-600 text-white px-4 py-2 rounded-lg text-sm font-medium transition-all duration-200 flex items-center justify-center">
+                    <i class="fas fa-eye mr-2"></i>View Details
+                </button>
+                
+                <?php if ($submission['file_path']): ?>
+                    <a href="<?php echo htmlspecialchars($submission['file_path']); ?>" target="_blank"
+                       class="bg-green-500 hover:bg-green-600 text-white px-4 py-2 rounded-lg text-sm font-medium text-center transition-all duration-200 flex items-center justify-center">
+                        <i class="fas fa-download mr-2"></i>Download
+                    </a>
+                <?php endif; ?>
+                
+                <?php if ($submission['status'] === 'pending'): ?>
+                    <button onclick="editPaper(<?php echo $submission['id']; ?>)" 
+                        class="bg-yellow-500 hover:bg-yellow-600 text-white px-4 py-2 rounded-lg text-sm font-medium transition-all duration-200 flex items-center justify-center">
+                        <i class="fas fa-edit mr-2"></i>Edit
+                    </button>
+                <?php endif; ?>
+                
+                <?php if ($submission['status'] === 'published'): ?>
+                    <a href="view_paper.php?id=<?php echo $submission['id']; ?>" target="_blank"
+                       class="bg-purple-500 hover:bg-purple-600 text-white px-4 py-2 rounded-lg text-sm font-medium text-center transition-all duration-200 flex items-center justify-center">
+                        <i class="fas fa-external-link-alt mr-2"></i>View Published
+                    </a>
+                <?php endif; ?>
+            </div>
+        </div>
+    </div>
+    <?php
+}
+
+// Group submissions by status
+$submissionsByStatus = [
+    'pending' => [],
+    'under_review' => [],
+    'approved_published' => [],
+    'rejected' => []
+];
+
+foreach ($submissions as $submission) {
+    if ($submission['status'] === 'approved' || $submission['status'] === 'published') {
+        $submissionsByStatus['approved_published'][] = $submission;
+    } else {
+        $submissionsByStatus[$submission['status']][] = $submission;
+    }
+}
 ?>
 <!DOCTYPE html>
 <html lang="en">
@@ -101,6 +245,35 @@ function isEnhancedSubmission($submission) {
         .metric-card:hover {
             transform: scale(1.05);
         }
+        .tab-button {
+            transition: all 0.3s ease;
+            border-bottom: 3px solid transparent;
+        }
+        .tab-button.active {
+            border-bottom-color: #115D5B;
+            background-color: #f0fdfa;
+            color: #115D5B;
+        }
+        .tab-button:hover:not(.active) {
+            background-color: #f9fafb;
+        }
+        .tab-content {
+            display: none;
+        }
+        .tab-content.active {
+            display: block;
+        }
+        .status-icon {
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+            display: inline-block;
+            margin-right: 8px;
+        }
+        .status-pending { background-color: #f59e0b; }
+        .status-under_review { background-color: #3b82f6; }
+        .status-approved_published { background-color: #10b981; }
+        .status-rejected { background-color: #ef4444; }
     </style>
 </head>
 <body class="bg-gradient-to-br from-gray-50 to-blue-50 min-h-screen">
@@ -135,6 +308,14 @@ function isEnhancedSubmission($submission) {
             </div>
         <?php endif; ?>
 
+        <!-- Debug Message -->
+        <?php if (isset($debug_message)): ?>
+            <div class="bg-blue-100 border border-blue-400 text-blue-700 px-4 py-3 rounded-lg mb-6 shadow-md">
+                <i class="fas fa-info-circle mr-2"></i>
+                Debug: <?php echo $debug_message; ?>
+            </div>
+        <?php endif; ?>
+
         <!-- Welcome Message -->
         <div class="bg-white rounded-xl shadow-lg p-8 mb-8 border border-gray-100">
             <div class="flex items-center justify-between">
@@ -144,76 +325,17 @@ function isEnhancedSubmission($submission) {
                     </h2>
                     <p class="text-gray-600 text-lg">Here you can view and manage all your paper submissions with enhanced DOST-compliant features.</p>
                 </div>
-                <div class="hidden md:block">
-                    <i class="fas fa-user-graduate text-6xl text-[#115D5B] opacity-20"></i>
                 </div>
             </div>
         </div>
 
-        <!-- Submissions Summary -->
-        <?php if (!empty($submissions)): ?>
-            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-6 mb-8">
-                <?php
-                $statusCounts = array_count_values(array_column($submissions, 'status'));
-                $totalSubmissions = count($submissions);
-                $enhancedSubmissions = count(array_filter($submissions, 'isEnhancedSubmission'));
-                $totalViews = array_sum(array_column($submissions, 'total_views'));
-                $totalDownloads = array_sum(array_column($submissions, 'total_downloads'));
-                ?>
-                <div class="metric-card bg-white rounded-xl shadow-md p-6 text-center border border-gray-100">
-                    <div class="text-4xl font-bold text-[#115D5B] mb-2"><?php echo $totalSubmissions; ?></div>
-                    <div class="text-gray-600 font-medium">Total Submissions</div>
-                    <div class="text-xs text-gray-400 mt-1">All time</div>
-                </div>
-                <div class="metric-card bg-white rounded-xl shadow-md p-6 text-center border border-gray-100">
-                    <div class="text-4xl font-bold text-yellow-600 mb-2"><?php echo $statusCounts['pending'] ?? 0; ?></div>
-                    <div class="text-gray-600 font-medium">Pending Review</div>
-                    <div class="text-xs text-gray-400 mt-1">Awaiting evaluation</div>
-                </div>
-                <div class="metric-card bg-white rounded-xl shadow-md p-6 text-center border border-gray-100">
-                    <div class="text-4xl font-bold text-blue-600 mb-2"><?php echo $statusCounts['under_review'] ?? 0; ?></div>
-                    <div class="text-gray-600 font-medium">Under Review</div>
-                    <div class="text-xs text-gray-400 mt-1">Being evaluated</div>
-                </div>
-                <div class="metric-card bg-white rounded-xl shadow-md p-6 text-center border border-gray-100">
-                    <div class="text-4xl font-bold text-green-600 mb-2"><?php echo ($statusCounts['approved'] ?? 0) + ($statusCounts['published'] ?? 0); ?></div>
-                    <div class="text-gray-600 font-medium">Published</div>
-                    <div class="text-xs text-gray-400 mt-1">Available online</div>
-                </div>
-                <div class="metric-card bg-white rounded-xl shadow-md p-6 text-center border border-gray-100">
-                    <div class="text-2xl font-bold text-purple-600 mb-1"><?php echo $totalViews; ?></div>
-                    <div class="text-sm text-gray-600 font-medium mb-1">Total Views</div>
-                    <div class="text-2xl font-bold text-indigo-600"><?php echo $totalDownloads; ?></div>
-                    <div class="text-sm text-gray-600 font-medium">Downloads</div>
-                </div>
-            </div>
-
-            <!-- Enhanced vs Legacy Stats -->
-            <?php if ($enhancedSubmissions > 0): ?>
-                <div class="bg-blue-50 border border-blue-200 rounded-xl p-6 mb-8">
-                    <div class="flex items-center justify-between">
-                        <div>
-                            <h3 class="text-lg font-semibold text-blue-800">
-                                <i class="fas fa-star mr-2"></i>DOST-Compliant Submissions
-                            </h3>
-                            <p class="text-blue-700 text-sm">You have <?php echo $enhancedSubmissions; ?> enhanced submission(s) with complete DOST-compliant information</p>
-                        </div>
-                        <div class="text-right">
-                            <div class="text-3xl font-bold text-blue-600"><?php echo $enhancedSubmissions; ?></div>
-                            <div class="text-sm text-blue-600">of <?php echo $totalSubmissions; ?> enhanced</div>
-                        </div>
-                    </div>
-                </div>
-            <?php endif; ?>
-        <?php endif; ?>
-
-        <!-- Submissions List -->
+        <!-- Submissions List with Tabs -->
         <div class="bg-white rounded-xl shadow-lg overflow-hidden border border-gray-100">
             <div class="bg-gradient-to-r from-[#115D5B] to-[#0d4a47] text-white p-6">
                 <h3 class="text-xl font-semibold flex items-center">
                     <i class="fas fa-list-alt mr-3"></i>Your Research Submissions
                 </h3>
-                <p class="text-sm opacity-75 mt-1">Complete overview of all your submitted papers</p>
+                <p class="text-sm opacity-75 mt-1">Complete overview of all your submitted papers organized by status</p>
             </div>
 
             <?php if (empty($submissions)): ?>
@@ -226,115 +348,103 @@ function isEnhancedSubmission($submission) {
                     </a>
                 </div>
             <?php else: ?>
-                <div class="divide-y divide-gray-200">
-                    <?php foreach ($submissions as $submission): ?>
-                        <div class="submission-row p-6 transition-all duration-200">
-                            <div class="flex flex-wrap lg:flex-nowrap justify-between items-start gap-4">
-                                <!-- Paper Info -->
-                                <div class="flex-1 min-w-0">
-                                    <div class="flex items-start justify-between mb-3">
-                                        <div class="flex-1">
-                                            <h4 class="text-lg font-semibold text-gray-900 mb-1">
-                                                <?php echo htmlspecialchars($submission['paper_title']); ?>
-                                                <?php if (isEnhancedSubmission($submission)): ?>
-                                                    <span class="enhanced-badge inline-flex items-center px-2 py-1 text-xs font-semibold rounded-full bg-blue-100 text-blue-800 ml-2">
-                                                        <i class="fas fa-star mr-1"></i>Enhanced
-                                                    </span>
-                                                <?php endif; ?>
-                                            </h4>
-                                            <div class="flex flex-wrap items-center gap-4 text-sm text-gray-600 mb-2">
-                                                <span><strong>Type:</strong> <?php echo getResearchTypeDisplay($submission['research_type']); ?></span>
-                                                <span><strong>Submitted:</strong> <?php echo date('M j, Y g:i A', strtotime($submission['submission_date'])); ?></span>
-                                                <?php if ($submission['total_views'] > 0 || $submission['total_downloads'] > 0): ?>
-                                                    <span class="flex items-center space-x-3">
-                                                        <span class="flex items-center"><i class="fas fa-eye text-blue-500 mr-1"></i><?php echo $submission['total_views']; ?></span>
-                                                        <span class="flex items-center"><i class="fas fa-download text-green-500 mr-1"></i><?php echo $submission['total_downloads']; ?></span>
-                                                    </span>
-                                                <?php endif; ?>
-                                            </div>
-                                        </div>
-                                        <span class="inline-flex px-3 py-1 text-xs font-semibold rounded-full <?php echo getStatusBadge($submission['status']); ?>">
-                                            <?php echo ucfirst(str_replace('_', ' ', $submission['status'])); ?>
-                                        </span>
-                                    </div>
-                                    
-                                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm text-gray-600">
-                                        <div>
-                                            <p><strong>Primary Author:</strong> <?php echo htmlspecialchars($submission['author_name']); ?></p>
-                                            <?php if (!empty($submission['author_email'])): ?>
-                                                <p><strong>Email:</strong> <?php echo htmlspecialchars($submission['author_email']); ?></p>
-                                            <?php endif; ?>
-                                            <?php if (!empty($submission['affiliation'])): ?>
-                                                <p><strong>Affiliation:</strong> <?php echo htmlspecialchars($submission['affiliation']); ?></p>
-                                            <?php endif; ?>
-                                        </div>
-                                        <div>
-                                            <?php if ($submission['co_authors']): ?>
-                                                <p><strong>Co-authors:</strong> <?php echo htmlspecialchars($submission['co_authors']); ?></p>
-                                            <?php endif; ?>
-                                            <?php if (!empty($submission['funding_source'])): ?>
-                                                <p><strong>Funding:</strong> <?php echo htmlspecialchars($submission['funding_source']); ?></p>
-                                            <?php endif; ?>
-                                            <?php if ($submission['research_start_date'] && $submission['research_end_date']): ?>
-                                                <p><strong>Research Period:</strong> 
-                                                   <?php echo date('M Y', strtotime($submission['research_start_date'])); ?> - 
-                                                   <?php echo date('M Y', strtotime($submission['research_end_date'])); ?>
-                                                </p>
-                                            <?php endif; ?>
-                                        </div>
-                                    </div>
-                                    
-                                    <div class="mt-3">
-                                        <p class="text-sm"><strong>Keywords:</strong> <?php echo htmlspecialchars($submission['keywords']); ?></p>
-                                    </div>
-                                    
-                                    <?php if ($submission['reviewer_comments']): ?>
-                                        <div class="mt-4 p-4 bg-gray-50 rounded-lg border-l-4 border-blue-400">
-                                            <p class="text-sm font-semibold text-gray-700 mb-1">Reviewer Comments:</p>
-                                            <p class="text-sm text-gray-700"><?php echo nl2br(htmlspecialchars($submission['reviewer_comments'])); ?></p>
-                                            <?php if ($submission['reviewed_by']): ?>
-                                                <p class="text-xs text-gray-500 mt-2">
-                                                    Reviewed by: <?php echo htmlspecialchars($submission['reviewed_by']); ?>
-                                                    <?php if ($submission['review_date']): ?>
-                                                        on <?php echo date('M j, Y', strtotime($submission['review_date'])); ?>
-                                                    <?php endif; ?>
-                                                </p>
-                                            <?php endif; ?>
-                                        </div>
-                                    <?php endif; ?>
-                                </div>
+                <!-- Status Tabs -->
+                <div class="border-b border-gray-200">
+                    <nav class="flex space-x-8 px-6">
+                        <button class="tab-button flex items-center py-4 px-2 text-sm font-medium text-gray-500 hover:text-gray-700 active" 
+                                onclick="showTab('all')">
+                            <span class="status-icon bg-gray-400"></span>
+                            All Submissions (<?php echo count($submissions); ?>)
+                        </button>
+                        <button class="tab-button flex items-center py-4 px-2 text-sm font-medium text-gray-500 hover:text-gray-700" 
+                                onclick="showTab('pending')">
+                            <span class="status-icon status-pending"></span>
+                            Pending (<?php echo count($submissionsByStatus['pending']); ?>)
+                        </button>
+                        <button class="tab-button flex items-center py-4 px-2 text-sm font-medium text-gray-500 hover:text-gray-700" 
+                                onclick="showTab('under_review')">
+                            <span class="status-icon status-under_review"></span>
+                            Under Review (<?php echo count($submissionsByStatus['under_review']); ?>)
+                        </button>
+                        <button class="tab-button flex items-center py-4 px-2 text-sm font-medium text-gray-500 hover:text-gray-700" 
+                                onclick="showTab('approved_published')">
+                            <span class="status-icon status-approved_published"></span>
+                            Published (<?php echo count($submissionsByStatus['approved_published']); ?>)
+                        </button>
+                        <button class="tab-button flex items-center py-4 px-2 text-sm font-medium text-gray-500 hover:text-gray-700" 
+                                onclick="showTab('rejected')">
+                            <span class="status-icon status-rejected"></span>
+                            Rejected (<?php echo count($submissionsByStatus['rejected']); ?>)
+                        </button>
+                    </nav>
+                </div>
 
-                                <!-- Actions -->
-                                <div class="flex flex-col gap-2 min-w-40">
-                                    <button onclick="viewPaper(<?php echo $submission['id']; ?>)" 
-                                        class="bg-blue-500 hover:bg-blue-600 text-white px-4 py-2 rounded-lg text-sm font-medium transition-all duration-200 flex items-center justify-center">
-                                        <i class="fas fa-eye mr-2"></i>View Details
-                                    </button>
-                                    
-                                    <?php if ($submission['file_path']): ?>
-                                        <a href="<?php echo htmlspecialchars($submission['file_path']); ?>" target="_blank"
-                                           class="bg-green-500 hover:bg-green-600 text-white px-4 py-2 rounded-lg text-sm font-medium text-center transition-all duration-200 flex items-center justify-center">
-                                            <i class="fas fa-download mr-2"></i>Download
-                                        </a>
-                                    <?php endif; ?>
-                                    
-                                    <?php if ($submission['status'] === 'pending'): ?>
-                                        <button onclick="editPaper(<?php echo $submission['id']; ?>)" 
-                                            class="bg-yellow-500 hover:bg-yellow-600 text-white px-4 py-2 rounded-lg text-sm font-medium transition-all duration-200 flex items-center justify-center">
-                                            <i class="fas fa-edit mr-2"></i>Edit
-                                        </button>
-                                    <?php endif; ?>
-                                    
-                                    <?php if ($submission['status'] === 'published'): ?>
-                                        <a href="view_paper.php?id=<?php echo $submission['id']; ?>" target="_blank"
-                                           class="bg-purple-500 hover:bg-purple-600 text-white px-4 py-2 rounded-lg text-sm font-medium text-center transition-all duration-200 flex items-center justify-center">
-                                            <i class="fas fa-external-link-alt mr-2"></i>View Published
-                                        </a>
-                                    <?php endif; ?>
-                                </div>
-                            </div>
-                        </div>
+                <!-- Tab Contents -->
+                <!-- All Submissions Tab -->
+                <div id="tab-all" class="tab-content active divide-y divide-gray-200">
+                    <?php foreach ($submissions as $submission): ?>
+                        <?php renderSubmissionRow($submission); ?>
                     <?php endforeach; ?>
+                </div>
+
+                <!-- Pending Tab -->
+                <div id="tab-pending" class="tab-content divide-y divide-gray-200">
+                    <?php if (empty($submissionsByStatus['pending'])): ?>
+                        <div class="p-12 text-center">
+                            <i class="fas fa-clock text-6xl text-yellow-300 mb-4"></i>
+                            <h3 class="text-xl font-semibold text-gray-500 mb-2">No Pending Submissions</h3>
+                            <p class="text-gray-400">All your submissions have been reviewed or are currently under review.</p>
+                        </div>
+                    <?php else: ?>
+                        <?php foreach ($submissionsByStatus['pending'] as $submission): ?>
+                            <?php renderSubmissionRow($submission); ?>
+                        <?php endforeach; ?>
+                    <?php endif; ?>
+                </div>
+
+                <!-- Under Review Tab -->
+                <div id="tab-under_review" class="tab-content divide-y divide-gray-200">
+                    <?php if (empty($submissionsByStatus['under_review'])): ?>
+                        <div class="p-12 text-center">
+                            <i class="fas fa-search text-6xl text-blue-300 mb-4"></i>
+                            <h3 class="text-xl font-semibold text-gray-500 mb-2">No Submissions Under Review</h3>
+                            <p class="text-gray-400">You don't have any papers currently being reviewed by our team.</p>
+                        </div>
+                    <?php else: ?>
+                        <?php foreach ($submissionsByStatus['under_review'] as $submission): ?>
+                            <?php renderSubmissionRow($submission); ?>
+                        <?php endforeach; ?>
+                    <?php endif; ?>
+                </div>
+
+                <!-- Approved/Published Tab -->
+                <div id="tab-approved_published" class="tab-content divide-y divide-gray-200">
+                    <?php if (empty($submissionsByStatus['approved_published'])): ?>
+                        <div class="p-12 text-center">
+                            <i class="fas fa-check-circle text-6xl text-green-300 mb-4"></i>
+                            <h3 class="text-xl font-semibold text-gray-500 mb-2">No Published Papers</h3>
+                            <p class="text-gray-400">You don't have any published papers yet. Keep working on your research!</p>
+                        </div>
+                    <?php else: ?>
+                        <?php foreach ($submissionsByStatus['approved_published'] as $submission): ?>
+                            <?php renderSubmissionRow($submission); ?>
+                        <?php endforeach; ?>
+                    <?php endif; ?>
+                </div>
+
+                <!-- Rejected Tab -->
+                <div id="tab-rejected" class="tab-content divide-y divide-gray-200">
+                    <?php if (empty($submissionsByStatus['rejected'])): ?>
+                        <div class="p-12 text-center">
+                            <i class="fas fa-times-circle text-6xl text-red-300 mb-4"></i>
+                            <h3 class="text-xl font-semibold text-gray-500 mb-2">No Rejected Submissions</h3>
+                            <p class="text-gray-400">Great! None of your submissions have been rejected.</p>
+                        </div>
+                    <?php else: ?>
+                        <?php foreach ($submissionsByStatus['rejected'] as $submission): ?>
+                            <?php renderSubmissionRow($submission); ?>
+                        <?php endforeach; ?>
+                    <?php endif; ?>
                 </div>
             <?php endif; ?>
         </div>
@@ -370,6 +480,25 @@ function isEnhancedSubmission($submission) {
 
     <script>
         const submissions = <?php echo json_encode($submissions); ?>;
+
+        // Tab functionality
+        function showTab(tabName) {
+            // Hide all tab contents
+            document.querySelectorAll('.tab-content').forEach(content => {
+                content.classList.remove('active');
+            });
+            
+            // Remove active class from all tab buttons
+            document.querySelectorAll('.tab-button').forEach(button => {
+                button.classList.remove('active');
+            });
+            
+            // Show selected tab content
+            document.getElementById(`tab-${tabName}`).classList.add('active');
+            
+            // Add active class to clicked tab button
+            event.currentTarget.classList.add('active');
+        }
 
         function viewPaper(paperId) {
             const paper = submissions.find(p => p.id == paperId);

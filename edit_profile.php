@@ -24,7 +24,7 @@ $user_data = $result->fetch_assoc();
 $stmt->close();
 
 if (!$user_data) {
-    header('Location: index.php');
+    header('Location: edit_profile.php');
     exit();
 }
 

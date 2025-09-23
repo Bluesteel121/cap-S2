@@ -10,28 +10,30 @@ define('FROM_EMAIL', 'elibrarycnlrrs@gmail.com');
 define('FROM_NAME', 'CNLRRS E-Library');
 
 /**
- * Email utility class - Updated to use PHP mail() function
+ * Email utility class using PHPMailer
  */
 class EmailService {
     
     /**
-     * Send email using PHP's built-in mail() function
+     * Send email using PHPMailer
      */
     public static function sendEmail($to, $subject, $body, $isHTML = true) {
+        // For this example, we'll use PHP's mail() function
+        // In production, you should use PHPMailer or similar library
+        
         $headers = array();
         $headers[] = 'MIME-Version: 1.0';
         $headers[] = 'Content-type: text/html; charset=UTF-8';
         $headers[] = 'From: ' . FROM_NAME . ' <' . FROM_EMAIL . '>';
         $headers[] = 'Reply-To: ' . FROM_EMAIL;
         $headers[] = 'X-Mailer: PHP/' . phpversion();
-        $headers[] = 'Return-Path: ' . FROM_EMAIL;
         
         $success = mail($to, $subject, $body, implode("\r\n", $headers));
         
         // Log email activity
         if (function_exists('logActivity')) {
             $status = $success ? 'SUCCESS' : 'FAILED';
-            logActivity('EMAIL_SENT', "To: $to, Subject: $subject, Status: $status, Method: PHP_MAIL");
+            logActivity('EMAIL_SENT', "To: $to, Subject: $subject, Status: $status");
         }
         
         return $success;
@@ -58,7 +60,7 @@ class EmailService {
     /**
      * Get default email templates
      */
-    public static function getDefaultTemplate($template_type) {
+    private static function getDefaultTemplate($template_type) {
         $templates = [
             'paper_submitted' => [
                 'subject' => 'Paper Submission Received - {{paper_title}}',

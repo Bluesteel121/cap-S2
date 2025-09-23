@@ -16,7 +16,7 @@ function logAdminLoginAttempt($message) {
 }
 
 if ($_SERVER["REQUEST_METHOD"] === "POST") {
-    $username = filter_input(INPUT_POST, 'username', FILTER_SANITIZE_STRING);
+    $username = filter_input(INPUT_POST, 'username', );
     $password = filter_input(INPUT_POST, 'password'); // Removed FILTER_SANITIZE_STRING
 
     // Basic validation
@@ -69,8 +69,7 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
         exit();
     }
 
-    $stmt->close();
-    $conn->close();
+    
 
 } else {
     // If not a POST request, redirect back to login page
