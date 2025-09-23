@@ -10,9 +10,52 @@ if (!isset($_SESSION['name'])) {
 // Include database connection
 require_once 'connect.php';
 
+// Debug: Show session information
+$debug_info = [];
+$debug_info['session_name'] = $_SESSION['name'] ?? 'NOT SET';
+$debug_info['session_keys'] = array_keys($_SESSION);
+
 try {
-    // Get user's submissions using MySQLi - include new enhanced fields
-    $sql = "SELECT ps.*, 
+    // First, let's check what columns actually exist in the table
+    $columns_sql = "DESCRIBE paper_submissions";
+    $columns_result = $conn->query($columns_sql);
+    $available_columns = [];
+    while ($row = $columns_result->fetch_assoc()) {
+        $available_columns[] = $row['Field'];
+    }
+    $debug_info['available_columns'] = $available_columns;
+
+    // Build the SELECT query based on available columns
+    $select_fields = [
+        'ps.id',
+        'ps.paper_title',
+        'ps.research_type',
+        'ps.keywords',
+        'ps.author_name',
+        'ps.abstract',
+        'ps.file_path',
+        'ps.status',
+        'ps.submission_date',
+        'ps.reviewer_comments',
+        'ps.user_name'
+    ];
+
+    // Add optional enhanced fields if they exist
+    $optional_fields = [
+        'author_email', 'affiliation', 'co_authors', 'methodology',
+        'funding_source', 'research_start_date', 'research_end_date',
+        'ethics_approval', 'additional_comments', 'reviewed_by',
+        'review_date', 'terms_agreement', 'email_consent', 'data_consent'
+    ];
+
+    foreach ($optional_fields as $field) {
+        if (in_array($field, $available_columns)) {
+            $select_fields[] = "ps.$field";
+        }
+    }
+
+    // Build the main query
+    $sql = "SELECT " . implode(', ', $select_fields) . ",
                    COALESCE(view_count.views, 0) as total_views,
                    COALESCE(download_count.downloads, 0) as total_downloads
             FROM paper_submissions ps
@@ -32,30 +75,51 @@ try {
             ORDER BY ps.submission_date DESC";
     
     $stmt = $conn->prepare($sql);
+    if (!$stmt) {
+        throw new Exception("Prepare failed: " . $conn->error);
+    }
+    
     $stmt->bind_param("s", $_SESSION['name']);
     $stmt->execute();
     $result = $stmt->get_result();
     $submissions = $result->fetch_all(MYSQLI_ASSOC);
     $stmt->close();
 
-    // Debug: Add error checking for submissions
-    if (empty($submissions)) {
-        // Check if user exists in database
-        $check_sql = "SELECT COUNT(*) as count FROM paper_submissions WHERE user_name = ?";
-        $check_stmt = $conn->prepare($check_sql);
-        $check_stmt->bind_param("s", $_SESSION['name']);
-        $check_stmt->execute();
-        $check_result = $check_stmt->get_result();
-        $count = $check_result->fetch_assoc()['count'];
-        $check_stmt->close();
-        
-        if ($count == 0) {
-            $debug_message = "No submissions found for user: " . $_SESSION['name'];
-        }
+    // Debug: Check for submissions with different approaches
+    $debug_queries = [];
+    
+    // Try exact match
+    $debug_sql1 = "SELECT COUNT(*) as count FROM paper_submissions WHERE user_name = ?";
+    $debug_stmt1 = $conn->prepare($debug_sql1);
+    $debug_stmt1->bind_param("s", $_SESSION['name']);
+    $debug_stmt1->execute();
+    $debug_result1 = $debug_stmt1->get_result();
+    $debug_queries['exact_match'] = $debug_result1->fetch_assoc()['count'];
+    $debug_stmt1->close();
+    
+    // Try case-insensitive match
+    $debug_sql2 = "SELECT COUNT(*) as count FROM paper_submissions WHERE LOWER(user_name) = LOWER(?)";
+    $debug_stmt2 = $conn->prepare($debug_sql2);
+    $debug_stmt2->bind_param("s", $_SESSION['name']);
+    $debug_stmt2->execute();
+    $debug_result2 = $debug_stmt2->get_result();
+    $debug_queries['case_insensitive'] = $debug_result2->fetch_assoc()['count'];
+    $debug_stmt2->close();
+    
+    // Get all unique user names to see what's actually in the database
+    $debug_sql3 = "SELECT DISTINCT user_name FROM paper_submissions LIMIT 10";
+    $debug_result3 = $conn->query($debug_sql3);
+    $debug_user_names = [];
+    while ($row = $debug_result3->fetch_assoc()) {
+        $debug_user_names[] = $row['user_name'];
     }
+    $debug_queries['sample_usernames'] = $debug_user_names;
+    
+    $debug_info['query_results'] = $debug_queries;
 
 } catch(Exception $e) {
     $error_message = "Database error: " . $e->getMessage();
+    $debug_info['error'] = $e->getMessage();
 }
 
 // Status badge colors
@@ -114,10 +178,10 @@ function renderSubmissionRow($submission) {
                         <div class="flex flex-wrap items-center gap-4 text-sm text-gray-600 mb-2">
                             <span><strong>Type:</strong> <?php echo getResearchTypeDisplay($submission['research_type']); ?></span>
                             <span><strong>Submitted:</strong> <?php echo date('M j, Y g:i A', strtotime($submission['submission_date'])); ?></span>
-                            <?php if ($submission['total_views'] > 0 || $submission['total_downloads'] > 0): ?>
+                            <?php if ((isset($submission['total_views']) && $submission['total_views'] > 0) || (isset($submission['total_downloads']) && $submission['total_downloads'] > 0)): ?>
                                 <span class="flex items-center space-x-3">
-                                    <span class="flex items-center"><i class="fas fa-eye text-blue-500 mr-1"></i><?php echo $submission['total_views']; ?></span>
-                                    <span class="flex items-center"><i class="fas fa-download text-green-500 mr-1"></i><?php echo $submission['total_downloads']; ?></span>
+                                    <span class="flex items-center"><i class="fas fa-eye text-blue-500 mr-1"></i><?php echo $submission['total_views'] ?? 0; ?></span>
+                                    <span class="flex items-center"><i class="fas fa-download text-green-500 mr-1"></i><?php echo $submission['total_downloads'] ?? 0; ?></span>
                                 </span>
                             <?php endif; ?>
                         </div>
@@ -138,13 +202,13 @@ function renderSubmissionRow($submission) {
                         <?php endif; ?>
                     </div>
                     <div>
-                        <?php if ($submission['co_authors']): ?>
+                        <?php if (!empty($submission['co_authors'])): ?>
                             <p><strong>Co-authors:</strong> <?php echo htmlspecialchars($submission['co_authors']); ?></p>
                         <?php endif; ?>
                         <?php if (!empty($submission['funding_source'])): ?>
                             <p><strong>Funding:</strong> <?php echo htmlspecialchars($submission['funding_source']); ?></p>
                         <?php endif; ?>
-                        <?php if ($submission['research_start_date'] && $submission['research_end_date']): ?>
+                        <?php if (!empty($submission['research_start_date']) && !empty($submission['research_end_date'])): ?>
                             <p><strong>Research Period:</strong> 
                                <?php echo date('M Y', strtotime($submission['research_start_date'])); ?> - 
                                <?php echo date('M Y', strtotime($submission['research_end_date'])); ?>
@@ -157,14 +221,14 @@ function renderSubmissionRow($submission) {
                     <p class="text-sm"><strong>Keywords:</strong> <?php echo htmlspecialchars($submission['keywords']); ?></p>
                 </div>
                 
-                <?php if ($submission['reviewer_comments']): ?>
+                <?php if (!empty($submission['reviewer_comments'])): ?>
                     <div class="mt-4 p-4 bg-gray-50 rounded-lg border-l-4 border-blue-400">
                         <p class="text-sm font-semibold text-gray-700 mb-1">Reviewer Comments:</p>
                         <p class="text-sm text-gray-700"><?php echo nl2br(htmlspecialchars($submission['reviewer_comments'])); ?></p>
-                        <?php if ($submission['reviewed_by']): ?>
+                        <?php if (!empty($submission['reviewed_by'])): ?>
                             <p class="text-xs text-gray-500 mt-2">
                                 Reviewed by: <?php echo htmlspecialchars($submission['reviewed_by']); ?>
-                                <?php if ($submission['review_date']): ?>
+                                <?php if (!empty($submission['review_date'])): ?>
                                     on <?php echo date('M j, Y', strtotime($submission['review_date'])); ?>
                                 <?php endif; ?>
                             </p>
@@ -180,7 +244,7 @@ function renderSubmissionRow($submission) {
                     <i class="fas fa-eye mr-2"></i>View Details
                 </button>
                 
-                <?php if ($submission['file_path']): ?>
+                <?php if (!empty($submission['file_path'])): ?>
                     <a href="<?php echo htmlspecialchars($submission['file_path']); ?>" target="_blank"
                        class="bg-green-500 hover:bg-green-600 text-white px-4 py-2 rounded-lg text-sm font-medium text-center transition-all duration-200 flex items-center justify-center">
                         <i class="fas fa-download mr-2"></i>Download
@@ -274,6 +338,13 @@ foreach ($submissions as $submission) {
         .status-under_review { background-color: #3b82f6; }
         .status-approved_published { background-color: #10b981; }
         .status-rejected { background-color: #ef4444; }
+        .debug-panel {
+            background: #f8fafc;
+            border: 1px solid #e2e8f0;
+            border-radius: 8px;
+            padding: 16px;
+            margin-bottom: 24px;
+        }
     </style>
 </head>
 <body class="bg-gradient-to-br from-gray-50 to-blue-50 min-h-screen">
@@ -300,19 +371,34 @@ foreach ($submissions as $submission) {
     </header>
 
     <div class="max-w-7xl mx-auto py-8 px-6">
+        <!-- Debug Panel (remove in production) -->
+        <div class="debug-panel">
+            <h3 class="font-bold text-gray-800 mb-3">Debug Information</h3>
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
+                <div>
+                    <p><strong>Session Name:</strong> <?php echo htmlspecialchars($debug_info['session_name']); ?></p>
+                    <p><strong>Total Submissions Found:</strong> <?php echo count($submissions); ?></p>
+                    <p><strong>Exact Match Count:</strong> <?php echo $debug_info['query_results']['exact_match'] ?? 'N/A'; ?></p>
+                    <p><strong>Case Insensitive Count:</strong> <?php echo $debug_info['query_results']['case_insensitive'] ?? 'N/A'; ?></p>
+                </div>
+                <div>
+                    <p><strong>Available Columns:</strong></p>
+                    <div class="text-xs bg-gray-100 p-2 rounded max-h-20 overflow-y-auto">
+                        <?php echo implode(', ', $debug_info['available_columns'] ?? []); ?>
+                    </div>
+                    <p><strong>Sample Usernames in DB:</strong></p>
+                    <div class="text-xs bg-gray-100 p-2 rounded">
+                        <?php echo implode(', ', array_map('htmlspecialchars', $debug_info['query_results']['sample_usernames'] ?? [])); ?>
+                    </div>
+                </div>
+            </div>
+        </div>
+
         <!-- Error Message -->
         <?php if (isset($error_message)): ?>
             <div class="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded-lg mb-6 shadow-md">
                 <i class="fas fa-exclamation-triangle mr-2"></i>
-                <?php echo $error_message; ?>
-            </div>
-        <?php endif; ?>
-
-        <!-- Debug Message -->
-        <?php if (isset($debug_message)): ?>
-            <div class="bg-blue-100 border border-blue-400 text-blue-700 px-4 py-3 rounded-lg mb-6 shadow-md">
-                <i class="fas fa-info-circle mr-2"></i>
-                Debug: <?php echo $debug_message; ?>
+                <?php echo htmlspecialchars($error_message); ?>
             </div>
         <?php endif; ?>
 
@@ -324,7 +410,6 @@ foreach ($submissions as $submission) {
                         Welcome, <?php echo htmlspecialchars($_SESSION['name']); ?>!
                     </h2>
                     <p class="text-gray-600 text-lg">Here you can view and manage all your paper submissions with enhanced DOST-compliant features.</p>
-                </div>
                 </div>
             </div>
         </div>

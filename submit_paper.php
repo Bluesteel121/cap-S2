@@ -124,26 +124,16 @@
                     <i class="fas fa-info-circle text-lg"></i>
                 </div>
                 <div>
-                    <h2 class="text-xl font-bold text-gray-800 mb-3">Submission Guidelines</h2>
+                    <h2 class="text-xl font-bold text-gray-800 mb-3">Submission Requirements</h2>
                     <div class="grid md:grid-cols-2 gap-4 text-sm text-gray-700">
                         <div>
                             <h3 class="font-semibold mb-2">Required Information:</h3>
-                            <ul class="list-disc list-inside space-y-1">
-                                <li>Complete research paper title</li>
-                                <li>Author details and affiliations</li>
-                                <li>Research type and methodology</li>
-                                <li>Abstract and keywords</li>
-                                <li>PDF file of complete paper</li>
-                            </ul>
-                        </div>
-                        <div>
-                            <h3 class="font-semibold mb-2">File Requirements:</h3>
-                            <ul class="list-disc list-inside space-y-1">
-                                <li>PDF format only</li>
-                                <li>Maximum file size: 25MB</li>
-                                <li>Clear, readable formatting</li>
-                                <li>Include all figures and tables</li>
-                                <li>Follow DOST research paper format</li>
+                               
+                               
+                                <li>DOST Research  Proposal Template
+                                    <a href="Images/worksheet.xlsx" download class="text-blue-600 underline ml-2">
+                                         Download Here</a> </li>
+                                          
                             </ul>
                         </div>
                     </div>
@@ -433,12 +423,16 @@
                     <div class="section-icon text-white p-3 rounded-full">
                         <i class="fas fa-cloud-upload-alt text-lg"></i>
                     </div>
-                    <h2 class="text-xl font-bold text-gray-800">4. Upload Research Paper</h2>
+                    <h2 class="text-xl font-bold text-gray-800">4. Upload Research Proposal</h2>
                 </div>
 
                 <div class="mb-6">
                     <div class="flex items-center justify-between mb-3">
-                        <label class="block text-sm font-semibold text-gray-700 required">Research Paper File</label>
+                        <label class="block text-sm font-semibold text-gray-700 ">  <li>Submit PDF format only</li>
+                        <li>Maximum file size: 25MB</li>
+                       </label>
+                       
+                        
                         <button type="button" class="help-toggle" onclick="toggleHelp('fileHelp')">
                             <i class="fas fa-question-circle text-gray-400"></i>
                         </button>

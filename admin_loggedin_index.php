@@ -224,6 +224,19 @@ function formatNumber($number) {
       box-shadow: 0 20px 40px rgba(17, 93, 91, 0.3);
     }
 
+    /* Enhanced admin card icon styles */
+    .admin-card .icon-container {
+      background: rgba(255, 255, 255, 0.15);
+      backdrop-filter: blur(10px);
+      border: 1px solid rgba(255, 255, 255, 0.2);
+      transition: all 0.3s ease;
+    }
+
+    .admin-card:hover .icon-container {
+      background: rgba(255, 255, 255, 0.25);
+      transform: scale(1.1);
+    }
+
     .stats-card {
       background: white;
       border-left: 4px solid #115D5B;
@@ -289,6 +302,14 @@ function formatNumber($number) {
       transform: translateX(4px);
     }
 
+    /* Enhanced grid layout for admin tools */
+    .admin-tools-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+      gap: 2rem;
+      justify-items: center;
+    }
+
     /* Responsive adjustments */
     @media (max-width: 768px) {
       .logo-container {
@@ -306,7 +327,8 @@ function formatNumber($number) {
       }
       
       .admin-tools-grid {
-        grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+        grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+        gap: 1.5rem;
       }
     }
 
@@ -314,6 +336,18 @@ function formatNumber($number) {
       .stats-grid {
         grid-template-columns: 1fr;
       }
+      
+      .admin-tools-grid {
+        grid-template-columns: 1fr;
+      }
+    }
+
+    /* Enhanced card styles for better visual balance */
+    .enhanced-card {
+      min-height: 200px;
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
     }
   </style>
 </head>
@@ -415,7 +449,6 @@ function formatNumber($number) {
     <a href="admin_user_management.php"><i class="fas fa-users mr-3"></i>Manage Users</a>
     <a href="#"><i class="fas fa-book mr-3"></i>Publications</a>
     <a href="#"><i class="fas fa-chart-bar mr-3"></i>Reports & Analytics</a>
-    <a href="#"><i class="fas fa-cog mr-3"></i>System Settings</a>
     <a href="edit_profile.php"><i class="fas fa-user-edit mr-3"></i>Edit Profile</a>
     <div class="mt-8 border-t border-white border-opacity-20 pt-4">
       <a href="index.php" onclick="logout()"><i class="fas fa-sign-out-alt mr-3"></i>Log Out</a>
@@ -524,85 +557,55 @@ function formatNumber($number) {
       <h3 class="text-2xl font-bold text-[#115D5B] mb-6">
         <i class="fas fa-tools mr-2"></i>Admin Tools
       </h3>
-      <div class="admin-tools-grid grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+      <div class="admin-tools-grid">
 
-        <a href="admin_user_management.php" class="admin-card p-6 shadow-lg transition-all">
+        <a href="admin_user_management.php" class="admin-card enhanced-card p-8 shadow-lg transition-all w-full max-w-sm">
           <div class="text-center">
-            <div class="bg-white bg-opacity-20 p-4 rounded-full w-16 h-16 mx-auto flex items-center justify-center mb-4">
-              <i class="fas fa-users-cog text-2xl"></i>
+            <div class="icon-container p-6 rounded-full w-20 h-20 mx-auto flex items-center justify-center mb-6">
+              <i class="fas fa-users-cog text-3xl"></i>
             </div>
-            <h3 class="font-bold mb-2">User Management</h3>
-            <p class="text-sm opacity-90">Manage user accounts and permissions</p>
+            <h3 class="text-xl font-bold mb-3">User Management</h3>
+            <p class="opacity-90 leading-relaxed">Manage user accounts, roles, and permissions across the platform</p>
           </div>
         </a>
 
-        <a href="admin_review_papers.php" class="admin-card p-6 shadow-lg transition-all">
+        <a href="admin_activity_logs.php" class="admin-card enhanced-card p-8 shadow-lg transition-all w-full max-w-sm">
           <div class="text-center">
-            <div class="bg-white bg-opacity-20 p-4 rounded-full w-16 h-16 mx-auto flex items-center justify-center mb-4">
-              <i class="fas fa-file-alt text-2xl"></i>
+            <div class="icon-container p-6 rounded-full w-20 h-20 mx-auto flex items-center justify-center mb-6">
+              <i class="fas fa-history text-3xl"></i>
             </div>
-            <h3 class="font-bold mb-2">Publications</h3>
-            <p class="text-sm opacity-90">Review and manage research publications</p>
+            <h3 class="text-xl font-bold mb-3">Activity Logs</h3>
+            <p class="opacity-90 leading-relaxed">Monitor system activities and user interactions</p>
           </div>
         </a>
 
-        <a href="admin_analytics.php" class="admin-card p-6 shadow-lg transition-all">
+        <a href="admin_review_papers.php" class="admin-card enhanced-card p-8 shadow-lg transition-all w-full max-w-sm">
           <div class="text-center">
-            <div class="bg-white bg-opacity-20 p-4 rounded-full w-16 h-16 mx-auto flex items-center justify-center mb-4">
-              <i class="fas fa-chart-bar text-2xl"></i>
+            <div class="icon-container p-6 rounded-full w-20 h-20 mx-auto flex items-center justify-center mb-6">
+              <i class="fas fa-file-alt text-3xl"></i>
             </div>
-            <h3 class="font-bold mb-2">Analytics</h3>
-            <p class="text-sm opacity-90">View detailed reports and analytics</p>
+            <h3 class="text-xl font-bold mb-3">Publications</h3>
+            <p class="opacity-90 leading-relaxed">Review, approve, and manage research publications and submissions</p>
           </div>
         </a>
 
-        <a href="system_settings.php" class="admin-card p-6 shadow-lg transition-all">
+        <a href="admin_email_templates.php" class="admin-card enhanced-card p-8 shadow-lg transition-all w-full max-w-sm">
           <div class="text-center">
-            <div class="bg-white bg-opacity-20 p-4 rounded-full w-16 h-16 mx-auto flex items-center justify-center mb-4">
-              <i class="fas fa-cogs text-2xl"></i>
+            <div class="icon-container p-6 rounded-full w-20 h-20 mx-auto flex items-center justify-center mb-6">
+              <i class="fas fa-envelope text-3xl"></i>
             </div>
-            <h3 class="font-bold mb-2">System Settings</h3>
-            <p class="text-sm opacity-90">Configure system preferences</p>
+            <h3 class="text-xl font-bold mb-3">Email Templates</h3>
+            <p class="opacity-90 leading-relaxed">Manage email notifications and communication templates</p>
           </div>
         </a>
 
-        <a href="#" class="admin-card p-6 shadow-lg transition-all">
+        <a href="admin_analytics.php" class="admin-card enhanced-card p-8 shadow-lg transition-all w-full max-w-sm">
           <div class="text-center">
-            <div class="bg-white bg-opacity-20 p-4 rounded-full w-16 h-16 mx-auto flex items-center justify-center mb-4">
-              <i class="fas fa-database text-2xl"></i>
+            <div class="icon-container p-6 rounded-full w-20 h-20 mx-auto flex items-center justify-center mb-6">
+              <i class="fas fa-chart-bar text-3xl"></i>
             </div>
-            <h3 class="font-bold mb-2">Database Backup</h3>
-            <p class="text-sm opacity-90">Manage backups and recovery</p>
-          </div>
-        </a>
-
-        <a href="admin_activity_logs.php" class="admin-card p-6 shadow-lg transition-all">
-          <div class="text-center">
-            <div class="bg-white bg-opacity-20 p-4 rounded-full w-16 h-16 mx-auto flex items-center justify-center mb-4">
-              <i class="fas fa-history text-2xl"></i>
-            </div>
-            <h3 class="font-bold mb-2">Activity Logs</h3>
-            <p class="text-sm opacity-90">Monitor system activities</p>
-          </div>
-        </a>
-
-        <a href="admin_email_templates.php" class="admin-card p-6 shadow-lg transition-all">
-          <div class="text-center">
-            <div class="bg-white bg-opacity-20 p-4 rounded-full w-16 h-16 mx-auto flex items-center justify-center mb-4">
-              <i class="fas fa-envelope text-2xl"></i>
-            </div>
-            <h3 class="font-bold mb-2">Email Templates</h3>
-            <p class="text-sm opacity-90">Manage email notifications</p>
-          </div>
-        </a>
-
-        <a href="#" class="admin-card p-6 shadow-lg transition-all">
-          <div class="text-center">
-            <div class="bg-white bg-opacity-20 p-4 rounded-full w-16 h-16 mx-auto flex items-center justify-center mb-4">
-              <i class="fas fa-shield-alt text-2xl"></i>
-            </div>
-            <h3 class="font-bold mb-2">Security Center</h3>
-            <p class="text-sm opacity-90">Monitor security and access controls</p>
+            <h3 class="text-xl font-bold mb-3">Analytics</h3>
+            <p class="opacity-90 leading-relaxed">View detailed reports, statistics, and platform analytics</p>
           </div>
         </a>
 
