@@ -855,63 +855,320 @@
             updateProgress();
         }
 
-        // Form submission
         document.getElementById('paperSubmissionForm').addEventListener('submit', function(event) {
-            event.preventDefault();
-            
-            // Show loading state
-            const submitBtn = document.getElementById('submitBtn');
-            const originalText = submitBtn.innerHTML;
-            submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin mr-3"></i>Submitting...';
-            submitBtn.disabled = true;
-            
-            // Simulate submission (replace with actual submission logic)
-            setTimeout(() => {
-                // Reset button
-                submitBtn.innerHTML = originalText;
-                submitBtn.disabled = false;
-                
-                // Show success modal
-                document.getElementById('successModal').classList.remove('hidden');
-                document.getElementById('successModal').classList.add('flex');
+    event.preventDefault();
+    
+    const submitBtn = document.getElementById('submitBtn');
+    const originalText = submitBtn.innerHTML;
+    
+    // Show loading state
+    submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin mr-3"></i>Submitting...';
+    submitBtn.disabled = true;
+    
+    // Validate form before submission
+    if (!validateFormFields()) {
+        // Reset button if validation fails
+        submitBtn.innerHTML = originalText;
+        submitBtn.disabled = false;
+        return;
+    }
+    
+    // Create FormData object
+    const formData = new FormData(this);
+    
+    // Debug: Log form data
+    console.log('Form data being submitted:');
+    for (let [key, value] of formData.entries()) {
+        console.log(key, value);
+    }
+    
+    // Submit via AJAX
+    fetch('submit_paper_handler.php', {
+        method: 'POST',
+        body: formData
+    })
+    .then(response => {
+        if (!response.ok) {
+            throw new Error(`HTTP error! status: ${response.status}`);
+        }
+        return response.text(); // Get text first to debug
+    })
+    .then(text => {
+        console.log('Raw response:', text); // Debug logging
+        try {
+            const data = JSON.parse(text);
+            if (data.success) {
+                // Show success modal with submission details
+                showSuccessModal(data.submission_id, data.reference_number);
                 
                 // Reset form
-                this.reset();
-                document.getElementById('fileInfo').classList.add('hidden');
-                document.querySelectorAll('.research-type-card').forEach(card => {
-                    card.classList.remove('selected');
-                });
-                updateProgress();
-            }, 2000);
-        });
-
-        function closeSuccessModal() {
-            document.getElementById('successModal').classList.add('hidden');
-            document.getElementById('successModal').classList.remove('flex');
-        }
-
-        // Initialize
-        document.addEventListener('DOMContentLoaded', function() {
-            setupCharacterCounters();
-            updateProgress();
-            
-            // Add event listeners for checkboxes and other form elements
-            document.querySelectorAll('input, textarea, select').forEach(element => {
-                element.addEventListener('change', updateProgress);
-                element.addEventListener('input', updateProgress);
-            });
-        });
-
-        // Keyboard shortcuts
-        document.addEventListener('keydown', function(event) {
-            if (event.key === 'Escape') {
-                closeSuccessModal();
-                // Close all help sections
-                document.querySelectorAll('.field-help').forEach(help => {
-                    help.classList.add('hidden');
-                });
+                resetForm();
+                
+            } else {
+                throw new Error(data.message || 'Submission failed');
             }
-        });
-    </script>
+        } catch (parseError) {
+            console.error('JSON Parse Error:', parseError);
+            console.error('Response text:', text);
+            throw new Error('Invalid response from server');
+        }
+    })
+    .catch(error => {
+        console.error('Submission error:', error);
+        showNotification(error.message || 'An error occurred during submission. Please try again.', 'error');
+    })
+    .finally(() => {
+        // Reset button
+        submitBtn.innerHTML = originalText;
+        submitBtn.disabled = false;
+    });
+});
+
+// Form validation function
+function validateFormFields() {
+    let isValid = true;
+    const errors = [];
+    
+    // Check required fields
+    const requiredFields = [
+        { id: 'paperTitle', name: 'Paper Title' },
+        { id: 'keywords', name: 'Keywords' },
+        { id: 'authorName', name: 'Author Name' },
+        { id: 'authorEmail', name: 'Author Email' },
+        { id: 'affiliation', name: 'Author Affiliation' },
+        { id: 'abstract', name: 'Abstract' }
+    ];
+    
+    requiredFields.forEach(field => {
+        const element = document.getElementById(field.id);
+        if (!element || !element.value.trim()) {
+            errors.push(`${field.name} is required`);
+            isValid = false;
+            if (element) element.classList.add('border-red-500');
+        } else if (element) {
+            element.classList.remove('border-red-500');
+        }
+    });
+    
+    // Check research type
+    const researchTypeSelected = document.querySelector('input[name="research_type"]:checked');
+    if (!researchTypeSelected) {
+        errors.push('Please select a research type');
+        isValid = false;
+    }
+    
+    // Check file upload
+    const fileInput = document.getElementById('paperFile');
+    if (!fileInput || !fileInput.files || fileInput.files.length === 0) {
+        errors.push('Please upload your research paper PDF');
+        isValid = false;
+    } else {
+        const file = fileInput.files[0];
+        if (file.type !== 'application/pdf') {
+            errors.push('Please select a PDF file only');
+            isValid = false;
+        }
+        if (file.size > 25 * 1024 * 1024) {
+            errors.push('File size must be less than 25MB');
+            isValid = false;
+        }
+    }
+    
+    // Check terms agreement
+    const termsAgree = document.getElementById('termsAgree');
+    if (!termsAgree || !termsAgree.checked) {
+        errors.push('You must agree to the submission terms and conditions');
+        isValid = false;
+    }
+    
+    // Validate email format
+    const emailInput = document.getElementById('authorEmail');
+    if (emailInput && emailInput.value.trim() && !isValidEmail(emailInput.value.trim())) {
+        errors.push('Please enter a valid email address');
+        isValid = false;
+        emailInput.classList.add('border-red-500');
+    }
+    
+    // Show errors if any
+    if (!isValid) {
+        const errorMessage = 'Please fix the following issues:\n• ' + errors.join('\n• ');
+        showNotification(errorMessage, 'error');
+    }
+    
+    return isValid;
+}
+
+// Reset form function
+function resetForm() {
+    const form = document.getElementById('paperSubmissionForm');
+    form.reset();
+    
+    // Reset file upload display
+    const fileInfo = document.getElementById('fileInfo');
+    if (fileInfo) fileInfo.classList.add('hidden');
+    
+    // Reset research type cards
+    document.querySelectorAll('.research-type-card').forEach(card => {
+        card.classList.remove('selected');
+    });
+    
+    // Reset character counters
+    document.querySelectorAll('.character-count').forEach(counter => {
+        const match = counter.textContent.match(/\/(\d+)/);
+        if (match) {
+            counter.textContent = `0/${match[1]} characters`;
+            counter.className = 'character-count text-gray-500';
+        }
+    });
+    
+    // Reset word counters
+    const keywordWordCount = document.getElementById('keywordWordCount');
+    const abstractWordCount = document.getElementById('abstractWordCount');
+    if (keywordWordCount) keywordWordCount.textContent = '0 keywords';
+    if (abstractWordCount) abstractWordCount.textContent = '0 words';
+    
+    updateProgress();
+}
+
+// Enhanced success modal
+function showSuccessModal(submissionId, referenceNumber) {
+    // Remove any existing modal
+    const existingModal = document.querySelector('.success-modal');
+    if (existingModal) {
+        existingModal.remove();
+    }
+    
+    const modal = document.createElement('div');
+    modal.className = 'success-modal fixed inset-0 bg-gray-600 bg-opacity-50 flex items-center justify-center z-50';
+    modal.innerHTML = `
+        <div class="bg-white rounded-xl shadow-2xl max-w-lg w-full mx-4 transform transition-all">
+            <div class="bg-gradient-to-r from-green-500 to-green-600 text-white p-6 rounded-t-xl">
+                <div class="flex items-center">
+                    <div class="bg-white bg-opacity-20 rounded-full p-3 mr-4">
+                        <i class="fas fa-check text-2xl"></i>
+                    </div>
+                    <div>
+                        <h3 class="text-xl font-bold">Submission Successful!</h3>
+                        <p class="text-green-100">Your research paper has been submitted</p>
+                    </div>
+                </div>
+            </div>
+            <div class="p-6">
+                <div class="space-y-4">
+                    <div class="bg-gray-50 p-4 rounded-lg">
+                        <h4 class="font-semibold text-gray-800 mb-2">Submission Details</h4>
+                        <p><strong>Submission ID:</strong> #${submissionId}</p>
+                        <p><strong>Reference Number:</strong> ${referenceNumber}</p>
+                        <p><strong>Status:</strong> <span class="text-yellow-600 font-semibold">Pending Review</span></p>
+                    </div>
+                    <div class="bg-blue-50 p-4 rounded-lg">
+                        <h4 class="font-semibold text-blue-800 mb-2">What's Next?</h4>
+                        <ul class="text-sm text-blue-700 space-y-1">
+                            <li>• You'll receive a confirmation email shortly</li>
+                            <li>• Your paper will be reviewed within 2-4 weeks</li>
+                            <li>• Track your submission status in "My Submissions"</li>
+                            <li>• You'll be notified of any status changes</li>
+                        </ul>
+                    </div>
+                </div>
+                <div class="flex space-x-3 mt-6">
+                    <button onclick="window.location.href='my_submissions.php'" 
+                            class="flex-1 bg-[#115D5B] hover:bg-[#0d4a47] text-white px-4 py-3 rounded-lg transition font-semibold">
+                        <i class="fas fa-list-alt mr-2"></i>View My Submissions
+                    </button>
+                    <button onclick="closeSuccessModal()" 
+                            class="flex-1 bg-gray-300 hover:bg-gray-400 text-gray-700 px-4 py-3 rounded-lg transition font-semibold">
+                        Continue
+                    </button>
+                </div>
+            </div>
+        </div>
+    `;
+    
+    document.body.appendChild(modal);
+    
+    // Close on escape key
+    const handleEscape = (e) => {
+        if (e.key === 'Escape') {
+            closeSuccessModal();
+        }
+    };
+    document.addEventListener('keydown', handleEscape);
+    
+    // Store the escape handler for removal
+    modal.escapeHandler = handleEscape;
+}
+
+// Close success modal function
+function closeSuccessModal() {
+    const modal = document.querySelector('.success-modal');
+    if (modal) {
+        // Remove escape handler
+        if (modal.escapeHandler) {
+            document.removeEventListener('keydown', modal.escapeHandler);
+        }
+        modal.remove();
+    }
+}
+
+// Notification system
+function showNotification(message, type = 'info') {
+    const notification = document.createElement('div');
+    notification.className = `fixed top-4 right-4 max-w-md p-4 rounded-lg shadow-lg z-50 transition-all duration-300 transform translate-x-full`;
+    
+    const colors = {
+        success: 'bg-green-500 text-white',
+        error: 'bg-red-500 text-white',
+        warning: 'bg-yellow-500 text-white',
+        info: 'bg-blue-500 text-white'
+    };
+    
+    const icons = {
+        success: 'fa-check-circle',
+        error: 'fa-exclamation-triangle',
+        warning: 'fa-exclamation-circle',
+        info: 'fa-info-circle'
+    };
+    
+    notification.className += ` ${colors[type]}`;
+    
+    notification.innerHTML = `
+        <div class="flex items-start space-x-3">
+            <i class="fas ${icons[type]} text-lg mt-1"></i>
+            <div class="flex-1">
+                <p class="font-semibold capitalize">${type}</p>
+                <p class="text-sm mt-1 whitespace-pre-line">${message}</p>
+            </div>
+            <button onclick="this.parentNode.parentNode.remove()" class="text-white hover:text-gray-200">
+                <i class="fas fa-times"></i>
+            </button>
+        </div>
+    `;
+    
+    document.body.appendChild(notification);
+    
+    // Animate in
+    setTimeout(() => notification.classList.remove('translate-x-full'), 100);
+    
+    // Auto-remove after 8 seconds for errors, 5 seconds for others
+    const timeout = type === 'error' ? 8000 : 5000;
+    setTimeout(() => {
+        if (notification.parentNode) {
+            notification.classList.add('translate-x-full');
+            setTimeout(() => {
+                if (notification.parentNode) {
+                    notification.parentNode.removeChild(notification);
+                }
+            }, 300);
+        }
+    }, timeout);
+}
+
+function isValidEmail(email) {
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    return emailRegex.test(email);
+}
+</script>
 </body>
 </html>
+

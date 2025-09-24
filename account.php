@@ -13,20 +13,22 @@
 <div class="w-full md:w-1/2 bg-[#115D5B] text-white flex flex-col justify-center items-center p-6">
     <h1 class="text-2xl md:text-4xl font-bold mb-6 text-center">WELCOME TO CNLRRS</h1>
     <div class="flex flex-col md:flex-row items-center md:space-x-6 space-y-4 md:space-y-0">
+        
         <!-- Admin Button -->
-        <button onclick="redirectToLogin('admin')" class="flex flex-col items-center">
-            <div class="bg-white w-[150px] h-[140px] p-4 rounded-lg shadow-lg flex flex-col items-center justify-center">
-                <img src="Images/adminlogo.png" alt="Admin Logo" class="h-20" />
-                <i class="fas fa-user-cog text-[#115D5B] text-4xl"></i>
+        <button onclick="redirectToLogin('admin')" class="flex flex-col items-center group">
+            <div class="bg-white w-[150px] h-[140px] p-4 rounded-lg shadow-lg flex flex-col items-center justify-center transition-all duration-300 group-hover:shadow-xl group-hover:scale-105">
+                <img src="Images/adminlogo.png" alt="Admin Logo" class="h-12 mb-2" />
+                <i class="fas fa-user-cog text-[#115D5B] text-3xl"></i>
             </div>
-            <p class="mt-2 text-lg font-semibold">Admin</p>
+            <p class="mt-2 text-lg font-semibold">Admin/reviewer</p>
         </button>
 
+      
         <!-- User Button -->
-        <button onclick="redirectToLogin('user')" class="flex flex-col items-center">
-            <div class="bg-white w-[150px] h-[140px] p-4 rounded-lg shadow-lg flex flex-col items-center justify-center">
-                <img src="Images/farmerlogo.png" alt="User Logo" class="h-20" />
-                <i class="fas fa-users text-[#115D5B] text-4xl"></i>
+        <button onclick="redirectToLogin('user')" class="flex flex-col items-center group">
+            <div class="bg-white w-[150px] h-[140px] p-4 rounded-lg shadow-lg flex flex-col items-center justify-center transition-all duration-300 group-hover:shadow-xl group-hover:scale-105">
+                <img src="Images/farmerlogo.png" alt="User Logo" class="h-12 mb-2" />
+                <i class="fas fa-users text-[#115D5B] text-3xl"></i>
             </div>
             <p class="mt-2 text-lg font-semibold">User</p>
         </button>
@@ -56,15 +58,16 @@
     <h3 class="text-center font-bold text-base md:text-lg mt-2 text-gray-900">
         CAMARINES NORTE LOWLAND RAINFED RESEARCH STATION
     </h3>
-    <div class="mt-6 text-center">
+    
+    <div class="mt-4 text-center">
         <p class="flex justify-center items-center gap-2 font-semibold text-gray-800">
-            <span class="text-gray-700">&#128205;</span> Calasgasan, Daet, Camarines Norte
+            <span class="text-gray-700">📍</span> Calasgasan, Daet, Camarines Norte
         </p>
         <p class="flex justify-center items-center gap-2 mt-2 font-semibold text-gray-800">
-            <span class="text-gray-700">&#128231;</span> dacnlrrs@gmail.com
+            <span class="text-gray-700">📧</span> dacnlrrs@gmail.com
         </p>
         <p class="flex flex-col items-center gap-1 mt-2 font-semibold text-gray-800">
-            <span>&#128100; Engr. Bella B. Frias</span>
+            <span>👤 Engr. Bella B. Frias</span>
             <span class="text-sm font-medium text-gray-600">
                 Superintendent/Agricultural Center Chief III
             </span>
@@ -77,10 +80,11 @@
     function redirectToLogin(role) {
       const routes = {
         admin: "adminlogin.php",
+        reviewer: "adminlogin.php", // Both admin and reviewer use the same login page
         user: "userlogin.php",
       };
       window.location.href = routes[role];
     }
   </script>
+</body>
 </html>
-

@@ -63,3 +63,7 @@
 [2025-09-22 10:30:35] Successful login for admin user: 'john'
 [2025-09-23 05:03:20] Successful login for admin user: 'john'
 [2025-09-23 05:03:20] Successful login for admin user: 'john'
+[2025-09-24 02:14:00] Successful login for admin user: 'john'
+[2025-09-24 03:33:12] Failed login attempt: No admin user found with username 'blue'
+[2025-09-24 03:44:34] Successful login for reviewer user: 'blue'
+[2025-09-24 03:49:51] Successful login for admin user: 'john'

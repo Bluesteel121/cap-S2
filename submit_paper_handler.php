@@ -1,269 +1,232 @@
 <?php
 session_start();
+header('Content-Type: application/json');
 
 // Check if user is logged in
-if (!isset($_SESSION['username'])) {
-    http_response_code(401);
+if (!isset($_SESSION['name'])) {
     echo json_encode(['success' => false, 'message' => 'User not logged in']);
     exit();
 }
 
-header('Content-Type: application/json');
+// Include database connection
+require_once 'connect.php';
 
-// Database connection
-try {
-    $pdo = new PDO("mysql:host=localhost;dbname=cap", "root", "");
-    $pdo->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
-} catch(PDOException $e) {
-    echo json_encode(['success' => false, 'message' => 'Database connection failed']);
+// Check if form was submitted
+if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
+    echo json_encode(['success' => false, 'message' => 'Invalid request method']);
     exit();
 }
 
-if ($_SERVER['REQUEST_METHOD'] === 'POST') {
-    try {
-        // Sanitize and validate input data
-        $paperTitle = trim($_POST['paper_title'] ?? '');
-        $researchType = $_POST['research_type'] ?? 'other';
-        $keywords = trim($_POST['keywords'] ?? '');
-        $authorName = trim($_POST['author_name'] ?? '');
-        $authorEmail = trim($_POST['author_email'] ?? '');
-        $affiliation = trim($_POST['affiliation'] ?? '');
-        $coAuthors = trim($_POST['co_authors'] ?? '');
-        $abstract = trim($_POST['abstract'] ?? '');
-        $methodology = trim($_POST['methodology'] ?? '');
-        $fundingSource = trim($_POST['funding_source'] ?? '');
-        $researchStartDate = $_POST['research_start_date'] ?? null;
-        $researchEndDate = $_POST['research_end_date'] ?? null;
-        $ethicsApproval = trim($_POST['ethics_approval'] ?? '');
-        $additionalComments = trim($_POST['additional_comments'] ?? '');
-        $termsAgreement = isset($_POST['terms_agreement']) ? 1 : 0;
-        $emailConsent = isset($_POST['email_consent']) ? 1 : 0;
-        $dataConsent = isset($_POST['data_consent']) ? 1 : 0;
-
-        // Validation
-        $errors = [];
+try {
+    // Validate required fields
+    $required_fields = ['paper_title', 'research_type', 'keywords', 'author_name', 'author_email', 'affiliation', 'abstract'];
+    $missing_fields = [];
+    
+    foreach ($required_fields as $field) {
+        if (empty($_POST[$field])) {
+            $missing_fields[] = ucwords(str_replace('_', ' ', $field));
+        }
+    }
+    
+    if (!empty($missing_fields)) {
+        echo json_encode([
+            'success' => false, 
+            'message' => 'Missing required fields: ' . implode(', ', $missing_fields)
+        ]);
+        exit();
+    }
+    
+    // Validate research type
+    $valid_types = ['experimental', 'observational', 'review', 'case_study'];
+    if (!in_array($_POST['research_type'], $valid_types)) {
+        echo json_encode(['success' => false, 'message' => 'Invalid research type']);
+        exit();
+    }
+    
+    // Validate email
+    if (!filter_var($_POST['author_email'], FILTER_VALIDATE_EMAIL)) {
+        echo json_encode(['success' => false, 'message' => 'Invalid email address']);
+        exit();
+    }
+    
+    // Handle file upload
+    $file_path = null;
+    if (isset($_FILES['paper_file']) && $_FILES['paper_file']['error'] === UPLOAD_ERR_OK) {
+        $upload_dir = 'uploads/papers/';
         
-        if (empty($paperTitle)) $errors[] = 'Paper title is required';
-        if (empty($authorName)) $errors[] = 'Author name is required';
-        if (empty($authorEmail)) $errors[] = 'Author email is required';
-        if (empty($affiliation)) $errors[] = 'Author affiliation is required';
-        if (empty($keywords)) $errors[] = 'Keywords are required';
-        if (empty($abstract)) $errors[] = 'Abstract is required';
-        if (!$termsAgreement) $errors[] = 'Terms agreement is required';
-        
-        // Validate email format
-        if (!empty($authorEmail) && !filter_var($authorEmail, FILTER_VALIDATE_EMAIL)) {
-            $errors[] = 'Invalid email format';
+        // Create upload directory if it doesn't exist
+        if (!file_exists($upload_dir)) {
+            mkdir($upload_dir, 0755, true);
         }
         
-        // Validate research type
-        $validTypes = ['experimental', 'observational', 'review', 'case_study', 'other'];
-        if (!in_array($researchType, $validTypes)) {
-            $researchType = 'other';
-        }
+        $file = $_FILES['paper_file'];
         
-        // Validate dates
-        if (!empty($researchStartDate) && !empty($researchEndDate)) {
-            if (strtotime($researchStartDate) > strtotime($researchEndDate)) {
-                $errors[] = 'Research start date must be before end date';
-            }
-        }
-        
-        // Validate text lengths
-        if (strlen($paperTitle) > 500) $errors[] = 'Paper title is too long';
-        if (strlen($keywords) > 500) $errors[] = 'Keywords are too long';
-        if (strlen($abstract) > 2000) $errors[] = 'Abstract is too long';
-        
-        if (!empty($errors)) {
-            echo json_encode(['success' => false, 'message' => implode('; ', $errors)]);
+        // Validate file type
+        if ($file['type'] !== 'application/pdf') {
+            echo json_encode(['success' => false, 'message' => 'Only PDF files are allowed']);
             exit();
         }
-
-        // Handle file upload
-        $filePath = null;
-        if (isset($_FILES['paper_file']) && $_FILES['paper_file']['error'] === UPLOAD_ERR_OK) {
-            $uploadDir = 'uploads/papers/';
-            
-            // Create directory if it doesn't exist
-            if (!is_dir($uploadDir)) {
-                mkdir($uploadDir, 0755, true);
-            }
-            
-            $fileExtension = strtolower(pathinfo($_FILES['paper_file']['name'], PATHINFO_EXTENSION));
-            
-            // Validate file type
-            if ($fileExtension !== 'pdf') {
-                echo json_encode(['success' => false, 'message' => 'Only PDF files are allowed']);
-                exit();
-            }
-            
-            // Validate file size (25MB max)
-            if ($_FILES['paper_file']['size'] > 25 * 1024 * 1024) {
-                echo json_encode(['success' => false, 'message' => 'File size must be less than 25MB']);
-                exit();
-            }
-            
-            // Generate unique filename
-            $fileName = uniqid() . '_' . time() . '.pdf';
-            $filePath = $uploadDir . $fileName;
-            
-            if (!move_uploaded_file($_FILES['paper_file']['tmp_name'], $filePath)) {
-                echo json_encode(['success' => false, 'message' => 'Failed to upload file']);
-                exit();
-            }
+        
+        // Validate file size (25MB)
+        if ($file['size'] > 25 * 1024 * 1024) {
+            echo json_encode(['success' => false, 'message' => 'File size must be less than 25MB']);
+            exit();
         }
-
-        // Get current user info
-        $stmt = $pdo->prepare("SELECT name FROM accounts WHERE username = ?");
-        $stmt->execute([$_SESSION['username']]);
-        $user = $stmt->fetch(PDO::FETCH_ASSOC);
-        $userName = $user['name'] ?? $_SESSION['username'];
-
-        // Insert submission into database
-        $sql = "INSERT INTO paper_submissions (
-            user_name, author_name, author_email, affiliation, co_authors,
-            paper_title, abstract, keywords, methodology, funding_source,
-            research_start_date, research_end_date, ethics_approval, 
-            additional_comments, terms_agreement, email_consent, data_consent,
-            research_type, file_path, submission_date, status, created_at, updated_at
-        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NOW(), ?, NOW(), NOW())";
-
-        $stmt = $pdo->prepare($sql);
-        $result = $stmt->execute([
-            $userName,
-            $authorName,
-            $authorEmail,
-            $affiliation,
-            $coAuthors,
-            $paperTitle,
-            $abstract,
-            $keywords,
-            $methodology,
-            $fundingSource,
-            $researchStartDate ?: null,
-            $researchEndDate ?: null,
-            $ethicsApproval,
-            $additionalComments,
-            $termsAgreement,
-            $emailConsent,
-            $dataConsent,
-            $researchType,
-            $filePath,
-            'pending' // Default status
-        ]);
-
-        if ($result) {
-            $submissionId = $pdo->lastInsertId();
-            
-            // Send email notification if consent given
-            if ($emailConsent && !empty($authorEmail)) {
-                sendSubmissionConfirmation($pdo, $submissionId, $authorEmail, $authorName, $paperTitle, $researchType, $userName);
-            }
-            
-            // Log user activity
-            try {
-                $activityStmt = $pdo->prepare("
-                    INSERT INTO user_activity_logs (user_id, username, activity_type, activity_description, paper_id, created_at) 
-                    SELECT id, username, 'submit_paper', ?, ?, NOW() 
-                    FROM accounts WHERE username = ?
-                ");
-                $activityStmt->execute([
-                    "Submitted paper: $paperTitle",
-                    $submissionId,
-                    $_SESSION['username']
-                ]);
-            } catch (Exception $e) {
-                // Activity logging failed, but don't fail the submission
-                error_log("Failed to log activity: " . $e->getMessage());
-            }
-            
-            // Create notification for admin
-            try {
-                $notificationStmt = $pdo->prepare("
-                    INSERT INTO submission_notifications (paper_id, user_name, notification_type, message, created_at) 
-                    VALUES (?, ?, 'submitted', ?, NOW())
-                ");
-                $notificationStmt->execute([
-                    $submissionId,
-                    $userName,
-                    "New paper submission: \"$paperTitle\" by $authorName"
-                ]);
-            } catch (Exception $e) {
-                // Notification creation failed, but don't fail the submission
-                error_log("Failed to create notification: " . $e->getMessage());
-            }
-            
-            echo json_encode([
-                'success' => true, 
-                'message' => 'Paper submitted successfully',
-                'submission_id' => $submissionId,
-                'reference_number' => 'CNLRRS-' . date('Y') . '-' . str_pad($submissionId, 6, '0', STR_PAD_LEFT)
-            ]);
+        
+        // Generate unique filename
+        $file_extension = pathinfo($file['name'], PATHINFO_EXTENSION);
+        $unique_filename = uniqid() . '_' . time() . '.' . $file_extension;
+        $file_path = $upload_dir . $unique_filename;
+        
+        // Move uploaded file
+        if (!move_uploaded_file($file['tmp_name'], $file_path)) {
+            echo json_encode(['success' => false, 'message' => 'Failed to upload file']);
+            exit();
+        }
+    } else {
+        echo json_encode(['success' => false, 'message' => 'PDF file is required']);
+        exit();
+    }
+    
+    // Prepare data for database insertion
+    $paper_title = trim($_POST['paper_title']);
+    $research_type = $_POST['research_type'];
+    $keywords = trim($_POST['keywords']);
+    $author_name = trim($_POST['author_name']);
+    $author_email = trim($_POST['author_email']);
+    $affiliation = trim($_POST['affiliation']);
+    $abstract = trim($_POST['abstract']);
+    $user_name = $_SESSION['name'];
+    
+    // Optional fields
+    $co_authors = trim($_POST['co_authors'] ?? '');
+    $methodology = trim($_POST['methodology'] ?? '');
+    $funding_source = trim($_POST['funding_source'] ?? '');
+    $research_start_date = !empty($_POST['research_start_date']) ? $_POST['research_start_date'] : null;
+    $research_end_date = !empty($_POST['research_end_date']) ? $_POST['research_end_date'] : null;
+    $ethics_approval = trim($_POST['ethics_approval'] ?? '');
+    $additional_comments = trim($_POST['additional_comments'] ?? '');
+    
+    // Consent checkboxes
+    $terms_agreement = isset($_POST['terms_agreement']) ? 1 : 0;
+    $email_consent = isset($_POST['email_consent']) ? 1 : 0;
+    $data_consent = isset($_POST['data_consent']) ? 1 : 0;
+    
+    // Check what columns exist in the table
+    $columns_check = $conn->query("DESCRIBE paper_submissions");
+    $existing_columns = [];
+    while ($row = $columns_check->fetch_assoc()) {
+        $existing_columns[] = $row['Field'];
+    }
+    
+    // Build dynamic SQL based on available columns - FIXED: Use MySQLi instead of PDO
+    $base_fields = [
+        'paper_title' => $paper_title,
+        'research_type' => $research_type,
+        'keywords' => $keywords,
+        'author_name' => $author_name,
+        'abstract' => $abstract,
+        'file_path' => $file_path,
+        'status' => 'pending',
+        'submission_date' => date('Y-m-d H:i:s'),
+        'user_name' => $user_name
+    ];
+    
+    $enhanced_fields = [
+        'author_email' => $author_email,
+        'affiliation' => $affiliation,
+        'co_authors' => $co_authors,
+        'methodology' => $methodology,
+        'funding_source' => $funding_source,
+        'research_start_date' => $research_start_date,
+        'research_end_date' => $research_end_date,
+        'ethics_approval' => $ethics_approval,
+        'additional_comments' => $additional_comments,
+        'terms_agreement' => $terms_agreement,
+        'email_consent' => $email_consent,
+        'data_consent' => $data_consent
+    ];
+    
+    // Combine fields, only including those that exist in the table
+    $insert_data = [];
+    foreach ($base_fields as $field => $value) {
+        if (in_array($field, $existing_columns)) {
+            $insert_data[$field] = $value;
+        }
+    }
+    
+    foreach ($enhanced_fields as $field => $value) {
+        if (in_array($field, $existing_columns)) {
+            $insert_data[$field] = $value;
+        }
+    }
+    
+    // Build SQL query using MySQLi prepared statements
+    $columns = implode(', ', array_keys($insert_data));
+    $placeholders = implode(', ', array_fill(0, count($insert_data), '?'));
+    
+    $sql = "INSERT INTO paper_submissions ($columns) VALUES ($placeholders)";
+    $stmt = $conn->prepare($sql);
+    
+    if (!$stmt) {
+        throw new Exception("Prepare failed: " . $conn->error);
+    }
+    
+    // Create types string and values array for binding
+    $types = '';
+    $values = [];
+    
+    foreach ($insert_data as $key => $value) {
+        if (in_array($key, ['terms_agreement', 'email_consent', 'data_consent'])) {
+            $types .= 'i'; // integer for boolean fields
+        } elseif ($key === 'research_start_date' || $key === 'research_end_date') {
+            $types .= 's'; // string for dates (can be null)
         } else {
-            echo json_encode(['success' => false, 'message' => 'Failed to submit paper']);
+            $types .= 's'; // string for most fields
         }
-
-    } catch (Exception $e) {
-        error_log("Submission error: " . $e->getMessage());
-        echo json_encode(['success' => false, 'message' => 'An error occurred during submission']);
+        $values[] = $value;
     }
-} else {
-    echo json_encode(['success' => false, 'message' => 'Invalid request method']);
-}
-
-function sendSubmissionConfirmation($pdo, $submissionId, $authorEmail, $authorName, $paperTitle, $researchType, $submittedBy) {
-    try {
-        // Get email template
-        $stmt = $pdo->prepare("SELECT subject, body FROM email_templates WHERE template_type = 'enhanced_submission_confirmation' AND is_active = 1 LIMIT 1");
-        $stmt->execute();
-        $template = $stmt->fetch(PDO::FETCH_ASSOC);
+    
+    // Bind parameters
+    $stmt->bind_param($types, ...$values);
+    
+    // Execute query
+    if ($stmt->execute()) {
+        $submission_id = $conn->insert_id;
+        $reference_number = 'CNLRRS-' . date('Y') . '-' . str_pad($submission_id, 6, '0', STR_PAD_LEFT);
         
-        if (!$template) {
-            // Fallback to basic confirmation template
-            $stmt = $pdo->prepare("SELECT subject, body FROM email_templates WHERE template_type = 'paper_submitted' AND is_active = 1 LIMIT 1");
-            $stmt->execute();
-            $template = $stmt->fetch(PDO::FETCH_ASSOC);
+        // Update the record with reference number if that column exists
+        if (in_array('reference_number', $existing_columns)) {
+            $update_sql = "UPDATE paper_submissions SET reference_number = ? WHERE id = ?";
+            $update_stmt = $conn->prepare($update_sql);
+            $update_stmt->bind_param('si', $reference_number, $submission_id);
+            $update_stmt->execute();
+            $update_stmt->close();
         }
         
-        if ($template) {
-            $subject = str_replace([
-                '{{paper_title}}',
-                '{{author_name}}'
-            ], [
-                $paperTitle,
-                $authorName
-            ], $template['subject']);
-            
-            $body = str_replace([
-                '{{paper_title}}',
-                '{{author_name}}',
-                '{{research_type}}',
-                '{{affiliation}}',
-                '{{submission_date}}',
-                '{{submitted_by}}',
-                '{{author_email}}'
-            ], [
-                $paperTitle,
-                $authorName,
-                ucfirst(str_replace('_', ' ', $researchType)),
-                '', // Affiliation placeholder
-                date('F j, Y'),
-                $submittedBy,
-                $authorEmail
-            ], $template['body']);
-            
-            // Send email (you'll need to implement your email sending logic here)
-            // For now, we'll just log that an email should be sent
-            error_log("Email confirmation should be sent to $authorEmail: $subject");
-            
-            // You can integrate with PHPMailer, SendGrid, or your preferred email service here
-            return true;
-        }
+        $stmt->close();
         
-        return false;
-    } catch (Exception $e) {
-        error_log("Email sending failed: " . $e->getMessage());
-        return false;
+        echo json_encode([
+            'success' => true,
+            'message' => 'Paper submitted successfully',
+            'submission_id' => $submission_id,
+            'reference_number' => $reference_number
+        ]);
+        
+    } else {
+        throw new Exception("Execute failed: " . $stmt->error);
     }
+    
+} catch (Exception $e) {
+    // Clean up uploaded file if database insertion failed
+    if (isset($file_path) && file_exists($file_path)) {
+        unlink($file_path);
+    }
+    
+    error_log("Paper submission error: " . $e->getMessage());
+    echo json_encode([
+        'success' => false,
+        'message' => 'Database error occurred. Please try again. Error: ' . $e->getMessage()
+    ]);
 }
 ?>

@@ -75,14 +75,7 @@ logPageView('User Login Page');
                 </button>
             </form>
         </div>
-
-        <!-- Forgot Password Link -->
-        <div class="mt-4 text-center">
-            <a href="forgot_password.php" class="text-sm text-red-600 hover:underline">
-                <i class="fas fa-key mr-1"></i>
-                Forgot your password?
-            </a>
-        </div>
+ 
 
         <div class="mt-4 text-center">
             <a href="usersignup.php" class="text-sm text-green-600 hover:underline">Don't have an account? Sign Up</a>

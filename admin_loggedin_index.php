@@ -6,7 +6,7 @@ if (!isset($_SESSION['username']) || $_SESSION['role'] !== 'admin') {
     header('Location: index.php');
     exit();
 }
-
+require_once 'includes/ReviewerNotifications.php';
 include 'connect.php';
 
 // Get total users count
@@ -17,11 +17,14 @@ $total_users = $result->fetch_assoc()['total_users'];
 $result = $conn->query("SELECT COUNT(*) as total_publications FROM paper_submissions WHERE status IN ('approved', 'published')");
 $total_publications = $result->fetch_assoc()['total_publications'];
 
-// Get pending reviews count
+
 $result = $conn->query("SELECT COUNT(*) as pending_reviews FROM paper_submissions WHERE status IN ('pending', 'under_review')");
 $pending_reviews = $result->fetch_assoc()['pending_reviews'];
 
-// Get current month views from paper_metrics
+
+
+
+
 $current_month = date('Y-m');
 $stmt = $conn->prepare("
     SELECT COUNT(*) as monthly_views 
@@ -612,77 +615,6 @@ function formatNumber($number) {
       </div>
     </section>
 
-    <!-- Recent Activity -->
-    <section class="max-w-6xl mx-auto px-4">
-      <h3 class="text-2xl font-bold text-[#115D5B] mb-6">
-        <i class="fas fa-clock mr-2"></i>Recent Activity
-      </h3>
-      <div class="bg-white rounded-lg shadow-lg overflow-hidden">
-        <div class="p-6">
-          <div class="space-y-2">
-            
-            <div class="activity-item flex items-center justify-between">
-              <div class="flex items-center">
-                <div class="bg-green-100 p-2 rounded-full mr-4 flex-shrink-0">
-                  <i class="fas fa-user-plus text-green-600"></i>
-                </div>
-                <div>
-                  <p class="font-medium">New user registered: Maria Santos</p>
-                  <p class="text-sm text-gray-500">2 minutes ago</p>
-                </div>
-              </div>
-              <span class="text-green-600 text-sm font-medium bg-green-50 px-3 py-1 rounded-full">New User</span>
-            </div>
-
-            <div class="activity-item flex items-center justify-between">
-              <div class="flex items-center">
-                <div class="bg-blue-100 p-2 rounded-full mr-4 flex-shrink-0">
-                  <i class="fas fa-file-upload text-blue-600"></i>
-                </div>
-                <div>
-                  <p class="font-medium">Publication submitted: "Pineapple Cultivation Methods"</p>
-                  <p class="text-sm text-gray-500">15 minutes ago</p>
-                </div>
-              </div>
-              <span class="text-blue-600 text-sm font-medium bg-blue-50 px-3 py-1 rounded-full">Pending Review</span>
-            </div>
-
-            <div class="activity-item flex items-center justify-between">
-              <div class="flex items-center">
-                <div class="bg-orange-100 p-2 rounded-full mr-4 flex-shrink-0">
-                  <i class="fas fa-server text-orange-600"></i>
-                </div>
-                <div>
-                  <p class="font-medium">System backup completed successfully</p>
-                  <p class="text-sm text-gray-500">1 hour ago</p>
-                </div>
-              </div>
-              <span class="text-orange-600 text-sm font-medium bg-orange-50 px-3 py-1 rounded-full">System</span>
-            </div>
-
-            <div class="activity-item flex items-center justify-between">
-              <div class="flex items-center">
-                <div class="bg-purple-100 p-2 rounded-full mr-4 flex-shrink-0">
-                  <i class="fas fa-check-circle text-purple-600"></i>
-                </div>
-                <div>
-                  <p class="font-medium">Publication approved: "Sustainable Farming Practices"</p>
-                  <p class="text-sm text-gray-500">3 hours ago</p>
-                </div>
-              </div>
-              <span class="text-purple-600 text-sm font-medium bg-purple-50 px-3 py-1 rounded-full">Approved</span>
-            </div>
-
-          </div>
-        </div>
-        <div class="bg-gray-50 px-6 py-4">
-          <a href="#" class="text-[#115D5B] font-medium hover:text-[#103625] transition-colors flex items-center">
-            View all activity <i class="fas fa-arrow-right ml-2"></i>
-          </a>
-        </div>
-      </div>
-    </section>
-  </main>
 
   <!-- Footer -->
   <footer class="bg-gradient-to-r from-[#115D5B] to-[#103625] text-white text-center py-8 mt-12">
