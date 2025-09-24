@@ -1,3 +1,181 @@
+<?php
+session_start();
+
+// Check if user is logged in
+if (!isset($_SESSION['name'])) {
+    header('Location: index.php');
+    exit();
+}
+
+// Database connection
+$host = "localhost";
+$user = "root";
+$pass = "";
+$dbname = "cap";
+
+$conn = new mysqli($host, $user, $pass, $dbname);
+if ($conn->connect_error) {
+    if ($_SERVER["REQUEST_METHOD"] === "POST") {
+        header('Content-Type: application/json');
+        echo json_encode(["success" => false, "error" => "Database connection failed"]);
+        exit();
+    }
+    die("Database connection failed: " . $conn->connect_error);
+}
+
+if ($_SERVER["REQUEST_METHOD"] === "POST") {
+    header('Content-Type: application/json');
+    
+    try {
+        // Get form data
+        $user_name = $_SESSION['name']; // This matches your session variable
+        $author_name = $_POST['author_name'] ?? '';
+        $author_email = $_POST['author_email'] ?? '';
+        $affiliation = $_POST['affiliation'] ?? '';
+        $co_authors = $_POST['co_authors'] ?? '';
+        $paper_title = $_POST['paper_title'] ?? '';
+        $abstract = $_POST['abstract'] ?? '';
+        $keywords = $_POST['keywords'] ?? '';
+        $research_type = $_POST['research_type'] ?? 'other';
+        $methodology = $_POST['methodology'] ?? '';
+        $funding_source = $_POST['funding_source'] ?? '';
+        $research_start_date = $_POST['research_start_date'] ?? null;
+        $research_end_date = $_POST['research_end_date'] ?? null;
+        $ethics_approval = $_POST['ethics_approval'] ?? '';
+        $additional_comments = $_POST['additional_comments'] ?? '';
+        $terms_agreement = isset($_POST['terms_agreement']) ? 1 : 0;
+        $email_consent = isset($_POST['email_consent']) ? 1 : 0;
+        $data_consent = isset($_POST['data_consent']) ? 1 : 0;
+
+        // Validate required fields
+        if (empty($author_name) || empty($author_email) || empty($paper_title) || empty($abstract) || empty($keywords) || $terms_agreement !== 1) {
+            throw new Exception("Missing required fields. Please fill in: Author Name, Email, Paper Title, Abstract, Keywords, and agree to terms.");
+        }
+
+        // Validate file upload
+        if (!isset($_FILES["paper_file"]) || $_FILES["paper_file"]["error"] !== UPLOAD_ERR_OK) {
+            $upload_errors = [
+                UPLOAD_ERR_INI_SIZE => 'File is too large (exceeds server limit)',
+                UPLOAD_ERR_FORM_SIZE => 'File is too large (exceeds form limit)', 
+                UPLOAD_ERR_PARTIAL => 'File was only partially uploaded',
+                UPLOAD_ERR_NO_FILE => 'No file was uploaded',
+                UPLOAD_ERR_NO_TMP_DIR => 'Missing temporary folder',
+                UPLOAD_ERR_CANT_WRITE => 'Failed to write file to disk',
+                UPLOAD_ERR_EXTENSION => 'File upload stopped by extension'
+            ];
+            $error_code = $_FILES["paper_file"]["error"] ?? UPLOAD_ERR_NO_FILE;
+            throw new Exception($upload_errors[$error_code] ?? "Unknown upload error");
+        }
+
+        $file = $_FILES["paper_file"];
+        
+        // Validate file type using more robust method
+        $allowed_types = ['application/pdf'];
+        $file_type = mime_content_type($file["tmp_name"]);
+        
+        if (!in_array($file_type, $allowed_types)) {
+            throw new Exception("Only PDF files are allowed. Detected type: " . $file_type);
+        }
+
+        // Validate file size (25MB)
+        if ($file["size"] > 25 * 1024 * 1024) {
+            throw new Exception("File size must be less than 25MB. Current size: " . round($file["size"] / 1024 / 1024, 2) . "MB");
+        }
+
+        // Create upload directory
+        $upload_dir = "uploads/papers/";
+        if (!is_dir($upload_dir)) {
+            if (!mkdir($upload_dir, 0777, true)) {
+                throw new Exception("Failed to create upload directory");
+            }
+        }
+
+        // Generate unique filename
+        $file_extension = pathinfo($file["name"], PATHINFO_EXTENSION);
+        $unique_name = uniqid() . "_" . time() . "." . $file_extension;
+        $file_path = $upload_dir . $unique_name;
+
+        // Move uploaded file
+        if (!move_uploaded_file($file["tmp_name"], $file_path)) {
+            throw new Exception("Failed to upload file");
+        }
+
+        // Handle empty dates (convert to NULL)
+        $start_date_value = !empty($research_start_date) ? $research_start_date : null;
+        $end_date_value = !empty($research_end_date) ? $research_end_date : null;
+
+        // Prepare SQL - using your exact table structure
+        $sql = "INSERT INTO paper_submissions (
+            user_name, author_name, author_email, affiliation, co_authors,
+            paper_title, abstract, keywords, methodology, funding_source,
+            research_start_date, research_end_date, ethics_approval, additional_comments,
+            terms_agreement, email_consent, data_consent, research_type,
+            file_path, submission_date, status
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NOW(), 'pending')";
+
+        $stmt = $conn->prepare($sql);
+        if (!$stmt) {
+            throw new Exception("Database prepare error: " . $conn->error);
+        }
+
+        $stmt->bind_param(
+            "sssssssssssssiiiiss",
+            $user_name,
+            $author_name,
+            $author_email,
+            $affiliation,
+            $co_authors,
+            $paper_title,
+            $abstract,
+            $keywords,
+            $methodology,
+            $funding_source,
+            $start_date_value,
+            $end_date_value,
+            $ethics_approval,
+            $additional_comments,
+            $terms_agreement,
+            $email_consent,
+            $data_consent,
+            $research_type,
+            $file_path
+        );
+
+        if ($stmt->execute()) {
+            $submission_id = $conn->insert_id;
+            echo json_encode([
+                "success" => true, 
+                "message" => "Paper submitted successfully!",
+                "submission_id" => $submission_id,
+                "redirect" => "my_submissions.php"
+            ]);
+        } else {
+            // Clean up file if database insert fails
+            if (file_exists($file_path)) {
+                unlink($file_path);
+            }
+            throw new Exception("Database insert error: " . $stmt->error);
+        }
+        
+        $stmt->close();
+
+    } catch (Exception $e) {
+        // Clean up uploaded file if it exists
+        if (isset($file_path) && file_exists($file_path)) {
+            unlink($file_path);
+        }
+        
+        echo json_encode([
+            "success" => false, 
+            "error" => $e->getMessage()
+        ]);
+    }
+    
+    $conn->close();
+    exit;
+}
+?>
+
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -78,7 +256,6 @@
     </style>
 </head>
 <body class="bg-gradient-to-br from-gray-50 to-blue-50 min-h-screen">
-    <!-- Header -->
     <header class="bg-gradient-to-r from-[#115D5B] to-[#0d4a47] text-white py-6 px-6 shadow-lg">
         <div class="max-w-6xl mx-auto">
             <div class="flex items-center justify-between">
@@ -103,7 +280,6 @@
         </div>
     </header>
 
-    <!-- Progress Indicator -->
     <div class="max-w-6xl mx-auto px-6 py-4">
         <div class="bg-white rounded-lg p-4 shadow-sm">
             <div class="flex items-center justify-between text-sm text-gray-600 mb-2">
@@ -117,7 +293,6 @@
     </div>
 
     <div class="max-w-6xl mx-auto px-6 py-8">
-        <!-- Instructions Panel -->
         <div class="form-section p-6 mb-8 bg-gradient-to-r from-blue-50 to-indigo-50">
             <div class="flex items-start space-x-4">
                 <div class="section-icon text-white p-3 rounded-full">
@@ -128,12 +303,11 @@
                     <div class="grid md:grid-cols-2 gap-4 text-sm text-gray-700">
                         <div>
                             <h3 class="font-semibold mb-2">Required Information:</h3>
-                               
-                               
-                                <li>DOST Research  Proposal Template
+                            <ul class="list-disc list-inside space-y-1">
+                                <li>DOST Research Proposal Template
                                     <a href="Images/worksheet.xlsx" download class="text-blue-600 underline ml-2">
-                                         Download Here</a> </li>
-                                          
+                                         Download Here</a> 
+                                </li>
                             </ul>
                         </div>
                     </div>
@@ -142,7 +316,7 @@
         </div>
 
         <form id="paperSubmissionForm" enctype="multipart/form-data">
-            <!-- Section 1: Basic Information -->
+            <!-- Basic Information Section -->
             <div class="form-section p-6 mb-8">
                 <div class="flex items-center space-x-3 mb-6">
                     <div class="section-icon text-white p-3 rounded-full">
@@ -151,7 +325,6 @@
                     <h2 class="text-xl font-bold text-gray-800">1. Basic Information</h2>
                 </div>
 
-                <!-- Paper Title -->
                 <div class="mb-6">
                     <div class="flex items-center justify-between mb-2">
                         <label class="block text-sm font-semibold text-gray-700 required">Research Paper Title</label>
@@ -159,11 +332,11 @@
                             <i class="fas fa-question-circle text-gray-400"></i>
                         </button>
                     </div>
-                    <input type="text" id="paperTitle" name="paper_title" required maxlength="200"
+                    <input type="text" id="paperTitle" name="paper_title" required maxlength="500"
                            class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#115D5B] focus:border-transparent transition"
                            placeholder="Enter the complete title of your research paper">
                     <div class="flex justify-between items-center mt-1">
-                        <span id="titleCount" class="character-count text-gray-500">0/200 characters</span>
+                        <span id="titleCount" class="character-count text-gray-500">0/500 characters</span>
                     </div>
                     <div id="titleHelp" class="field-help p-4 rounded-lg mt-3 hidden">
                         <h4 class="font-semibold text-blue-800 mb-2">Paper Title Guidelines:</h4>
@@ -173,13 +346,9 @@
                             <li><strong>Keep Concise:</strong> Aim for 10-15 words when possible</li>
                             <li><strong>Avoid Jargon:</strong> Use terminology that broader audience can understand</li>
                         </ul>
-                        <p class="text-xs text-blue-600 mt-2">
-                            <strong>Example:</strong> "Effects of Organic Fertilizers on Rice Yield and Soil Quality in Lowland Areas"
-                        </p>
                     </div>
                 </div>
 
-                <!-- Research Type -->
                 <div class="mb-6">
                     <div class="flex items-center justify-between mb-3">
                         <label class="block text-sm font-semibold text-gray-700 required">Research Type</label>
@@ -225,18 +394,17 @@
                         <h4 class="font-semibold text-blue-800 mb-2">Research Type Selection:</h4>
                         <div class="grid md:grid-cols-2 gap-4 text-sm text-blue-700">
                             <div>
-                                <p><strong>Experimental:</strong> You manipulated variables and measured outcomes (e.g., testing different fertilizer types)</p>
-                                <p><strong>Observational:</strong> You collected data without manipulating conditions (e.g., monitoring crop growth patterns)</p>
+                                <p><strong>Experimental:</strong> You manipulated variables and measured outcomes</p>
+                                <p><strong>Observational:</strong> You collected data without manipulating conditions</p>
                             </div>
                             <div>
-                                <p><strong>Literature Review:</strong> You analyzed and synthesized existing research papers on a topic</p>
-                                <p><strong>Case Study:</strong> You conducted detailed analysis of specific instances or locations</p>
+                                <p><strong>Literature Review:</strong> You analyzed existing research papers</p>
+                                <p><strong>Case Study:</strong> You conducted detailed analysis of specific instances</p>
                             </div>
                         </div>
                     </div>
                 </div>
 
-                <!-- Keywords -->
                 <div class="mb-6">
                     <div class="flex items-center justify-between mb-2">
                         <label class="block text-sm font-semibold text-gray-700 required">Keywords</label>
@@ -255,18 +423,14 @@
                         <h4 class="font-semibold text-blue-800 mb-2">Keyword Guidelines:</h4>
                         <ul class="text-sm text-blue-700 space-y-1">
                             <li><strong>5-8 Keywords:</strong> Provide between 5-8 relevant terms</li>
-                            <li><strong>Specific Terms:</strong> Use precise scientific terms, not general words</li>
-                            <li><strong>Mix Levels:</strong> Include both broad and specific terms</li>
+                            <li><strong>Specific Terms:</strong> Use precise scientific terms</li>
                             <li><strong>Separate by Commas:</strong> Use commas to separate each keyword</li>
                         </ul>
-                        <p class="text-xs text-blue-600 mt-2">
-                            <strong>Example:</strong> rice cultivation, organic fertilizer, soil fertility, crop yield, sustainable agriculture, lowland farming
-                        </p>
                     </div>
                 </div>
             </div>
 
-            <!-- Section 2: Author Information -->
+            <!-- Author Information Section -->
             <div class="form-section p-6 mb-8">
                 <div class="flex items-center space-x-3 mb-6">
                     <div class="section-icon text-white p-3 rounded-full">
@@ -275,16 +439,10 @@
                     <h2 class="text-xl font-bold text-gray-800">2. Author Information</h2>
                 </div>
 
-                <!-- Primary Author -->
                 <div class="grid md:grid-cols-2 gap-6 mb-6">
                     <div>
-                        <div class="flex items-center justify-between mb-2">
-                            <label class="block text-sm font-semibold text-gray-700 required">Primary Author Full Name</label>
-                            <button type="button" class="help-toggle" onclick="toggleHelp('authorHelp')">
-                                <i class="fas fa-question-circle text-gray-400"></i>
-                            </button>
-                        </div>
-                        <input type="text" id="authorName" name="author_name" required maxlength="100"
+                        <label class="block text-sm font-semibold text-gray-700 required mb-2">Primary Author Full Name</label>
+                        <input type="text" id="authorName" name="author_name" required maxlength="255"
                                class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#115D5B] focus:border-transparent transition"
                                placeholder="Dr. Juan A. Dela Cruz">
                     </div>
@@ -296,65 +454,23 @@
                     </div>
                 </div>
 
-                <!-- Author Affiliation -->
                 <div class="mb-6">
-                    <div class="flex items-center justify-between mb-2">
-                        <label class="block text-sm font-semibold text-gray-700 required">Primary Author Affiliation</label>
-                        <button type="button" class="help-toggle" onclick="toggleHelp('affiliationHelp')">
-                            <i class="fas fa-question-circle text-gray-400"></i>
-                        </button>
-                    </div>
+                    <label class="block text-sm font-semibold text-gray-700 required mb-2">Primary Author Affiliation</label>
                     <input type="text" id="affiliation" name="affiliation" required maxlength="200"
                            class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#115D5B] focus:border-transparent transition"
                            placeholder="Department of Agriculture, University of the Philippines Los Baños">
-                    <div id="affiliationHelp" class="field-help p-4 rounded-lg mt-3 hidden">
-                        <h4 class="font-semibold text-blue-800 mb-2">Affiliation Format:</h4>
-                        <p class="text-sm text-blue-700">Include your department, institution, and location if relevant.</p>
-                        <p class="text-xs text-blue-600 mt-2">
-                            <strong>Format:</strong> Department/Unit, Institution Name, City (if needed)
-                        </p>
-                    </div>
                 </div>
 
-                <!-- Co-Authors -->
                 <div class="mb-6">
-                    <div class="flex items-center justify-between mb-2">
-                        <label class="block text-sm font-semibold text-gray-700">Co-Authors (Optional)</label>
-                        <button type="button" class="help-toggle" onclick="toggleHelp('coauthorHelp')">
-                            <i class="fas fa-question-circle text-gray-400"></i>
-                        </button>
-                    </div>
+                    <label class="block text-sm font-semibold text-gray-700 mb-2">Co-Authors (Optional)</label>
                     <textarea id="coAuthors" name="co_authors" rows="3" maxlength="500"
                               class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#115D5B] focus:border-transparent transition"
                               placeholder="List co-authors with their affiliations"></textarea>
                     <span id="coAuthorCount" class="character-count text-gray-500 block mt-1">0/500 characters</span>
-                    <div id="coauthorHelp" class="field-help p-4 rounded-lg mt-3 hidden">
-                        <h4 class="font-semibold text-blue-800 mb-2">Co-Author Information:</h4>
-                        <ul class="text-sm text-blue-700 space-y-1">
-                            <li>List each co-author on a separate line</li>
-                            <li>Include their affiliation after their name</li>
-                            <li>List in order of contribution to the research</li>
-                        </ul>
-                        <p class="text-xs text-blue-600 mt-2">
-                            <strong>Example:</strong><br>
-                            Dr. Maria Santos - Department of Soil Science, UPLB<br>
-                            Prof. Roberto Mendoza - CNLRRS, Camarines Norte
-                        </p>
-                    </div>
-                </div>
-
-                <div id="authorHelp" class="field-help p-4 rounded-lg mt-3 hidden">
-                    <h4 class="font-semibold text-blue-800 mb-2">Author Name Format:</h4>
-                    <ul class="text-sm text-blue-700 space-y-1">
-                        <li>Include academic titles (Dr., Prof., etc.) if applicable</li>
-                        <li>Use full name, not initials only</li>
-                        <li>Include middle initial or name if commonly used</li>
-                        <li>Ensure spelling matches your official documents</li>
-                    </ul>
                 </div>
             </div>
 
-            <!-- Section 3: Abstract & Research Details -->
+            <!-- Abstract Section -->
             <div class="form-section p-6 mb-8">
                 <div class="flex items-center space-x-3 mb-6">
                     <div class="section-icon text-white p-3 rounded-full">
@@ -363,14 +479,8 @@
                     <h2 class="text-xl font-bold text-gray-800">3. Abstract & Research Details</h2>
                 </div>
 
-                <!-- Abstract -->
                 <div class="mb-6">
-                    <div class="flex items-center justify-between mb-2">
-                        <label class="block text-sm font-semibold text-gray-700 required">Abstract</label>
-                        <button type="button" class="help-toggle" onclick="toggleHelp('abstractHelp')">
-                            <i class="fas fa-question-circle text-gray-400"></i>
-                        </button>
-                    </div>
+                    <label class="block text-sm font-semibold text-gray-700 required mb-2">Abstract</label>
                     <textarea id="abstract" name="abstract" rows="8" required maxlength="2000"
                               class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#115D5B] focus:border-transparent transition"
                               placeholder="Provide a comprehensive abstract of your research..."></textarea>
@@ -378,65 +488,28 @@
                         <span id="abstractCount" class="character-count text-gray-500">0/2000 characters</span>
                         <span id="abstractWordCount" class="character-count text-gray-500">0 words</span>
                     </div>
-                    <div id="abstractHelp" class="field-help p-4 rounded-lg mt-3 hidden">
-                        <h4 class="font-semibold text-blue-800 mb-2">Abstract Structure (200-400 words):</h4>
-                        <div class="text-sm text-blue-700 space-y-2">
-                            <p><strong>1. Background/Problem (1-2 sentences):</strong> What issue does your research address?</p>
-                            <p><strong>2. Objective (1 sentence):</strong> What was the main goal of your study?</p>
-                            <p><strong>3. Methods (2-3 sentences):</strong> How did you conduct the research?</p>
-                            <p><strong>4. Results (2-4 sentences):</strong> What were your main findings?</p>
-                            <p><strong>5. Conclusion (1-2 sentences):</strong> What do your results mean?</p>
-                        </div>
-                        <p class="text-xs text-blue-600 mt-2">
-                            <strong>Tip:</strong> Write the abstract after completing your paper, summarizing each major section.
-                        </p>
-                    </div>
                 </div>
 
-                <!-- Research Methodology -->
                 <div class="mb-6">
-                    <div class="flex items-center justify-between mb-2">
-                        <label class="block text-sm font-semibold text-gray-700">Research Methodology (Optional)</label>
-                        <button type="button" class="help-toggle" onclick="toggleHelp('methodHelp')">
-                            <i class="fas fa-question-circle text-gray-400"></i>
-                        </button>
-                    </div>
+                    <label class="block text-sm font-semibold text-gray-700 mb-2">Research Methodology (Optional)</label>
                     <textarea id="methodology" name="methodology" rows="4" maxlength="1000"
                               class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#115D5B] focus:border-transparent transition"
                               placeholder="Brief description of your research methods and approach..."></textarea>
                     <span id="methodCount" class="character-count text-gray-500 block mt-1">0/1000 characters</span>
-                    <div id="methodHelp" class="field-help p-4 rounded-lg mt-3 hidden">
-                        <h4 class="font-semibold text-blue-800 mb-2">Methodology Summary:</h4>
-                        <ul class="text-sm text-blue-700 space-y-1">
-                            <li><strong>Study Design:</strong> Experimental, observational, etc.</li>
-                            <li><strong>Location:</strong> Where was the study conducted?</li>
-                            <li><strong>Duration:</strong> How long did the study take?</li>
-                            <li><strong>Key Methods:</strong> Main techniques or approaches used</li>
-                        </ul>
-                    </div>
                 </div>
             </div>
 
-            <!-- Section 4: File Upload -->
+            <!-- File Upload Section -->
             <div class="form-section p-6 mb-8">
                 <div class="flex items-center space-x-3 mb-6">
                     <div class="section-icon text-white p-3 rounded-full">
                         <i class="fas fa-cloud-upload-alt text-lg"></i>
                     </div>
-                    <h2 class="text-xl font-bold text-gray-800">4. Upload Research Proposal</h2>
+                    <h2 class="text-xl font-bold text-gray-800">4. Upload Research Paper</h2>
                 </div>
 
                 <div class="mb-6">
-                    <div class="flex items-center justify-between mb-3">
-                        <label class="block text-sm font-semibold text-gray-700 ">  <li>Submit PDF format only</li>
-                        <li>Maximum file size: 25MB</li>
-                       </label>
-                       
-                        
-                        <button type="button" class="help-toggle" onclick="toggleHelp('fileHelp')">
-                            <i class="fas fa-question-circle text-gray-400"></i>
-                        </button>
-                    </div>
+                    <label class="block text-sm font-semibold text-gray-700 mb-3">Research Paper File (PDF only, max 25MB)</label>
                     
                     <div class="file-drop-zone p-8 border-2 border-dashed rounded-lg text-center transition" 
                          ondrop="dropHandler(event)" ondragover="dragOverHandler(event)" ondragleave="dragLeaveHandler(event)">
@@ -462,27 +535,11 @@
                                 <i class="fas fa-times"></i>
                             </button>
                         </div>
-                        <div class="mt-2">
-                            <div class="w-full bg-gray-200 rounded-full h-2">
-                                <div id="uploadProgress" class="bg-green-500 h-2 rounded-full transition-all duration-300" style="width: 100%"></div>
-                            </div>
-                        </div>
-                    </div>
-
-                    <div id="fileHelp" class="field-help p-4 rounded-lg mt-3 hidden">
-                        <h4 class="font-semibold text-blue-800 mb-2">File Requirements:</h4>
-                        <ul class="text-sm text-blue-700 space-y-1">
-                            <li><strong>Format:</strong> PDF only (no Word documents or other formats)</li>
-                            <li><strong>Size:</strong> Maximum 25MB file size</li>
-                            <li><strong>Content:</strong> Complete paper with all sections, figures, and references</li>
-                            <li><strong>Quality:</strong> Clear, readable text and images</li>
-                            <li><strong>Structure:</strong> Follow standard academic paper format</li>
-                        </ul>
                     </div>
                 </div>
             </div>
 
-            <!-- Section 5: Additional Information -->
+            <!-- Additional Information Section -->
             <div class="form-section p-6 mb-8">
                 <div class="flex items-center space-x-3 mb-6">
                     <div class="section-icon text-white p-3 rounded-full">
@@ -491,101 +548,44 @@
                     <h2 class="text-xl font-bold text-gray-800">5. Additional Information</h2>
                 </div>
 
-                <!-- Funding Source -->
                 <div class="mb-6">
-                    <div class="flex items-center justify-between mb-2">
-                        <label class="block text-sm font-semibold text-gray-700">Funding Source (Optional)</label>
-                        <button type="button" class="help-toggle" onclick="toggleHelp('fundingHelp')">
-                            <i class="fas fa-question-circle text-gray-400"></i>
-                        </button>
-                    </div>
+                    <label class="block text-sm font-semibold text-gray-700 mb-2">Funding Source (Optional)</label>
                     <input type="text" id="fundingSource" name="funding_source" maxlength="200"
                            class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#115D5B] focus:border-transparent transition"
                            placeholder="e.g., DOST-PCAARRD, University Research Grant">
-                    <div id="fundingHelp" class="field-help p-4 rounded-lg mt-3 hidden">
-                        <h4 class="font-semibold text-blue-800 mb-2">Funding Information:</h4>
-                        <ul class="text-sm text-blue-700 space-y-1">
-                            <li>List the main funding agency or organization</li>
-                            <li>Include grant number if available</li>
-                            <li>If self-funded or institutional support, mention that</li>
-                            <li>Leave blank if no specific funding was received</li>
-                        </ul>
-                    </div>
                 </div>
 
-                <!-- Research Duration -->
                 <div class="grid md:grid-cols-2 gap-6 mb-6">
                     <div>
-                        <div class="flex items-center justify-between mb-2">
-                            <label class="block text-sm font-semibold text-gray-700">Research Start Date</label>
-                            <button type="button" class="help-toggle" onclick="toggleHelp('durationHelp')">
-                                <i class="fas fa-question-circle text-gray-400"></i>
-                            </button>
-                        </div>
+                        <label class="block text-sm font-semibold text-gray-700 mb-2">Research Start Date (Optional)</label>
                         <input type="date" id="startDate" name="research_start_date"
                                class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#115D5B] focus:border-transparent transition">
                     </div>
                     <div>
-                        <label class="block text-sm font-semibold text-gray-700 mb-2">Research End Date</label>
+                        <label class="block text-sm font-semibold text-gray-700 mb-2">Research End Date (Optional)</label>
                         <input type="date" id="endDate" name="research_end_date"
                                class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#115D5B] focus:border-transparent transition">
                     </div>
                 </div>
 
-                <div id="durationHelp" class="field-help p-4 rounded-lg mb-6 hidden">
-                    <h4 class="font-semibold text-blue-800 mb-2">Research Duration:</h4>
-                    <p class="text-sm text-blue-700">Provide the actual dates when data collection and analysis were conducted. This helps reviewers understand the timeline and seasonal factors that may have influenced your results.</p>
-                </div>
-
-                <!-- Ethics Approval -->
                 <div class="mb-6">
-                    <div class="flex items-center justify-between mb-2">
-                        <label class="block text-sm font-semibold text-gray-700">Ethics Approval/Permits</label>
-                        <button type="button" class="help-toggle" onclick="toggleHelp('ethicsHelp')">
-                            <i class="fas fa-question-circle text-gray-400"></i>
-                        </button>
-                    </div>
+                    <label class="block text-sm font-semibold text-gray-700 mb-2">Ethics Approval/Permits (Optional)</label>
                     <textarea id="ethicsApproval" name="ethics_approval" rows="3" maxlength="500"
                               class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#115D5B] focus:border-transparent transition"
-                              placeholder="List any ethics approvals, permits, or clearances obtained for this research..."></textarea>
+                              placeholder="List any ethics approvals, permits, or clearances obtained..."></textarea>
                     <span id="ethicsCount" class="character-count text-gray-500 block mt-1">0/500 characters</span>
-                    <div id="ethicsHelp" class="field-help p-4 rounded-lg mt-3 hidden">
-                        <h4 class="font-semibold text-blue-800 mb-2">Ethics and Permits:</h4>
-                        <ul class="text-sm text-blue-700 space-y-1">
-                            <li><strong>Human Subjects:</strong> IRB/Ethics committee approval</li>
-                            <li><strong>Animal Studies:</strong> Animal care and use committee approval</li>
-                            <li><strong>Field Research:</strong> Land use permits, local government clearances</li>
-                            <li><strong>Biological Samples:</strong> Collection and transport permits</li>
-                        </ul>
-                        <p class="text-xs text-blue-600 mt-2">Include approval numbers and issuing institutions if applicable.</p>
-                    </div>
                 </div>
 
-                <!-- Additional Comments -->
                 <div class="mb-6">
-                    <div class="flex items-center justify-between mb-2">
-                        <label class="block text-sm font-semibold text-gray-700">Additional Comments (Optional)</label>
-                        <button type="button" class="help-toggle" onclick="toggleHelp('commentsHelp')">
-                            <i class="fas fa-question-circle text-gray-400"></i>
-                        </button>
-                    </div>
+                    <label class="block text-sm font-semibold text-gray-700 mb-2">Additional Comments (Optional)</label>
                     <textarea id="additionalComments" name="additional_comments" rows="4" maxlength="1000"
                               class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#115D5B] focus:border-transparent transition"
-                              placeholder="Any additional information you would like the reviewers to know..."></textarea>
+                              placeholder="Any additional information for reviewers..."></textarea>
                     <span id="commentsCount" class="character-count text-gray-500 block mt-1">0/1000 characters</span>
-                    <div id="commentsHelp" class="field-help p-4 rounded-lg mt-3 hidden">
-                        <h4 class="font-semibold text-blue-800 mb-2">Additional Comments:</h4>
-                        <ul class="text-sm text-blue-700 space-y-1">
-                            <li>Unique challenges or limitations encountered</li>
-                            <li>Special circumstances affecting the research</li>
-                            <li>Significance or potential impact of the findings</li>
-                            <li>Suggestions for future research directions</li>
-                        </ul>
-                    </div>
                 </div>
             </div>
 
-            <!-- Terms and Conditions -->
+            <!-- Terms and Agreement Section -->
             <div class="form-section p-6 mb-8">
                 <div class="flex items-center space-x-3 mb-6">
                     <div class="section-icon text-white p-3 rounded-full">
@@ -606,19 +606,12 @@
                             <li>All sources and references are properly cited</li>
                             <li>The data and findings are accurate to the best of your knowledge</li>
                         </ul>
-                        <p class="mt-4"><strong>Review Process:</strong></p>
-                        <ul class="list-disc list-inside space-y-1 ml-4">
-                            <li>Your submission will be reviewed by CNLRRS experts</li>
-                            <li>You will receive email notifications about status updates</li>
-                            <li>Reviewers may request revisions or additional information</li>
-                            <li>Review timeline is typically 2-4 weeks</li>
-                        </ul>
                     </div>
                 </div>
 
                 <div class="space-y-4">
                     <label class="flex items-start space-x-3 cursor-pointer">
-                        <input type="checkbox" id="termsAgree" name="terms_agreement" required
+                        <input type="checkbox" id="termsAgree" name="terms_agreement" required onchange="updateProgress()"
                                class="mt-1 h-5 w-5 text-[#115D5B] border-2 border-gray-300 rounded focus:ring-2 focus:ring-[#115D5B]">
                         <span class="text-sm text-gray-700">
                             <span class="font-semibold required">I agree to the submission terms and conditions</span> listed above and confirm that all information provided is accurate and complete.
@@ -657,26 +650,6 @@
         </form>
     </div>
 
-    <!-- Success Modal -->
-    <div id="successModal" class="fixed inset-0 bg-gray-600 bg-opacity-50 hidden items-center justify-center z-50">
-        <div class="bg-white rounded-lg shadow-xl max-w-md w-full mx-4 transform transition-all">
-            <div class="p-6 text-center">
-                <div class="mx-auto flex items-center justify-center h-12 w-12 rounded-full bg-green-100 mb-4">
-                    <i class="fas fa-check text-green-600 text-xl"></i>
-                </div>
-                <h3 class="text-lg font-semibold text-gray-900 mb-2">Submission Successful!</h3>
-                <p class="text-sm text-gray-600 mb-6">
-                    Your research paper has been submitted successfully. You will receive a confirmation email shortly with your submission reference number.
-                </p>
-                <button onclick="closeSuccessModal()" 
-                        class="bg-[#115D5B] hover:bg-[#0d4a47] text-white px-6 py-2 rounded-lg transition">
-                    Continue
-                </button>
-            </div>
-        </div>
-    </div>
-
-    <!-- Footer -->
     <footer class="bg-gradient-to-r from-[#115D5B] to-[#0d4a47] text-white text-center py-8 mt-12">
         <div class="max-w-6xl mx-auto px-6">
             <p class="text-lg font-semibold mb-2">Camarines Norte Lowland Rainfed Research Station</p>
@@ -686,14 +659,12 @@
     </footer>
 
     <script>
-        // Form validation and progress tracking
         let formProgress = 0;
-        const totalFields = 8; // Main required fields
 
         // Character counting functions
         function setupCharacterCounters() {
             const counters = [
-                { input: 'paperTitle', counter: 'titleCount', max: 200 },
+                { input: 'paperTitle', counter: 'titleCount', max: 500 },
                 { input: 'keywords', counter: 'keywordCount', max: 500, wordCounter: 'keywordWordCount' },
                 { input: 'abstract', counter: 'abstractCount', max: 2000, wordCounter: 'abstractWordCount' },
                 { input: 'coAuthors', counter: 'coAuthorCount', max: 500 },
@@ -711,7 +682,6 @@
                         const count = this.value.length;
                         counterEl.textContent = `${count}/${max} characters`;
                         
-                        // Color coding for character limits
                         if (count > max * 0.9) {
                             counterEl.className = 'character-count character-error';
                         } else if (count > max * 0.7) {
@@ -720,10 +690,12 @@
                             counterEl.className = 'character-count text-gray-500';
                         }
                         
-                        // Word counting for specific fields
                         if (wordCounter) {
                             const words = this.value.trim().split(/\s+/).filter(word => word.length > 0);
-                            document.getElementById(wordCounter).textContent = `${words.length} ${wordCounter.includes('keyword') ? 'keywords' : 'words'}`;
+                            const wordCountEl = document.getElementById(wordCounter);
+                            if (wordCountEl) {
+                                wordCountEl.textContent = `${words.length} ${wordCounter.includes('keyword') ? 'keywords' : 'words'}`;
+                            }
                         }
                         
                         updateProgress();
@@ -748,7 +720,7 @@
                     if (field.type === 'checkbox') {
                         if (field.checked) completed++;
                     } else if (field.type === 'file') {
-                        if (field.files.length > 0) completed++;
+                        if (field.files && field.files.length > 0) completed++;
                     } else {
                         if (field.value.trim()) completed++;
                     }
@@ -756,14 +728,7 @@
             });
             
             // Check research type selection
-            const researchTypes = document.querySelectorAll('input[name="research_type"]');
-            let researchTypeSelected = false;
-            for (let radio of researchTypes) {
-                if (radio.checked) {
-                    researchTypeSelected = true;
-                    break;
-                }
-            }
+            const researchTypeSelected = document.querySelector('input[name="research_type"]:checked');
             if (researchTypeSelected) completed++;
             
             const progress = Math.round((completed / totalRequired) * 100);
@@ -774,26 +739,19 @@
             const submitBtn = document.getElementById('submitBtn');
             if (completed === totalRequired) {
                 submitBtn.disabled = false;
-                submitBtn.classList.remove('disabled:from-gray-400', 'disabled:to-gray-500');
             } else {
                 submitBtn.disabled = true;
-                submitBtn.classList.add('disabled:from-gray-400', 'disabled:to-gray-500');
             }
         }
 
         // Research type selection
         function selectResearchType(type) {
-            // Remove selected class from all cards
             document.querySelectorAll('.research-type-card').forEach(card => {
                 card.classList.remove('selected');
             });
             
-            // Add selected class to clicked card
             event.currentTarget.classList.add('selected');
-            
-            // Check the radio button
             document.getElementById(type).checked = true;
-            
             updateProgress();
         }
 
@@ -855,320 +813,111 @@
             updateProgress();
         }
 
+        // Form submission handler
         document.getElementById('paperSubmissionForm').addEventListener('submit', function(event) {
-    event.preventDefault();
-    
-    const submitBtn = document.getElementById('submitBtn');
-    const originalText = submitBtn.innerHTML;
-    
-    // Show loading state
-    submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin mr-3"></i>Submitting...';
-    submitBtn.disabled = true;
-    
-    // Validate form before submission
-    if (!validateFormFields()) {
-        // Reset button if validation fails
-        submitBtn.innerHTML = originalText;
-        submitBtn.disabled = false;
-        return;
-    }
-    
-    // Create FormData object
-    const formData = new FormData(this);
-    
-    // Debug: Log form data
-    console.log('Form data being submitted:');
-    for (let [key, value] of formData.entries()) {
-        console.log(key, value);
-    }
-    
-    // Submit via AJAX
-    fetch('submit_paper_handler.php', {
-        method: 'POST',
-        body: formData
-    })
-    .then(response => {
-        if (!response.ok) {
-            throw new Error(`HTTP error! status: ${response.status}`);
-        }
-        return response.text(); // Get text first to debug
-    })
-    .then(text => {
-        console.log('Raw response:', text); // Debug logging
-        try {
-            const data = JSON.parse(text);
-            if (data.success) {
-                // Show success modal with submission details
-                showSuccessModal(data.submission_id, data.reference_number);
-                
-                // Reset form
-                resetForm();
-                
-            } else {
-                throw new Error(data.message || 'Submission failed');
-            }
-        } catch (parseError) {
-            console.error('JSON Parse Error:', parseError);
-            console.error('Response text:', text);
-            throw new Error('Invalid response from server');
-        }
-    })
-    .catch(error => {
-        console.error('Submission error:', error);
-        showNotification(error.message || 'An error occurred during submission. Please try again.', 'error');
-    })
-    .finally(() => {
-        // Reset button
-        submitBtn.innerHTML = originalText;
-        submitBtn.disabled = false;
-    });
-});
+            event.preventDefault();
+            
+            const submitBtn = document.getElementById('submitBtn');
+            const originalText = submitBtn.innerHTML;
+            
+            // Show loading state
+            submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin mr-3"></i>Submitting...';
+            submitBtn.disabled = true;
+            
+            // Create FormData object
+            const formData = new FormData(this);
+            
+            // Submit form via fetch
+            fetch(window.location.href, {
+                method: 'POST',
+                body: formData
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    showNotification('Paper submitted successfully!', 'success');
+                    setTimeout(() => {
+                        window.location.href = data.redirect;
+                    }, 1500);
+                } else {
+                    throw new Error(data.error || 'Submission failed');
+                }
+            })
+            .catch(error => {
+                console.error('Submission error:', error);
+                showNotification('Error: ' + error.message, 'error');
+            })
+            .finally(() => {
+                // Reset button
+                submitBtn.innerHTML = originalText;
+                updateProgress(); // This will re-enable if form is complete
+            });
+        });
 
-// Form validation function
-function validateFormFields() {
-    let isValid = true;
-    const errors = [];
-    
-    // Check required fields
-    const requiredFields = [
-        { id: 'paperTitle', name: 'Paper Title' },
-        { id: 'keywords', name: 'Keywords' },
-        { id: 'authorName', name: 'Author Name' },
-        { id: 'authorEmail', name: 'Author Email' },
-        { id: 'affiliation', name: 'Author Affiliation' },
-        { id: 'abstract', name: 'Abstract' }
-    ];
-    
-    requiredFields.forEach(field => {
-        const element = document.getElementById(field.id);
-        if (!element || !element.value.trim()) {
-            errors.push(`${field.name} is required`);
-            isValid = false;
-            if (element) element.classList.add('border-red-500');
-        } else if (element) {
-            element.classList.remove('border-red-500');
-        }
-    });
-    
-    // Check research type
-    const researchTypeSelected = document.querySelector('input[name="research_type"]:checked');
-    if (!researchTypeSelected) {
-        errors.push('Please select a research type');
-        isValid = false;
-    }
-    
-    // Check file upload
-    const fileInput = document.getElementById('paperFile');
-    if (!fileInput || !fileInput.files || fileInput.files.length === 0) {
-        errors.push('Please upload your research paper PDF');
-        isValid = false;
-    } else {
-        const file = fileInput.files[0];
-        if (file.type !== 'application/pdf') {
-            errors.push('Please select a PDF file only');
-            isValid = false;
-        }
-        if (file.size > 25 * 1024 * 1024) {
-            errors.push('File size must be less than 25MB');
-            isValid = false;
-        }
-    }
-    
-    // Check terms agreement
-    const termsAgree = document.getElementById('termsAgree');
-    if (!termsAgree || !termsAgree.checked) {
-        errors.push('You must agree to the submission terms and conditions');
-        isValid = false;
-    }
-    
-    // Validate email format
-    const emailInput = document.getElementById('authorEmail');
-    if (emailInput && emailInput.value.trim() && !isValidEmail(emailInput.value.trim())) {
-        errors.push('Please enter a valid email address');
-        isValid = false;
-        emailInput.classList.add('border-red-500');
-    }
-    
-    // Show errors if any
-    if (!isValid) {
-        const errorMessage = 'Please fix the following issues:\n• ' + errors.join('\n• ');
-        showNotification(errorMessage, 'error');
-    }
-    
-    return isValid;
-}
-
-// Reset form function
-function resetForm() {
-    const form = document.getElementById('paperSubmissionForm');
-    form.reset();
-    
-    // Reset file upload display
-    const fileInfo = document.getElementById('fileInfo');
-    if (fileInfo) fileInfo.classList.add('hidden');
-    
-    // Reset research type cards
-    document.querySelectorAll('.research-type-card').forEach(card => {
-        card.classList.remove('selected');
-    });
-    
-    // Reset character counters
-    document.querySelectorAll('.character-count').forEach(counter => {
-        const match = counter.textContent.match(/\/(\d+)/);
-        if (match) {
-            counter.textContent = `0/${match[1]} characters`;
-            counter.className = 'character-count text-gray-500';
-        }
-    });
-    
-    // Reset word counters
-    const keywordWordCount = document.getElementById('keywordWordCount');
-    const abstractWordCount = document.getElementById('abstractWordCount');
-    if (keywordWordCount) keywordWordCount.textContent = '0 keywords';
-    if (abstractWordCount) abstractWordCount.textContent = '0 words';
-    
-    updateProgress();
-}
-
-// Enhanced success modal
-function showSuccessModal(submissionId, referenceNumber) {
-    // Remove any existing modal
-    const existingModal = document.querySelector('.success-modal');
-    if (existingModal) {
-        existingModal.remove();
-    }
-    
-    const modal = document.createElement('div');
-    modal.className = 'success-modal fixed inset-0 bg-gray-600 bg-opacity-50 flex items-center justify-center z-50';
-    modal.innerHTML = `
-        <div class="bg-white rounded-xl shadow-2xl max-w-lg w-full mx-4 transform transition-all">
-            <div class="bg-gradient-to-r from-green-500 to-green-600 text-white p-6 rounded-t-xl">
-                <div class="flex items-center">
-                    <div class="bg-white bg-opacity-20 rounded-full p-3 mr-4">
-                        <i class="fas fa-check text-2xl"></i>
+        // Notification system
+        function showNotification(message, type = 'info') {
+            const notification = document.createElement('div');
+            notification.className = `fixed top-4 right-4 max-w-md p-4 rounded-lg shadow-lg z-50 transition-all duration-300 transform translate-x-full`;
+            
+            const colors = {
+                success: 'bg-green-500 text-white',
+                error: 'bg-red-500 text-white',
+                warning: 'bg-yellow-500 text-white',
+                info: 'bg-blue-500 text-white'
+            };
+            
+            const icons = {
+                success: 'fa-check-circle',
+                error: 'fa-exclamation-triangle',
+                warning: 'fa-exclamation-circle',
+                info: 'fa-info-circle'
+            };
+            
+            notification.className += ` ${colors[type]}`;
+            
+            notification.innerHTML = `
+                <div class="flex items-start space-x-3">
+                    <i class="fas ${icons[type]} text-lg mt-1"></i>
+                    <div class="flex-1">
+                        <p class="font-semibold capitalize">${type}</p>
+                        <p class="text-sm mt-1 whitespace-pre-line">${message}</p>
                     </div>
-                    <div>
-                        <h3 class="text-xl font-bold">Submission Successful!</h3>
-                        <p class="text-green-100">Your research paper has been submitted</p>
-                    </div>
-                </div>
-            </div>
-            <div class="p-6">
-                <div class="space-y-4">
-                    <div class="bg-gray-50 p-4 rounded-lg">
-                        <h4 class="font-semibold text-gray-800 mb-2">Submission Details</h4>
-                        <p><strong>Submission ID:</strong> #${submissionId}</p>
-                        <p><strong>Reference Number:</strong> ${referenceNumber}</p>
-                        <p><strong>Status:</strong> <span class="text-yellow-600 font-semibold">Pending Review</span></p>
-                    </div>
-                    <div class="bg-blue-50 p-4 rounded-lg">
-                        <h4 class="font-semibold text-blue-800 mb-2">What's Next?</h4>
-                        <ul class="text-sm text-blue-700 space-y-1">
-                            <li>• You'll receive a confirmation email shortly</li>
-                            <li>• Your paper will be reviewed within 2-4 weeks</li>
-                            <li>• Track your submission status in "My Submissions"</li>
-                            <li>• You'll be notified of any status changes</li>
-                        </ul>
-                    </div>
-                </div>
-                <div class="flex space-x-3 mt-6">
-                    <button onclick="window.location.href='my_submissions.php'" 
-                            class="flex-1 bg-[#115D5B] hover:bg-[#0d4a47] text-white px-4 py-3 rounded-lg transition font-semibold">
-                        <i class="fas fa-list-alt mr-2"></i>View My Submissions
-                    </button>
-                    <button onclick="closeSuccessModal()" 
-                            class="flex-1 bg-gray-300 hover:bg-gray-400 text-gray-700 px-4 py-3 rounded-lg transition font-semibold">
-                        Continue
+                    <button onclick="this.parentNode.parentNode.remove()" class="text-white hover:text-gray-200">
+                        <i class="fas fa-times"></i>
                     </button>
                 </div>
-            </div>
-        </div>
-    `;
-    
-    document.body.appendChild(modal);
-    
-    // Close on escape key
-    const handleEscape = (e) => {
-        if (e.key === 'Escape') {
-            closeSuccessModal();
-        }
-    };
-    document.addEventListener('keydown', handleEscape);
-    
-    // Store the escape handler for removal
-    modal.escapeHandler = handleEscape;
-}
-
-// Close success modal function
-function closeSuccessModal() {
-    const modal = document.querySelector('.success-modal');
-    if (modal) {
-        // Remove escape handler
-        if (modal.escapeHandler) {
-            document.removeEventListener('keydown', modal.escapeHandler);
-        }
-        modal.remove();
-    }
-}
-
-// Notification system
-function showNotification(message, type = 'info') {
-    const notification = document.createElement('div');
-    notification.className = `fixed top-4 right-4 max-w-md p-4 rounded-lg shadow-lg z-50 transition-all duration-300 transform translate-x-full`;
-    
-    const colors = {
-        success: 'bg-green-500 text-white',
-        error: 'bg-red-500 text-white',
-        warning: 'bg-yellow-500 text-white',
-        info: 'bg-blue-500 text-white'
-    };
-    
-    const icons = {
-        success: 'fa-check-circle',
-        error: 'fa-exclamation-triangle',
-        warning: 'fa-exclamation-circle',
-        info: 'fa-info-circle'
-    };
-    
-    notification.className += ` ${colors[type]}`;
-    
-    notification.innerHTML = `
-        <div class="flex items-start space-x-3">
-            <i class="fas ${icons[type]} text-lg mt-1"></i>
-            <div class="flex-1">
-                <p class="font-semibold capitalize">${type}</p>
-                <p class="text-sm mt-1 whitespace-pre-line">${message}</p>
-            </div>
-            <button onclick="this.parentNode.parentNode.remove()" class="text-white hover:text-gray-200">
-                <i class="fas fa-times"></i>
-            </button>
-        </div>
-    `;
-    
-    document.body.appendChild(notification);
-    
-    // Animate in
-    setTimeout(() => notification.classList.remove('translate-x-full'), 100);
-    
-    // Auto-remove after 8 seconds for errors, 5 seconds for others
-    const timeout = type === 'error' ? 8000 : 5000;
-    setTimeout(() => {
-        if (notification.parentNode) {
-            notification.classList.add('translate-x-full');
+            `;
+            
+            document.body.appendChild(notification);
+            
+            setTimeout(() => notification.classList.remove('translate-x-full'), 100);
+            
+            const timeout = type === 'error' ? 8000 : 5000;
             setTimeout(() => {
                 if (notification.parentNode) {
-                    notification.parentNode.removeChild(notification);
+                    notification.classList.add('translate-x-full');
+                    setTimeout(() => {
+                        if (notification.parentNode) {
+                            notification.parentNode.removeChild(notification);
+                        }
+                    }, 300);
                 }
-            }, 300);
+            }, timeout);
         }
-    }, timeout);
-}
 
-function isValidEmail(email) {
-    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-    return emailRegex.test(email);
-}
-</script>
+        // Initialize when page loads
+        document.addEventListener('DOMContentLoaded', function() {
+            setupCharacterCounters();
+            
+            // Add event listeners for required fields
+            const requiredInputs = document.querySelectorAll('#paperTitle, #keywords, #authorName, #authorEmail, #affiliation, #abstract');
+            requiredInputs.forEach(input => {
+                input.addEventListener('input', updateProgress);
+            });
+            
+            // Initial progress update
+            updateProgress();
+        });
+    </script>
 </body>
 </html>
-

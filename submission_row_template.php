@@ -5,13 +5,8 @@
             <div class="flex items-start justify-between mb-3">
                 <div class="flex-1">
                     <h4 class="text-lg font-semibold text-gray-900 mb-1">
-                        <?php echo htmlspecialchars($submission['paper_title']); ?>
-                        <?php if (isEnhancedSubmission($submission)): ?>
-                            <span class="enhanced-badge inline-flex items-center px-2 py-1 text-xs font-semibold rounded-full bg-blue-100 text-blue-800 ml-2">
-                                <i class="fas fa-star mr-1"></i>Enhanced
-                            </span>
-                        <?php endif; ?>
-                    </h4>
+    <?php echo htmlspecialchars($submission['paper_title']); ?>
+</h4>
                     <div class="flex flex-wrap items-center gap-4 text-sm text-gray-600 mb-2">
                         <span><strong>Type:</strong> <?php echo getResearchTypeDisplay($submission['research_type']); ?></span>
                         <span><strong>Submitted:</strong> <?php echo date('M j, Y g:i A', strtotime($submission['submission_date'])); ?></span>
