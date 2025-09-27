@@ -48,25 +48,8 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
     if ($result->num_rows === 1) {
         $user = $result->fetch_assoc();
 
-        // Verify password (check both hashed and plain text for backward compatibility)
-        $password_valid = false;
-        
-        // Check if password is hashed (starts with $2y$)
-        if (password_verify($password, $user['password'])) {
-            $password_valid = true;
-        } elseif ($password === $user['password']) {
-            // Plain text password (for backward compatibility)
-            $password_valid = true;
-            
-            // Optionally update to hashed password
-            $hashed_password = password_hash($password, PASSWORD_DEFAULT);
-            $update_stmt = $conn->prepare("UPDATE accounts SET password = ? WHERE id = ?");
-            $update_stmt->bind_param("si", $hashed_password, $user['id']);
-            $update_stmt->execute();
-            $update_stmt->close();
-        }
-
-        if ($password_valid) {
+        // Direct password comparison for plain text passwords
+        if ($password === $user['password']) {
             // Successful login
             logAdminLoginAttempt("Successful login for {$user['role']} user: '{$username}'");
             
@@ -120,8 +103,6 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
         header("Location: adminlogin.php");
         exit();
     }
-
-   
 
 } else {
     // If not a POST request, redirect back to login page

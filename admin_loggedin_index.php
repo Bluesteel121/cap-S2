@@ -6,9 +6,10 @@ if (!isset($_SESSION['username']) || $_SESSION['role'] !== 'admin') {
     header('Location: index.php');
     exit();
 }
+
+// Continue with the rest of your code...
 require_once 'includes/ReviewerNotifications.php';
 include 'connect.php';
-
 // Get total users count
 $result = $conn->query("SELECT COUNT(*) as total_users FROM accounts");
 $total_users = $result->fetch_assoc()['total_users'];

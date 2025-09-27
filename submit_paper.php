@@ -1,180 +1,80 @@
 <?php
 session_start();
 
-// Check if user is logged in
-if (!isset($_SESSION['name'])) {
-    header('Location: index.php');
-    exit();
-}
+$_SESSION['username'] = $row['username']; 
+$_SESSION['name'] = $row['name'];         
 
-// Database connection
-$host = "localhost";
-$user = "root";
-$pass = "";
-$dbname = "cap";
 
-$conn = new mysqli($host, $user, $pass, $dbname);
-if ($conn->connect_error) {
-    if ($_SERVER["REQUEST_METHOD"] === "POST") {
-        header('Content-Type: application/json');
-        echo json_encode(["success" => false, "error" => "Database connection failed"]);
-        exit();
-    }
-    die("Database connection failed: " . $conn->connect_error);
-}
+include 'connect.php';
 
+// Handle form submission
 if ($_SERVER["REQUEST_METHOD"] === "POST") {
-    header('Content-Type: application/json');
-    
-    try {
-        // Get form data
-        $user_name = $_SESSION['name']; // This matches your session variable
-        $author_name = $_POST['author_name'] ?? '';
-        $author_email = $_POST['author_email'] ?? '';
-        $affiliation = $_POST['affiliation'] ?? '';
-        $co_authors = $_POST['co_authors'] ?? '';
-        $paper_title = $_POST['paper_title'] ?? '';
-        $abstract = $_POST['abstract'] ?? '';
-        $keywords = $_POST['keywords'] ?? '';
-        $research_type = $_POST['research_type'] ?? 'other';
-        $methodology = $_POST['methodology'] ?? '';
-        $funding_source = $_POST['funding_source'] ?? '';
-        $research_start_date = $_POST['research_start_date'] ?? null;
-        $research_end_date = $_POST['research_end_date'] ?? null;
-        $ethics_approval = $_POST['ethics_approval'] ?? '';
-        $additional_comments = $_POST['additional_comments'] ?? '';
-        $terms_agreement = isset($_POST['terms_agreement']) ? 1 : 0;
-        $email_consent = isset($_POST['email_consent']) ? 1 : 0;
-        $data_consent = isset($_POST['data_consent']) ? 1 : 0;
+    $username = $_SESSION['username']; // store login username directly
 
-        // Validate required fields
-        if (empty($author_name) || empty($author_email) || empty($paper_title) || empty($abstract) || empty($keywords) || $terms_agreement !== 1) {
-            throw new Exception("Missing required fields. Please fill in: Author Name, Email, Paper Title, Abstract, Keywords, and agree to terms.");
-        }
+    // Form inputs
+    $author_name = $_POST['author_name'] ?? '';
+    $author_email = $_POST['author_email'] ?? '';
+    $affiliation = $_POST['affiliation'] ?? '';
+    $co_authors = $_POST['co_authors'] ?? '';
+    $paper_title = $_POST['paper_title'] ?? '';
+    $abstract = $_POST['abstract'] ?? '';
+    $keywords = $_POST['keywords'] ?? '';
+    $methodology = $_POST['methodology'] ?? null;
+    $funding_source = $_POST['funding_source'] ?? null;
+    $ethics_approval = $_POST['ethics_approval'] ?? null;
+    $additional_comments = $_POST['additional_comments'] ?? null;
+    $research_type = $_POST['research_type'] ?? 'other';
 
-        // Validate file upload
-        if (!isset($_FILES["paper_file"]) || $_FILES["paper_file"]["error"] !== UPLOAD_ERR_OK) {
-            $upload_errors = [
-                UPLOAD_ERR_INI_SIZE => 'File is too large (exceeds server limit)',
-                UPLOAD_ERR_FORM_SIZE => 'File is too large (exceeds form limit)', 
-                UPLOAD_ERR_PARTIAL => 'File was only partially uploaded',
-                UPLOAD_ERR_NO_FILE => 'No file was uploaded',
-                UPLOAD_ERR_NO_TMP_DIR => 'Missing temporary folder',
-                UPLOAD_ERR_CANT_WRITE => 'Failed to write file to disk',
-                UPLOAD_ERR_EXTENSION => 'File upload stopped by extension'
-            ];
-            $error_code = $_FILES["paper_file"]["error"] ?? UPLOAD_ERR_NO_FILE;
-            throw new Exception($upload_errors[$error_code] ?? "Unknown upload error");
-        }
+    // Checkboxes
+    $terms_agreement = isset($_POST['terms_agreement']) ? 1 : 0;
+    $email_consent = isset($_POST['email_consent']) ? 1 : 0;
+    $data_consent = isset($_POST['data_consent']) ? 1 : 0;
 
-        $file = $_FILES["paper_file"];
-        
-        // Validate file type using more robust method
-        $allowed_types = ['application/pdf'];
-        $file_type = mime_content_type($file["tmp_name"]);
-        
-        if (!in_array($file_type, $allowed_types)) {
-            throw new Exception("Only PDF files are allowed. Detected type: " . $file_type);
-        }
-
-        // Validate file size (25MB)
-        if ($file["size"] > 25 * 1024 * 1024) {
-            throw new Exception("File size must be less than 25MB. Current size: " . round($file["size"] / 1024 / 1024, 2) . "MB");
-        }
-
-        // Create upload directory
+    // File upload
+    $file_path = null;
+    if (isset($_FILES['paper_file']) && $_FILES['paper_file']['error'] === UPLOAD_ERR_OK) {
         $upload_dir = "uploads/papers/";
-        if (!is_dir($upload_dir)) {
-            if (!mkdir($upload_dir, 0777, true)) {
-                throw new Exception("Failed to create upload directory");
-            }
+        if (!is_dir($upload_dir)) mkdir($upload_dir, 0777, true);
+
+        $unique_name = uniqid() . "_" . basename($_FILES["paper_file"]["name"]);
+        $target_file = $upload_dir . $unique_name;
+
+        if (move_uploaded_file($_FILES["paper_file"]["tmp_name"], $target_file)) {
+            $file_path = $target_file;
         }
-
-        // Generate unique filename
-        $file_extension = pathinfo($file["name"], PATHINFO_EXTENSION);
-        $unique_name = uniqid() . "_" . time() . "." . $file_extension;
-        $file_path = $upload_dir . $unique_name;
-
-        // Move uploaded file
-        if (!move_uploaded_file($file["tmp_name"], $file_path)) {
-            throw new Exception("Failed to upload file");
-        }
-
-        // Handle empty dates (convert to NULL)
-        $start_date_value = !empty($research_start_date) ? $research_start_date : null;
-        $end_date_value = !empty($research_end_date) ? $research_end_date : null;
-
-        // Prepare SQL - using your exact table structure
-        $sql = "INSERT INTO paper_submissions (
-            user_name, author_name, author_email, affiliation, co_authors,
-            paper_title, abstract, keywords, methodology, funding_source,
-            research_start_date, research_end_date, ethics_approval, additional_comments,
-            terms_agreement, email_consent, data_consent, research_type,
-            file_path, submission_date, status
-        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NOW(), 'pending')";
-
-        $stmt = $conn->prepare($sql);
-        if (!$stmt) {
-            throw new Exception("Database prepare error: " . $conn->error);
-        }
-
-        $stmt->bind_param(
-            "sssssssssssssiiiiss",
-            $user_name,
-            $author_name,
-            $author_email,
-            $affiliation,
-            $co_authors,
-            $paper_title,
-            $abstract,
-            $keywords,
-            $methodology,
-            $funding_source,
-            $start_date_value,
-            $end_date_value,
-            $ethics_approval,
-            $additional_comments,
-            $terms_agreement,
-            $email_consent,
-            $data_consent,
-            $research_type,
-            $file_path
-        );
-
-        if ($stmt->execute()) {
-            $submission_id = $conn->insert_id;
-            echo json_encode([
-                "success" => true, 
-                "message" => "Paper submitted successfully!",
-                "submission_id" => $submission_id,
-                "redirect" => "my_submissions.php"
-            ]);
-        } else {
-            // Clean up file if database insert fails
-            if (file_exists($file_path)) {
-                unlink($file_path);
-            }
-            throw new Exception("Database insert error: " . $stmt->error);
-        }
-        
-        $stmt->close();
-
-    } catch (Exception $e) {
-        // Clean up uploaded file if it exists
-        if (isset($file_path) && file_exists($file_path)) {
-            unlink($file_path);
-        }
-        
-        echo json_encode([
-            "success" => false, 
-            "error" => $e->getMessage()
-        ]);
     }
-    
-    $conn->close();
-    exit;
+
+    $submission_date = date("Y-m-d H:i:s");
+    $status = 'pending';
+
+    $sql = "INSERT INTO paper_submissions 
+        (username, author_name, author_email, affiliation, co_authors, 
+        paper_title, abstract, keywords, methodology, funding_source, 
+        ethics_approval, additional_comments, terms_agreement, email_consent, data_consent, 
+        research_type, file_path, submission_date, status) 
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)";
+
+    $stmt = $conn->prepare($sql);
+    $stmt->bind_param("ssssssssssssiiiisss",
+        $username, $author_name, $author_email, $affiliation, $co_authors,
+        $paper_title, $abstract, $keywords, $methodology, $funding_source,
+        $ethics_approval, $additional_comments,
+        $terms_agreement, $email_consent, $data_consent,
+        $research_type, $file_path, $submission_date, $status
+    );
+
+    if ($stmt->execute()) {
+        header("Location: my_submissions.php?success=1");
+        exit();
+    } else {
+        echo "Error: " . $stmt->error;
+    }
+    $stmt->close();
 }
+
+$conn->close();
 ?>
+
 
 <!DOCTYPE html>
 <html lang="en">
@@ -509,7 +409,7 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
                 </div>
 
                 <div class="mb-6">
-                    <label class="block text-sm font-semibold text-gray-700 mb-3">Research Paper File (PDF only, max 25MB)</label>
+                    <label class="block text-sm font-semibold text-gray-700 mb-3 required">Research Paper File (PDF only, max 25MB)</label>
                     
                     <div class="file-drop-zone p-8 border-2 border-dashed rounded-lg text-center transition" 
                          ondrop="dropHandler(event)" ondragover="dragOverHandler(event)" ondragleave="dragLeaveHandler(event)">
@@ -557,12 +457,12 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
 
                 <div class="grid md:grid-cols-2 gap-6 mb-6">
                     <div>
-                        <label class="block text-sm font-semibold text-gray-700 mb-2">Research Start Date (Optional)</label>
+                        <label class="block text-sm font-semibold text-gray-700 mb-2 required">Research Start Date </label>
                         <input type="date" id="startDate" name="research_start_date"
                                class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#115D5B] focus:border-transparent transition">
                     </div>
                     <div>
-                        <label class="block text-sm font-semibold text-gray-700 mb-2">Research End Date (Optional)</label>
+                        <label class="block text-sm font-semibold text-gray-700 mb-2 required">Research End Date </label>
                         <input type="date" id="endDate" name="research_end_date"
                                class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#115D5B] focus:border-transparent transition">
                     </div>
