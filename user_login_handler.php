@@ -33,44 +33,42 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
 
             // Verify the password (direct comparison as requested)
             if ($password === $stored_password) {
-                // Login successful
+                // Login successful - SET ALL REQUIRED SESSION VARIABLES
                 $_SESSION['id'] = $id;
+                $_SESSION['username'] = $username; // THIS WAS MISSING!
                 $_SESSION['name'] = $name;
                 $_SESSION['role'] = $role;
-                $_SESSION['login_success'] = "Login successful!"; // Set success message
-                header("Location: loggedin_index.php"); // Redirect to logged-in page
+                $_SESSION['login_success'] = "Login successful!";
+                
+                header("Location: loggedin_index.php");
                 exit();
             } else {
                 // Incorrect password
-                // logError("Failed user login attempt: Incorrect password for user '{$username}'"); // Example logging
-                $_SESSION['login_error'] = "Invalid username or password."; // Set error message
-                header("Location: userlogin.php"); // Redirect back to login page
+                $_SESSION['login_error'] = "Invalid username or password.";
+                header("Location: userlogin.php");
                 exit();
             }
         } else {
             // User not found
-            // logError("Failed user login attempt: No user found with username '{$username}'"); // Example logging
-            $_SESSION['login_error'] = "Invalid username or password."; // Set error message
-            header("Location: userlogin.php"); // Redirect back to login page
+            $_SESSION['login_error'] = "Invalid username or password.";
+            header("Location: userlogin.php");
             exit();
         }
 
         $stmt->close();
     } else {
         // Error preparing the statement
-        // logError("Database error during user login: " . $conn->error); // Example logging
-        $_SESSION['login_error'] = "An internal error occurred. Please try again later."; // Set error message
-        header("Location: userlogin.php"); // Redirect back to login page
+        $_SESSION['login_error'] = "An internal error occurred. Please try again later.";
+        header("Location: userlogin.php");
         exit();
     }
 } else {
     // Not a POST request
-    $_SESSION['login_error'] = "Invalid request method."; // Set error message
-    header("Location: userlogin.php"); // Redirect back to login page
+    $_SESSION['login_error'] = "Invalid request method.";
+    header("Location: userlogin.php");
     exit();
 }
 
 // Close database connection
 closeConnection();
-
 ?>

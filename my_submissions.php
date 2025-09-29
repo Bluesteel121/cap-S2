@@ -1,14 +1,19 @@
 <?php
 session_start();
 
-// Check if user is logged in
-if (!isset($_SESSION['name'])) {
-    header('Location: index.php');
+// Check if user is logged in - NOW USING 'username' instead of 'name'
+if (!isset($_SESSION['username']) || empty($_SESSION['username'])) {
+    header('Location: account.php');
     exit();
 }
 
+// Store session variables for easier access
+$current_username = $_SESSION['username'];
+$display_name = $_SESSION['name'] ?? $_SESSION['username']; // Use 'name' if available, otherwise 'username'
+
 // Include database connection
 require_once 'connect.php';
+
 
 try {
     // First, let's check what columns actually exist in the table
@@ -65,7 +70,7 @@ try {
                 WHERE metric_type = 'download' 
                 GROUP BY paper_id
             ) download_count ON ps.id = download_count.paper_id
-         WHERE LOWER(ps.user_name) = LOWER(?)
+            WHERE LOWER(ps.user_name) = LOWER(?)
             ORDER BY ps.submission_date DESC";
     
     $stmt = $conn->prepare($sql);
@@ -73,7 +78,8 @@ try {
         throw new Exception("Prepare failed: " . $conn->error);
     }
     
-    $stmt->bind_param("s", $_SESSION['name']);
+    // FIX: Use $current_username instead of $_SESSION['name']
+    $stmt->bind_param("s", $current_username);
     $stmt->execute();
     $result = $stmt->get_result();
     $submissions = $result->fetch_all(MYSQLI_ASSOC);
@@ -333,7 +339,7 @@ foreach ($submissions as $submission) {
             <div class="flex items-center justify-between">
                 <div>
                     <h2 class="text-3xl font-bold text-[#115D5B] mb-2">
-                        Welcome, <?php echo htmlspecialchars($_SESSION['name']); ?>!
+                        Welcome, <?php echo htmlspecialchars($display_name); ?>!
                     </h2>
                     <p class="text-gray-600 text-lg">Here you can view and manage all your proposal submissions</p>
                 </div>
@@ -466,7 +472,7 @@ foreach ($submissions as $submission) {
                 </div>
             </div>
             <div id="paperContent" class="p-6">
-                </div>
+            </div>
         </div>
     </div>
 

@@ -1,80 +1,230 @@
 <?php
+// Start session first
 session_start();
 
-$_SESSION['username'] = $row['username']; 
-$_SESSION['name'] = $row['name'];         
+// Check if user is logged in
+if (!isset($_SESSION['username']) || empty($_SESSION['username'])) {
+    // If this is an AJAX request, return JSON error
+    if ($_SERVER["REQUEST_METHOD"] === "POST") {
+        header('Content-Type: application/json');
+        echo json_encode([
+            'success' => false,
+            'error' => 'Session expired. Please log in again.',
+            'redirect' => 'account.php'
+        ]);
+        exit();
+    }
+    // Otherwise redirect to login
+    header('Location: account.php');
+    exit();
+}
 
+// Store username in variable for easier access
+$current_username = $_SESSION['username'];
 
 include 'connect.php';
 
-// Handle form submission
+// Handle AJAX form submission
 if ($_SERVER["REQUEST_METHOD"] === "POST") {
-    $username = $_SESSION['username']; // store login username directly
+    header('Content-Type: application/json');
+    
+    try {
+        $username = $current_username; // Use the variable we set earlier
 
-    // Form inputs
-    $author_name = $_POST['author_name'] ?? '';
-    $author_email = $_POST['author_email'] ?? '';
-    $affiliation = $_POST['affiliation'] ?? '';
-    $co_authors = $_POST['co_authors'] ?? '';
-    $paper_title = $_POST['paper_title'] ?? '';
-    $abstract = $_POST['abstract'] ?? '';
-    $keywords = $_POST['keywords'] ?? '';
-    $methodology = $_POST['methodology'] ?? null;
-    $funding_source = $_POST['funding_source'] ?? null;
-    $ethics_approval = $_POST['ethics_approval'] ?? null;
-    $additional_comments = $_POST['additional_comments'] ?? null;
-    $research_type = $_POST['research_type'] ?? 'other';
+        // Validate required fields
+        $required_fields = ['author_name', 'author_email', 'affiliation', 'paper_title', 'abstract', 'keywords', 'research_type'];
+        foreach ($required_fields as $field) {
+            if (empty($_POST[$field])) {
+                throw new Exception("Field '$field' is required.");
+            }
+        }
 
-    // Checkboxes
-    $terms_agreement = isset($_POST['terms_agreement']) ? 1 : 0;
-    $email_consent = isset($_POST['email_consent']) ? 1 : 0;
-    $data_consent = isset($_POST['data_consent']) ? 1 : 0;
+        // Validate file upload
+        if (!isset($_FILES['paper_file']) || $_FILES['paper_file']['error'] !== UPLOAD_ERR_OK) {
+            throw new Exception("Please upload a valid PDF file.");
+        }
 
-    // File upload
-    $file_path = null;
-    if (isset($_FILES['paper_file']) && $_FILES['paper_file']['error'] === UPLOAD_ERR_OK) {
+        // Validate file type and size
+        $file = $_FILES['paper_file'];
+        $file_info = finfo_open(FILEINFO_MIME_TYPE);
+        $mime_type = finfo_file($file_info, $file['tmp_name']);
+        finfo_close($file_info);
+
+        if ($mime_type !== 'application/pdf') {
+            throw new Exception("Only PDF files are allowed.");
+        }
+
+        if ($file['size'] > 25 * 1024 * 1024) { // 25MB
+            throw new Exception("File size must be less than 25MB.");
+        }
+
+        // Validate terms agreement
+        if (!isset($_POST['terms_agreement'])) {
+            throw new Exception("You must agree to the terms and conditions.");
+        }
+
+        // Form inputs with proper sanitization
+        $author_name = trim($_POST['author_name']);
+        $author_email = filter_var(trim($_POST['author_email']), FILTER_VALIDATE_EMAIL);
+        if (!$author_email) {
+            throw new Exception("Invalid email address format.");
+        }
+        
+        $affiliation = trim($_POST['affiliation']);
+        $co_authors = isset($_POST['co_authors']) ? trim($_POST['co_authors']) : null;
+        $paper_title = trim($_POST['paper_title']);
+        $abstract = trim($_POST['abstract']);
+        $keywords = trim($_POST['keywords']);
+        $methodology = isset($_POST['methodology']) ? trim($_POST['methodology']) : null;
+        $funding_source = isset($_POST['funding_source']) ? trim($_POST['funding_source']) : null;
+        $research_start_date = isset($_POST['research_start_date']) && !empty($_POST['research_start_date']) ? $_POST['research_start_date'] : null;
+        $research_end_date = isset($_POST['research_end_date']) && !empty($_POST['research_end_date']) ? $_POST['research_end_date'] : null;
+        $ethics_approval = isset($_POST['ethics_approval']) ? trim($_POST['ethics_approval']) : null;
+        $additional_comments = isset($_POST['additional_comments']) ? trim($_POST['additional_comments']) : null;
+        $research_type = $_POST['research_type'];
+
+        // Checkboxes - ensure they're properly set
+        $terms_agreement = isset($_POST['terms_agreement']) ? 1 : 0;
+        $email_consent = isset($_POST['email_consent']) ? 1 : 0;
+        $data_consent = isset($_POST['data_consent']) ? 1 : 0;
+
+        // Additional validation
+        if (strlen($abstract) < 100) {
+            throw new Exception("Abstract must be at least 100 characters long.");
+        }
+        
+        if (strlen($abstract) > 2000) {
+            throw new Exception("Abstract cannot exceed 2000 characters.");
+        }
+
+        // Validate research dates
+        if ($research_start_date && $research_end_date) {
+            $start = new DateTime($research_start_date);
+            $end = new DateTime($research_end_date);
+            if ($start > $end) {
+                throw new Exception("Research start date cannot be after end date.");
+            }
+        }
+
+        // Handle file upload
         $upload_dir = "uploads/papers/";
-        if (!is_dir($upload_dir)) mkdir($upload_dir, 0777, true);
+        if (!is_dir($upload_dir)) {
+            if (!mkdir($upload_dir, 0755, true)) {
+                throw new Exception("Failed to create upload directory.");
+            }
+        }
 
-        $unique_name = uniqid() . "_" . basename($_FILES["paper_file"]["name"]);
+        // Generate unique filename
+        $file_extension = pathinfo($file['name'], PATHINFO_EXTENSION);
+        $unique_name = uniqid() . "_" . time() . "." . $file_extension;
         $target_file = $upload_dir . $unique_name;
 
-        if (move_uploaded_file($_FILES["paper_file"]["tmp_name"], $target_file)) {
-            $file_path = $target_file;
+        if (!move_uploaded_file($file['tmp_name'], $target_file)) {
+            throw new Exception("Failed to upload file.");
         }
+
+        // Start transaction
+        $conn->begin_transaction();
+
+        try {
+            // Prepare SQL statement - Updated to match new table structure
+            $sql = "INSERT INTO paper_submissions 
+                (user_name, author_name, author_email, affiliation, co_authors, 
+                paper_title, abstract, keywords, methodology, funding_source, 
+                research_start_date, research_end_date, ethics_approval, additional_comments, 
+                terms_agreement, email_consent, data_consent, research_type, file_path, 
+                submission_date, status) 
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NOW(), 'pending')";
+
+            $stmt = $conn->prepare($sql);
+            if (!$stmt) {
+                throw new Exception("Database prepare error: " . $conn->error);
+            }
+
+            $stmt->bind_param("ssssssssssssssiiiis",
+                $username, $author_name, $author_email, $affiliation, $co_authors,
+                $paper_title, $abstract, $keywords, $methodology, $funding_source,
+                $research_start_date, $research_end_date, $ethics_approval, $additional_comments,
+                $terms_agreement, $email_consent, $data_consent, $research_type, $target_file
+            );
+
+            if (!$stmt->execute()) {
+                throw new Exception("Database error: " . $stmt->error);
+            }
+
+            $paper_id = $conn->insert_id;
+            $stmt->close();
+
+            // Create notification
+            $notification_sql = "INSERT INTO submission_notifications (paper_id, user_name, notification_type, message) 
+                                VALUES (?, ?, 'submitted', 'Your paper has been successfully submitted and is pending review.')";
+            $notification_stmt = $conn->prepare($notification_sql);
+            if ($notification_stmt) {
+                $notification_stmt->bind_param("is", $paper_id, $username);
+                $notification_stmt->execute();
+                $notification_stmt->close();
+            }
+
+            // Log user activity
+            $activity_sql = "INSERT INTO user_activity_logs (user_id, username, activity_type, activity_description, paper_id, ip_address) 
+                            SELECT id, username, 'submit_paper', 'Submitted research paper', ?, ?
+                            FROM accounts WHERE username = ?";
+            $activity_stmt = $conn->prepare($activity_sql);
+            if ($activity_stmt) {
+                $ip_address = $_SERVER['REMOTE_ADDR'] ?? 'unknown';
+                $activity_stmt->bind_param("iss", $paper_id, $ip_address, $username);
+                $activity_stmt->execute();
+                $activity_stmt->close();
+            }
+
+            // Commit transaction
+            $conn->commit();
+
+            echo json_encode([
+                'success' => true,
+                'message' => 'Paper submitted successfully! You will receive a confirmation email shortly.',
+                'paper_id' => $paper_id,
+                'redirect' => 'my_submissions.php?success=1'
+            ]);
+
+        } catch (Exception $e) {
+            // Rollback transaction
+            $conn->rollback();
+            throw $e;
+        }
+
+    } catch (Exception $e) {
+        // If we get here, remove uploaded file if it exists
+        if (isset($target_file) && file_exists($target_file)) {
+            unlink($target_file);
+        }
+        
+        echo json_encode([
+            'success' => false,
+            'error' => $e->getMessage()
+        ]);
     }
+    
+    $conn->close();
+    exit();
+}
 
-    $submission_date = date("Y-m-d H:i:s");
-    $status = 'pending';
-
-    $sql = "INSERT INTO paper_submissions 
-        (username, author_name, author_email, affiliation, co_authors, 
-        paper_title, abstract, keywords, methodology, funding_source, 
-        ethics_approval, additional_comments, terms_agreement, email_consent, data_consent, 
-        research_type, file_path, submission_date, status) 
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)";
-
-    $stmt = $conn->prepare($sql);
-    $stmt->bind_param("ssssssssssssiiiisss",
-        $username, $author_name, $author_email, $affiliation, $co_authors,
-        $paper_title, $abstract, $keywords, $methodology, $funding_source,
-        $ethics_approval, $additional_comments,
-        $terms_agreement, $email_consent, $data_consent,
-        $research_type, $file_path, $submission_date, $status
-    );
-
-    if ($stmt->execute()) {
-        header("Location: my_submissions.php?success=1");
-        exit();
-    } else {
-        echo "Error: " . $stmt->error;
+// Get user information for form pre-filling
+$user_info = null;
+if (isset($_SESSION['username'])) {
+    $user_sql = "SELECT name, email FROM accounts WHERE username = ?";
+    $stmt = $conn->prepare($user_sql);
+    if ($stmt) {
+        $stmt->bind_param("s", $_SESSION['username']);
+        $stmt->execute();
+        $result = $stmt->get_result();
+        $user_info = $result->fetch_assoc();
+        $stmt->close();
     }
-    $stmt->close();
 }
 
 $conn->close();
 ?>
-
 
 <!DOCTYPE html>
 <html lang="en">
@@ -172,7 +322,7 @@ $conn->close();
                         <span>Back to Home</span>
                     </a>
                     <div class="text-right">
-                        <p class="text-sm opacity-75">DOST Format Compliant</p>
+                        <p class="text-sm opacity-75">Welcome, <?php echo htmlspecialchars($current_username); ?></p>
                         <p class="text-xs opacity-60">Follow instructions for best results</p>
                     </div>
                 </div>
@@ -204,6 +354,15 @@ $conn->close();
                         <div>
                             <h3 class="font-semibold mb-2">Required Information:</h3>
                             <ul class="list-disc list-inside space-y-1">
+                                <li>Complete research paper in PDF format (max 25MB)</li>
+                                <li>Detailed abstract (100-2000 characters)</li>
+                                <li>Author information and affiliation</li>
+                                <li>Research keywords and methodology</li>
+                            </ul>
+                        </div>
+                        <div>
+                            <h3 class="font-semibold mb-2">Optional Documents:</h3>
+                            <ul class="list-disc list-inside space-y-1">
                                 <li>DOST Research Proposal Template
                                     <a href="Images/worksheet.xlsx" download class="text-blue-600 underline ml-2">
                                          Download Here</a> 
@@ -215,7 +374,7 @@ $conn->close();
             </div>
         </div>
 
-        <form id="paperSubmissionForm" enctype="multipart/form-data">
+        <form id="paperSubmissionForm" method="POST" enctype="multipart/form-data">
             <!-- Basic Information Section -->
             <div class="form-section p-6 mb-8">
                 <div class="flex items-center space-x-3 mb-6">
@@ -256,37 +415,45 @@ $conn->close();
                             <i class="fas fa-question-circle text-gray-400"></i>
                         </button>
                     </div>
-                    <div class="grid md:grid-cols-2 lg:grid-cols-4 gap-4">
+                    <div class="grid md:grid-cols-2 lg:grid-cols-5 gap-4">
                         <div class="research-type-card bg-white p-4 rounded-lg shadow-sm" onclick="selectResearchType('experimental')">
                             <input type="radio" name="research_type" value="experimental" id="experimental" class="hidden">
                             <div class="text-center">
                                 <i class="fas fa-flask text-2xl text-[#115D5B] mb-2"></i>
-                                <h3 class="font-semibold text-gray-800">Experimental</h3>
-                                <p class="text-xs text-gray-600 mt-1">Controlled studies with variables</p>
+                                <h3 class="font-semibold text-gray-800 text-sm">Experimental</h3>
+                                <p class="text-xs text-gray-600 mt-1">Controlled studies</p>
                             </div>
                         </div>
                         <div class="research-type-card bg-white p-4 rounded-lg shadow-sm" onclick="selectResearchType('observational')">
                             <input type="radio" name="research_type" value="observational" id="observational" class="hidden">
                             <div class="text-center">
                                 <i class="fas fa-eye text-2xl text-[#115D5B] mb-2"></i>
-                                <h3 class="font-semibold text-gray-800">Observational</h3>
-                                <p class="text-xs text-gray-600 mt-1">Field observations & surveys</p>
+                                <h3 class="font-semibold text-gray-800 text-sm">Observational</h3>
+                                <p class="text-xs text-gray-600 mt-1">Field observations</p>
                             </div>
                         </div>
                         <div class="research-type-card bg-white p-4 rounded-lg shadow-sm" onclick="selectResearchType('review')">
                             <input type="radio" name="research_type" value="review" id="review" class="hidden">
                             <div class="text-center">
                                 <i class="fas fa-book text-2xl text-[#115D5B] mb-2"></i>
-                                <h3 class="font-semibold text-gray-800">Literature Review</h3>
-                                <p class="text-xs text-gray-600 mt-1">Analysis of existing research</p>
+                                <h3 class="font-semibold text-gray-800 text-sm">Literature Review</h3>
+                                <p class="text-xs text-gray-600 mt-1">Analysis of research</p>
                             </div>
                         </div>
                         <div class="research-type-card bg-white p-4 rounded-lg shadow-sm" onclick="selectResearchType('case_study')">
                             <input type="radio" name="research_type" value="case_study" id="case_study" class="hidden">
                             <div class="text-center">
                                 <i class="fas fa-search text-2xl text-[#115D5B] mb-2"></i>
-                                <h3 class="font-semibold text-gray-800">Case Study</h3>
-                                <p class="text-xs text-gray-600 mt-1">In-depth specific analysis</p>
+                                <h3 class="font-semibold text-gray-800 text-sm">Case Study</h3>
+                                <p class="text-xs text-gray-600 mt-1">Specific analysis</p>
+                            </div>
+                        </div>
+                        <div class="research-type-card bg-white p-4 rounded-lg shadow-sm" onclick="selectResearchType('other')">
+                            <input type="radio" name="research_type" value="other" id="other" class="hidden">
+                            <div class="text-center">
+                                <i class="fas fa-plus-circle text-2xl text-[#115D5B] mb-2"></i>
+                                <h3 class="font-semibold text-gray-800 text-sm">Other</h3>
+                                <p class="text-xs text-gray-600 mt-1">Mixed methods</p>
                             </div>
                         </div>
                     </div>
@@ -296,10 +463,11 @@ $conn->close();
                             <div>
                                 <p><strong>Experimental:</strong> You manipulated variables and measured outcomes</p>
                                 <p><strong>Observational:</strong> You collected data without manipulating conditions</p>
+                                <p><strong>Literature Review:</strong> You analyzed existing research papers</p>
                             </div>
                             <div>
-                                <p><strong>Literature Review:</strong> You analyzed existing research papers</p>
                                 <p><strong>Case Study:</strong> You conducted detailed analysis of specific instances</p>
+                                <p><strong>Other:</strong> Mixed methods or hybrid approaches</p>
                             </div>
                         </div>
                     </div>
@@ -344,13 +512,15 @@ $conn->close();
                         <label class="block text-sm font-semibold text-gray-700 required mb-2">Primary Author Full Name</label>
                         <input type="text" id="authorName" name="author_name" required maxlength="255"
                                class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#115D5B] focus:border-transparent transition"
-                               placeholder="Dr. Juan A. Dela Cruz">
+                               placeholder="Dr. Juan A. Dela Cruz"
+                               value="<?php echo htmlspecialchars($user_info['name'] ?? ''); ?>">
                     </div>
                     <div>
                         <label class="block text-sm font-semibold text-gray-700 required mb-2">Primary Author Email</label>
                         <input type="email" id="authorEmail" name="author_email" required maxlength="100"
                                class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#115D5B] focus:border-transparent transition"
-                               placeholder="juan.delacruz@institution.edu.ph">
+                               placeholder="juan.delacruz@institution.edu.ph"
+                               value="<?php echo htmlspecialchars($user_info['email'] ?? ''); ?>">
                     </div>
                 </div>
 
@@ -380,13 +550,27 @@ $conn->close();
                 </div>
 
                 <div class="mb-6">
-                    <label class="block text-sm font-semibold text-gray-700 required mb-2">Abstract</label>
-                    <textarea id="abstract" name="abstract" rows="8" required maxlength="2000"
+                    <div class="flex items-center justify-between mb-2">
+                        <label class="block text-sm font-semibold text-gray-700 required">Abstract</label>
+                        <button type="button" class="help-toggle" onclick="toggleHelp('abstractHelp')">
+                            <i class="fas fa-question-circle text-gray-400"></i>
+                        </button>
+                    </div>
+                    <textarea id="abstract" name="abstract" rows="8" required maxlength="2000" minlength="100"
                               class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#115D5B] focus:border-transparent transition"
-                              placeholder="Provide a comprehensive abstract of your research..."></textarea>
+                              placeholder="Provide a comprehensive abstract of your research (minimum 100 characters)..."></textarea>
                     <div class="flex justify-between items-center mt-1">
-                        <span id="abstractCount" class="character-count text-gray-500">0/2000 characters</span>
+                        <span id="abstractCount" class="character-count text-gray-500">0/2000 characters (min 100)</span>
                         <span id="abstractWordCount" class="character-count text-gray-500">0 words</span>
+                    </div>
+                    <div id="abstractHelp" class="field-help p-4 rounded-lg mt-3 hidden">
+                        <h4 class="font-semibold text-blue-800 mb-2">Abstract Guidelines:</h4>
+                        <ul class="text-sm text-blue-700 space-y-1">
+                            <li><strong>Structure:</strong> Background, objectives, methods, results, conclusion</li>
+                            <li><strong>Length:</strong> Minimum 100 characters, maximum 2000 characters</li>
+                            <li><strong>Clarity:</strong> Write for both experts and general scientific audience</li>
+                            <li><strong>Keywords:</strong> Include main keywords naturally in the text</li>
+                        </ul>
                     </div>
                 </div>
 
@@ -457,12 +641,12 @@ $conn->close();
 
                 <div class="grid md:grid-cols-2 gap-6 mb-6">
                     <div>
-                        <label class="block text-sm font-semibold text-gray-700 mb-2 required">Research Start Date </label>
+                        <label class="block text-sm font-semibold text-gray-700 mb-2">Research Start Date</label>
                         <input type="date" id="startDate" name="research_start_date"
                                class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#115D5B] focus:border-transparent transition">
                     </div>
                     <div>
-                        <label class="block text-sm font-semibold text-gray-700 mb-2 required">Research End Date </label>
+                        <label class="block text-sm font-semibold text-gray-700 mb-2">Research End Date</label>
                         <input type="date" id="endDate" name="research_end_date"
                                class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#115D5B] focus:border-transparent transition">
                     </div>
@@ -559,42 +743,59 @@ $conn->close();
     </footer>
 
     <script>
-        let formProgress = 0;
-
         // Character counting functions
         function setupCharacterCounters() {
             const counters = [
                 { input: 'paperTitle', counter: 'titleCount', max: 500 },
                 { input: 'keywords', counter: 'keywordCount', max: 500, wordCounter: 'keywordWordCount' },
-                { input: 'abstract', counter: 'abstractCount', max: 2000, wordCounter: 'abstractWordCount' },
+                { input: 'abstract', counter: 'abstractCount', max: 2000, min: 100, wordCounter: 'abstractWordCount' },
                 { input: 'coAuthors', counter: 'coAuthorCount', max: 500 },
                 { input: 'methodology', counter: 'methodCount', max: 1000 },
                 { input: 'ethicsApproval', counter: 'ethicsCount', max: 500 },
                 { input: 'additionalComments', counter: 'commentsCount', max: 1000 }
             ];
 
-            counters.forEach(({ input, counter, max, wordCounter }) => {
+            counters.forEach(({ input, counter, max, min, wordCounter }) => {
                 const inputEl = document.getElementById(input);
                 const counterEl = document.getElementById(counter);
                 
                 if (inputEl && counterEl) {
                     inputEl.addEventListener('input', function() {
                         const count = this.value.length;
-                        counterEl.textContent = `${count}/${max} characters`;
                         
-                        if (count > max * 0.9) {
-                            counterEl.className = 'character-count character-error';
-                        } else if (count > max * 0.7) {
-                            counterEl.className = 'character-count character-warning';
+                        if (min) {
+                            counterEl.textContent = `${count}/${max} characters (min ${min})`;
+                            
+                            if (count < min) {
+                                counterEl.className = 'character-count character-warning';
+                            } else if (count > max * 0.9) {
+                                counterEl.className = 'character-count character-error';
+                            } else {
+                                counterEl.className = 'character-count text-gray-500';
+                            }
                         } else {
-                            counterEl.className = 'character-count text-gray-500';
+                            counterEl.textContent = `${count}/${max} characters`;
+                            
+                            if (count > max * 0.9) {
+                                counterEl.className = 'character-count character-error';
+                            } else if (count > max * 0.7) {
+                                counterEl.className = 'character-count character-warning';
+                            } else {
+                                counterEl.className = 'character-count text-gray-500';
+                            }
                         }
                         
                         if (wordCounter) {
-                            const words = this.value.trim().split(/\s+/).filter(word => word.length > 0);
                             const wordCountEl = document.getElementById(wordCounter);
                             if (wordCountEl) {
-                                wordCountEl.textContent = `${words.length} ${wordCounter.includes('keyword') ? 'keywords' : 'words'}`;
+                                const isKeywords = wordCounter.includes('keyword');
+                                if (isKeywords) {
+                                    const keywords = this.value.split(',').map(k => k.trim()).filter(k => k.length > 0);
+                                    wordCountEl.textContent = `${keywords.length} keywords`;
+                                } else {
+                                    const words = this.value.trim().split(/\s+/).filter(word => word.length > 0);
+                                    wordCountEl.textContent = `${words.length} words`;
+                                }
                             }
                         }
                         
@@ -622,7 +823,15 @@ $conn->close();
                     } else if (field.type === 'file') {
                         if (field.files && field.files.length > 0) completed++;
                     } else {
-                        if (field.value.trim()) completed++;
+                        const value = field.value.trim();
+                        if (value) {
+                            // Special validation for abstract minimum length
+                            if (fieldId === 'abstract' && value.length < 100) {
+                                // Don't count as completed if below minimum
+                            } else {
+                                completed++;
+                            }
+                        }
                     }
                 }
             });
@@ -687,13 +896,13 @@ $conn->close();
             const file = event.target.files[0];
             if (file) {
                 if (file.type !== 'application/pdf') {
-                    alert('Please select a PDF file only.');
+                    showNotification('Please select a PDF file only.', 'error');
                     event.target.value = '';
                     return;
                 }
                 
                 if (file.size > 25 * 1024 * 1024) { // 25MB
-                    alert('File size must be less than 25MB.');
+                    showNotification('File size must be less than 25MB.', 'error');
                     event.target.value = '';
                     return;
                 }
@@ -717,6 +926,89 @@ $conn->close();
         document.getElementById('paperSubmissionForm').addEventListener('submit', function(event) {
             event.preventDefault();
             
+            // Validate required fields before submission
+            const requiredFields = [
+                { id: 'paperTitle', name: 'Paper Title' },
+                { id: 'keywords', name: 'Keywords' },
+                { id: 'authorName', name: 'Author Name' },
+                { id: 'authorEmail', name: 'Author Email' },
+                { id: 'affiliation', name: 'Affiliation' },
+                { id: 'abstract', name: 'Abstract' },
+                { id: 'paperFile', name: 'Paper File' },
+                { id: 'termsAgree', name: 'Terms Agreement' }
+            ];
+
+            let isValid = true;
+            let firstErrorField = null;
+
+            for (let field of requiredFields) {
+                const element = document.getElementById(field.id);
+                if (!element) continue;
+
+                let isEmpty = false;
+                if (element.type === 'checkbox') {
+                    isEmpty = !element.checked;
+                } else if (element.type === 'file') {
+                    isEmpty = !element.files || element.files.length === 0;
+                } else {
+                    const value = element.value.trim();
+                    isEmpty = !value;
+                    
+                    // Special validation for abstract minimum length
+                    if (field.id === 'abstract' && value && value.length < 100) {
+                        showNotification('Abstract must be at least 100 characters long.', 'error');
+                        isValid = false;
+                        if (!firstErrorField) firstErrorField = element;
+                        continue;
+                    }
+                }
+
+                if (isEmpty) {
+                    isValid = false;
+                    if (!firstErrorField) {
+                        firstErrorField = element;
+                    }
+                    element.classList.add('border-red-500');
+                } else {
+                    element.classList.remove('border-red-500');
+                }
+            }
+
+            // Check research type
+            const researchType = document.querySelector('input[name="research_type"]:checked');
+            if (!researchType) {
+                isValid = false;
+                showNotification('Please select a research type.', 'error');
+                return;
+            }
+
+            // Validate email format
+            const emailField = document.getElementById('authorEmail');
+            if (emailField.value && !isValidEmail(emailField.value)) {
+                isValid = false;
+                showNotification('Please enter a valid email address.', 'error');
+                emailField.classList.add('border-red-500');
+                if (!firstErrorField) firstErrorField = emailField;
+            }
+
+            // Validate research dates if both are provided
+            const startDate = document.getElementById('startDate').value;
+            const endDate = document.getElementById('endDate').value;
+            if (startDate && endDate && new Date(startDate) > new Date(endDate)) {
+                isValid = false;
+                showNotification('Research start date cannot be after end date.', 'error');
+                return;
+            }
+
+            if (!isValid) {
+                showNotification('Please fix the highlighted errors before submitting.', 'error');
+                if (firstErrorField) {
+                    firstErrorField.focus();
+                    firstErrorField.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                }
+                return;
+            }
+
             const submitBtn = document.getElementById('submitBtn');
             const originalText = submitBtn.innerHTML;
             
@@ -732,13 +1024,18 @@ $conn->close();
                 method: 'POST',
                 body: formData
             })
-            .then(response => response.json())
+            .then(response => {
+                if (!response.ok) {
+                    throw new Error(`HTTP error! status: ${response.status}`);
+                }
+                return response.json();
+            })
             .then(data => {
                 if (data.success) {
-                    showNotification('Paper submitted successfully!', 'success');
+                    showNotification('Paper submitted successfully! Redirecting...', 'success');
                     setTimeout(() => {
                         window.location.href = data.redirect;
-                    }, 1500);
+                    }, 2000);
                 } else {
                     throw new Error(data.error || 'Submission failed');
                 }
@@ -746,13 +1043,18 @@ $conn->close();
             .catch(error => {
                 console.error('Submission error:', error);
                 showNotification('Error: ' + error.message, 'error');
-            })
-            .finally(() => {
+                
                 // Reset button
                 submitBtn.innerHTML = originalText;
                 updateProgress(); // This will re-enable if form is complete
             });
         });
+
+        // Helper functions
+        function isValidEmail(email) {
+            const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+            return emailRegex.test(email);
+        }
 
         // Notification system
         function showNotification(message, type = 'info') {
@@ -805,17 +1107,46 @@ $conn->close();
             }, timeout);
         }
 
+        // Date validation
+        function validateResearchDates() {
+            const startDateInput = document.getElementById('startDate');
+            const endDateInput = document.getElementById('endDate');
+            
+            startDateInput.addEventListener('change', function() {
+                if (endDateInput.value && this.value > endDateInput.value) {
+                    showNotification('Start date cannot be after end date.', 'warning');
+                    this.value = '';
+                }
+            });
+            
+            endDateInput.addEventListener('change', function() {
+                if (startDateInput.value && this.value < startDateInput.value) {
+                    showNotification('End date cannot be before start date.', 'warning');
+                    this.value = '';
+                }
+            });
+        }
+
         // Initialize when page loads
         document.addEventListener('DOMContentLoaded', function() {
             setupCharacterCounters();
+            validateResearchDates();
             
             // Add event listeners for required fields
             const requiredInputs = document.querySelectorAll('#paperTitle, #keywords, #authorName, #authorEmail, #affiliation, #abstract');
             requiredInputs.forEach(input => {
                 input.addEventListener('input', updateProgress);
+                
+                // Remove error styling when user starts typing
+                input.addEventListener('input', function() {
+                    this.classList.remove('border-red-500');
+                });
             });
             
-            // Initial progress update
+            // Add event listeners for checkboxes
+            document.getElementById('termsAgree').addEventListener('change', updateProgress);
+            
+            // Initialize progress
             updateProgress();
         });
     </script>

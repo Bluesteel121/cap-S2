@@ -70,3 +70,6 @@
 [2025-09-24 08:24:49] Successful login for reviewer user: 'blue'
 [2025-09-26 15:27:46] Failed login attempt: Incorrect password for user 'john' with role 'admin'
 [2025-09-26 15:28:57] Successful login for admin user: 'john'
+[2025-09-28 08:44:06] Failed login attempt: No admin/reviewer user found with username 'john'
+[2025-09-28 08:44:58] Successful login for admin user: 'john'
+[2025-09-29 05:41:05] Successful login for admin user: 'john'
