@@ -283,7 +283,7 @@ $is_searching = !empty($search_keyword) || !empty($category_filter) || !empty($y
           Access the latest research and publication about Queen Pineapple Varieties, cultivation, health benefits, and more.
         </p>
         <div class="mt-6 flex gap-4">
-          <a href="?view=library" class="bg-[#1A4D3A] text-white px-6 py-3 rounded-md font-semibold border border-white hover:bg-[#16663F] transition rounded-lg">
+          <a href="elibrary_loggedin.php" class="bg-[#1A4D3A] text-white px-6 py-3 rounded-md font-semibold border border-white hover:bg-[#16663F] transition rounded-lg">
             Browse Research
           </a>
           <a href="submit_paper.php" class="bg-[#1A4D3A] border border-white text-white px-6 py-3 rounded-md font-semibold hover:bg-[#16663F] transition rounded-lg">
@@ -423,7 +423,7 @@ $is_searching = !empty($search_keyword) || !empty($category_filter) || !empty($y
 
       <!-- Browse Research button -->
       <div class="mt-6 flex justify-center items-center gap-4">
-        <a href="?view=library" class="bg-[#115D5B] text-white px-6 py-3 rounded-md font-semibold border border-white hover:bg-[#16663F] transition rounded-lg">
+        <a href="elibrary_loggedin.php" class="bg-[#115D5B] text-white px-6 py-3 rounded-md font-semibold border border-white hover:bg-[#16663F] transition rounded-lg">
           Browse Research Library
         </a>
       </div>
