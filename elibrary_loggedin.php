@@ -124,11 +124,13 @@ $is_searching = !empty($search_keyword) || !empty($category_filter) || !empty($y
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.5">
     <title>Queen Pineapple Research E-Library</title>
+    <link rel="icon" href="Images/Favicon.ico">
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/js/all.min.js"></script>
 </head>
 <body class="bg-gray-100 min-h-screen">
 
+<<<<<<< HEAD
   <!-- Navigation Bar -->
 <nav class="bg-[#115D5B] text-white p-4 shadow-lg">
     <div class="container mx-auto flex justify-between items-center">
@@ -153,6 +155,47 @@ $is_searching = !empty($search_keyword) || !empty($category_filter) || !empty($y
         </div>
     </div>
 </nav>
+=======
+    <!-- Navigation Bar -->
+    <nav class="bg-[#115D5B] text-white p-4 shadow-lg">
+        <div class="container mx-auto flex justify-between items-center">
+            <div class="flex items-center">
+                <img src="Images/CNLRRS_icon.png" alt="CNLRRS Logo" class="h-10 w-10 mr-2">
+                <span class="text-xl font-bold">CNLRRS Rainfed Research Station</span>
+            </div>
+            <div class="space-x-4">
+                <a href="loggedin_index.php" class="hover:underline">Home</a>
+                <a href="elibrary_loggedin.php" class="hover:underline font-semibold">E-Library</a>
+                <a href="#" class="hover:underline">About Us</a>
+            </div>
+           <div class="flex items-center space-x-4">
+                <div class="relative group">
+                    <button class="flex items-center space-x-2 bg-[#103635] px-4 py-2 rounded-xl">
+                        <i class="fas fa-user"></i>
+                        <span><?php echo htmlspecialchars($user_name); ?></span>
+                        <i class="fas fa-chevron-down text-sm"></i>
+                    </button>
+                    <div class="invisible opacity-0 group-hover:visible group-hover:opacity-100 transition-all duration-200 absolute right-0 mt-0 pt-2 w-48 z-50">
+                        <div class="bg-white rounded-lg shadow-xl">
+                            <a href="user_profile.php" class="block px-4 py-2 text-gray-800 hover:bg-gray-100 rounded-t-lg">
+                                <i class="fas fa-user-circle mr-2"></i>My Profile
+                            </a>
+                            <a href="my_submissions.php" class="block px-4 py-2 text-gray-800 hover:bg-gray-100">
+                                <i class="fas fa-file-alt mr-2"></i>My Submissions (<?php echo $user_submissions_count; ?>)
+                            </a>
+                            <a href="submit_paper.php" class="block px-4 py-2 text-gray-800 hover:bg-gray-100">
+                                <i class="fas fa-upload mr-2"></i>Submit Paper
+                            </a>
+                            <hr class="my-1">
+                            <a href="logout.php" class="block px-4 py-2 text-red-600 hover:bg-gray-100 rounded-b-lg">
+                                <i class="fas fa-sign-out-alt mr-2"></i>Logout
+                            </a>
+                        </div>
+                    </div>
+                </div>
+            </div>
+    </nav>
+>>>>>>> 952381e7ac6a1ed4199e6a6d1befe427781d373f
 
     <!-- Main Content -->
     <div class="container mx-auto p-4">

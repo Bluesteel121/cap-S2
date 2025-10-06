@@ -269,6 +269,7 @@ $conn->close();
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Submit Research Paper - CNLRRS</title>
+    <link rel="icon" href="Images/Favicon.ico">
     <script src="https://cdn.tailwindcss.com"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
     <style>
@@ -347,7 +348,7 @@ $conn->close();
         <div class="max-w-6xl mx-auto">
             <div class="flex items-center justify-between">
                 <div class="flex items-center space-x-4">
-                    <img src="Images/Logo.jpg" alt="CNLRRS Logo" class="h-12 w-auto object-contain">
+                    <img src="Images/CNLRRS_icon.png" alt="CNLRRS Logo" class="h-12 w-auto object-contain">
                     <div>
                         <h1 class="text-2xl font-bold">Research Paper Submission</h1>
                         <p class="text-sm opacity-90">Camarines Norte Lowland Rainfed Research Station</p>
