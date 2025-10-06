@@ -17,8 +17,8 @@ $page = isset($_GET['page']) ? (int)$_GET['page'] : 1;
 $papers_per_page = 10;
 $offset = ($page - 1) * $papers_per_page;
 
-// Build WHERE clause for search and filters
-$where_conditions = ["status IN ('approved', 'published')"];
+// Build WHERE clause for search and filters - ONLY APPROVED PAPERS
+$where_conditions = ["status = 'approved'"];
 $params = [];
 $param_types = '';
 
@@ -88,7 +88,7 @@ if (empty($search_keyword) && empty($category_filter) && empty($year_filter)) {
                             COALESCE(SUM(CASE WHEN pm.metric_type = 'download' THEN 1 ELSE 0 END), 0) as total_downloads
                      FROM paper_submissions ps 
                      LEFT JOIN paper_metrics pm ON ps.id = pm.paper_id
-                     WHERE ps.status IN ('approved', 'published')
+                     WHERE ps.status = 'approved'
                      GROUP BY ps.id 
                      ORDER BY (COALESCE(SUM(CASE WHEN pm.metric_type = 'view' THEN 1 ELSE 0 END), 0) + 
                               COALESCE(SUM(CASE WHEN pm.metric_type = 'download' THEN 1 ELSE 0 END), 0)) DESC 
@@ -99,9 +99,9 @@ if (empty($search_keyword) && empty($category_filter) && empty($year_filter)) {
 
 // Get statistics
 $stats_sql = "SELECT 
-    (SELECT COUNT(*) FROM paper_submissions WHERE status IN ('approved', 'published')) as total_papers,
-    (SELECT COUNT(DISTINCT author_name) FROM paper_submissions WHERE status IN ('approved', 'published')) as total_researchers,
-    (SELECT COUNT(DISTINCT research_type) FROM paper_submissions WHERE status IN ('approved', 'published')) as research_categories,
+    (SELECT COUNT(*) FROM paper_submissions WHERE status = 'approved') as total_papers,
+    (SELECT COUNT(DISTINCT author_name) FROM paper_submissions WHERE status = 'approved') as total_researchers,
+    (SELECT COUNT(DISTINCT research_type) FROM paper_submissions WHERE status = 'approved') as research_categories,
     (SELECT COUNT(*) FROM paper_submissions WHERE status = 'under_review') as active_projects";
 $stats_result = $conn->query($stats_sql);
 $stats = $stats_result->fetch_assoc();
@@ -109,7 +109,7 @@ $stats = $stats_result->fetch_assoc();
 // Get category counts
 $category_sql = "SELECT research_type, COUNT(*) as count 
                 FROM paper_submissions 
-                WHERE status IN ('approved', 'published') 
+                WHERE status = 'approved' 
                 GROUP BY research_type 
                 ORDER BY count DESC";
 $category_result = $conn->query($category_sql);
@@ -217,7 +217,7 @@ $is_searching = !empty($search_keyword) || !empty($category_filter) || !empty($y
                 <div class="flex items-center">
                     <i class="fas fa-info-circle text-blue-400 mr-2"></i>
                     <span class="text-blue-800 font-medium">
-                        Search Results: <?php echo $total_papers; ?> papers found
+                        Search Results: <?php echo $total_papers; ?> approved papers found
                         <?php if (!empty($search_keyword)): ?>
                             for "<?php echo htmlspecialchars($search_keyword); ?>"
                         <?php endif; ?>
@@ -266,8 +266,8 @@ $is_searching = !empty($search_keyword) || !empty($category_filter) || !empty($y
                                 <?php echo htmlspecialchars($paper['paper_title']); ?>
                             </h3>
                             <div class="ml-4">
-                                <span class="px-3 py-1 text-xs rounded-full <?php echo $paper['status'] === 'published' ? 'bg-green-100 text-green-800' : 'bg-blue-100 text-blue-800'; ?>">
-                                    <?php echo ucfirst($paper['status']); ?>
+                                <span class="px-3 py-1 text-xs rounded-full bg-green-100 text-green-800">
+                                    Approved
                                 </span>
                             </div>
                         </div>

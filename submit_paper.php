@@ -127,34 +127,40 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
         $conn->begin_transaction();
 
         try {
-            // Prepare SQL statement - Updated to match new table structure
-            $sql = "INSERT INTO paper_submissions 
-                (user_name, author_name, author_email, affiliation, co_authors, 
-                paper_title, abstract, keywords, methodology, funding_source, 
-                research_start_date, research_end_date, ethics_approval, additional_comments, 
-                terms_agreement, email_consent, data_consent, research_type, file_path, 
-                submission_date, status) 
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NOW(), 'pending')";
+       // Replace the database insert section in submit_paper.php (around line 113-135)
 
-            $stmt = $conn->prepare($sql);
-            if (!$stmt) {
-                throw new Exception("Database prepare error: " . $conn->error);
-            }
+// Prepare SQL statement - Fixed to properly include research_type
+$sql = "INSERT INTO paper_submissions 
+    (user_name, author_name, author_email, affiliation, co_authors, 
+    paper_title, abstract, keywords, methodology, funding_source, 
+    research_start_date, research_end_date, ethics_approval, additional_comments, 
+    terms_agreement, email_consent, data_consent, research_type, file_path, 
+    submission_date, status) 
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NOW(), 'pending')";
 
-            $stmt->bind_param("ssssssssssssssiiiis",
-                $username, $author_name, $author_email, $affiliation, $co_authors,
-                $paper_title, $abstract, $keywords, $methodology, $funding_source,
-                $research_start_date, $research_end_date, $ethics_approval, $additional_comments,
-                $terms_agreement, $email_consent, $data_consent, $research_type, $target_file
-            );
+$stmt = $conn->prepare($sql);
+if (!$stmt) {
+    throw new Exception("Database prepare error: " . $conn->error);
+}
 
-            if (!$stmt->execute()) {
-                throw new Exception("Database error: " . $stmt->error);
-            }
+// Fixed bind_param - research_type is now properly positioned as 's' (string)
+// Order: username, author_name, author_email, affiliation, co_authors,
+//        paper_title, abstract, keywords, methodology, funding_source,
+//        research_start_date, research_end_date, ethics_approval, additional_comments,
+//        terms_agreement, email_consent, data_consent, research_type, target_file
+$stmt->bind_param("ssssssssssssssiisss",
+    $username, $author_name, $author_email, $affiliation, $co_authors,
+    $paper_title, $abstract, $keywords, $methodology, $funding_source,
+    $research_start_date, $research_end_date, $ethics_approval, $additional_comments,
+    $terms_agreement, $email_consent, $data_consent, $research_type, $target_file
+);
 
-            $paper_id = $conn->insert_id;
-            $stmt->close();
+if (!$stmt->execute()) {
+    throw new Exception("Database error: " . $stmt->error);
+}
 
+$paper_id = $conn->insert_id;
+$stmt->close();
             // Create notification
             $notification_sql = "INSERT INTO submission_notifications (paper_id, user_name, notification_type, message) 
                                 VALUES (?, ?, 'submitted', 'Your paper has been successfully submitted and is pending review.')";
@@ -177,16 +183,47 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
                 $activity_stmt->close();
             }
 
-            // Commit transaction
-            $conn->commit();
+        // Commit transaction
+$conn->commit();
 
-            echo json_encode([
-                'success' => true,
-                'message' => 'Paper submitted successfully! You will receive a confirmation email shortly.',
-                'paper_id' => $paper_id,
-                'redirect' => 'my_submissions.php?success=1'
-            ]);
+// Send confirmation email to the author
+require_once 'email_config.php';
 
+$paperData = [
+    'author_name' => $author_name,
+    'paper_title' => $paper_title,
+    'research_type' => $research_type,
+    'user_name' => $username
+];
+
+$emailSent = EmailService::sendPaperSubmissionNotification(
+    $paperData, 
+    $author_email, 
+    $conn
+);
+
+// Log email attempt
+if ($emailSent) {
+    error_log("Submission confirmation email sent successfully to: $author_email for paper ID: $paper_id");
+    
+    // Log email activity in database if you have a logging function
+    if (function_exists('logActivity')) {
+        logActivity('EMAIL_SUBMISSION_SENT', "Email sent to: $author_email, Paper ID: $paper_id");
+    }
+} else {
+    error_log("FAILED to send submission confirmation email to: $author_email for paper ID: $paper_id");
+    
+    if (function_exists('logError')) {
+        logError("Email send failed for submission to: $author_email", 'EMAIL_SEND_FAILED');
+    }
+}
+
+echo json_encode([
+    'success' => true,
+    'message' => 'Paper submitted successfully! ' . ($emailSent ? 'Confirmation email has been sent to your email address.' : 'However, the confirmation email could not be sent. Please check your spam folder or contact the administrator.'),
+    'paper_id' => $paper_id,
+    'redirect' => 'my_submissions.php?success=1'
+]);
         } catch (Exception $e) {
             // Rollback transaction
             $conn->rollback();
@@ -407,8 +444,7 @@ $conn->close();
                         </ul>
                     </div>
                 </div>
-
-                <div class="mb-6">
+<div class="mb-6">
                     <div class="flex items-center justify-between mb-3">
                         <label class="block text-sm font-semibold text-gray-700 required">Research Type</label>
                         <button type="button" class="help-toggle" onclick="toggleHelp('typeHelp')">
@@ -417,7 +453,7 @@ $conn->close();
                     </div>
                     <div class="grid md:grid-cols-2 lg:grid-cols-5 gap-4">
                         <div class="research-type-card bg-white p-4 rounded-lg shadow-sm" onclick="selectResearchType('experimental')">
-                            <input type="radio" name="research_type" value="experimental" id="experimental" class="hidden">
+                            <input type="radio" name="research_type" value="experimental" id="experimental" class="hidden" required>
                             <div class="text-center">
                                 <i class="fas fa-flask text-2xl text-[#115D5B] mb-2"></i>
                                 <h3 class="font-semibold text-gray-800 text-sm">Experimental</h3>
@@ -425,7 +461,7 @@ $conn->close();
                             </div>
                         </div>
                         <div class="research-type-card bg-white p-4 rounded-lg shadow-sm" onclick="selectResearchType('observational')">
-                            <input type="radio" name="research_type" value="observational" id="observational" class="hidden">
+                            <input type="radio" name="research_type" value="observational" id="observational" class="hidden" required>
                             <div class="text-center">
                                 <i class="fas fa-eye text-2xl text-[#115D5B] mb-2"></i>
                                 <h3 class="font-semibold text-gray-800 text-sm">Observational</h3>
@@ -433,7 +469,7 @@ $conn->close();
                             </div>
                         </div>
                         <div class="research-type-card bg-white p-4 rounded-lg shadow-sm" onclick="selectResearchType('review')">
-                            <input type="radio" name="research_type" value="review" id="review" class="hidden">
+                            <input type="radio" name="research_type" value="review" id="review" class="hidden" required>
                             <div class="text-center">
                                 <i class="fas fa-book text-2xl text-[#115D5B] mb-2"></i>
                                 <h3 class="font-semibold text-gray-800 text-sm">Literature Review</h3>
@@ -441,7 +477,7 @@ $conn->close();
                             </div>
                         </div>
                         <div class="research-type-card bg-white p-4 rounded-lg shadow-sm" onclick="selectResearchType('case_study')">
-                            <input type="radio" name="research_type" value="case_study" id="case_study" class="hidden">
+                            <input type="radio" name="research_type" value="case_study" id="case_study" class="hidden" required>
                             <div class="text-center">
                                 <i class="fas fa-search text-2xl text-[#115D5B] mb-2"></i>
                                 <h3 class="font-semibold text-gray-800 text-sm">Case Study</h3>
@@ -449,7 +485,7 @@ $conn->close();
                             </div>
                         </div>
                         <div class="research-type-card bg-white p-4 rounded-lg shadow-sm" onclick="selectResearchType('other')">
-                            <input type="radio" name="research_type" value="other" id="other" class="hidden">
+                            <input type="radio" name="research_type" value="other" id="other" class="hidden" required>
                             <div class="text-center">
                                 <i class="fas fa-plus-circle text-2xl text-[#115D5B] mb-2"></i>
                                 <h3 class="font-semibold text-gray-800 text-sm">Other</h3>

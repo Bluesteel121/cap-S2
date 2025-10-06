@@ -1,11 +1,15 @@
 <?php
-// email_config.php - Email configuration and utility functions
+// email_config.php - Fixed Email Configuration with PHPMailer
 
-// Email configuration - Update these with your actual email settings
-define('SMTP_HOST', 'smtp.gmail.com'); // Gmail SMTP server
+// Import PHPMailer classes
+use PHPMailer\PHPMailer\PHPMailer;
+use PHPMailer\PHPMailer\Exception;
+
+// Email configuration
+define('SMTP_HOST', 'smtp.gmail.com');
 define('SMTP_PORT', 587);
-define('SMTP_USERNAME', 'elibrarycnlrrs@gmail.com'); // Your email
-define('SMTP_PASSWORD', 'KentBaile_123'); // Your Gmail app password
+define('SMTP_USERNAME', 'elibrarycnlrrs@gmail.com');
+define('SMTP_PASSWORD', 'okbl exhm tlxz mjkw'); // Use App Password, not regular password
 define('FROM_EMAIL', 'elibrarycnlrrs@gmail.com');
 define('FROM_NAME', 'CNLRRS E-Library');
 
@@ -15,28 +19,90 @@ define('FROM_NAME', 'CNLRRS E-Library');
 class EmailService {
     
     /**
-     * Send email using PHPMailer
+     * Send email using PHPMailer with proper SMTP authentication
      */
     public static function sendEmail($to, $subject, $body, $isHTML = true) {
-        // For this example, we'll use PHP's mail() function
-        // In production, you should use PHPMailer or similar library
-        
-        $headers = array();
-        $headers[] = 'MIME-Version: 1.0';
-        $headers[] = 'Content-type: text/html; charset=UTF-8';
-        $headers[] = 'From: ' . FROM_NAME . ' <' . FROM_EMAIL . '>';
-        $headers[] = 'Reply-To: ' . FROM_EMAIL;
-        $headers[] = 'X-Mailer: PHP/' . phpversion();
-        
-        $success = mail($to, $subject, $body, implode("\r\n", $headers));
-        
-        // Log email activity
-        if (function_exists('logActivity')) {
-            $status = $success ? 'SUCCESS' : 'FAILED';
-            logActivity('EMAIL_SENT', "To: $to, Subject: $subject, Status: $status");
+        // Check if PHPMailer is available
+        if (!class_exists('PHPMailer\PHPMailer\PHPMailer')) {
+            // Try to load PHPMailer using require
+            $phpmailer_paths = [
+                __DIR__ . '/vendor/autoload.php',
+                __DIR__ . '/../vendor/autoload.php',
+                __DIR__ . '/PHPMailer/src/PHPMailer.php',
+                __DIR__ . '/PHPMailer/src/Exception.php',
+                __DIR__ . '/PHPMailer/src/SMTP.php'
+            ];
+            
+            $loaded = false;
+            foreach ($phpmailer_paths as $path) {
+                if (file_exists($path)) {
+                    require_once $path;
+                    $loaded = true;
+                    break;
+                }
+            }
+            
+            if (!$loaded) {
+                error_log("PHPMailer not found. Please install via: composer require phpmailer/phpmailer");
+                return false;
+            }
         }
         
-        return $success;
+        $mail = new PHPMailer(true);
+        
+        try {
+            // Server settings
+            $mail->isSMTP();
+            $mail->Host = SMTP_HOST;
+            $mail->SMTPAuth = true;
+            $mail->Username = SMTP_USERNAME;
+            $mail->Password = SMTP_PASSWORD;
+            $mail->SMTPSecure = PHPMailer::ENCRYPTION_STARTTLS;
+            $mail->Port = SMTP_PORT;
+            
+            // Disable SSL verification if on localhost (remove in production)
+            $mail->SMTPOptions = array(
+                'ssl' => array(
+                    'verify_peer' => false,
+                    'verify_peer_name' => false,
+                    'allow_self_signed' => true
+                )
+            );
+            
+            // Recipients
+            $mail->setFrom(FROM_EMAIL, FROM_NAME);
+            $mail->addAddress($to);
+            $mail->addReplyTo(FROM_EMAIL, FROM_NAME);
+            
+            // Content
+            $mail->isHTML($isHTML);
+            $mail->Subject = $subject;
+            $mail->Body = $body;
+            
+            // Plain text alternative for non-HTML email clients
+            if ($isHTML) {
+                $mail->AltBody = strip_tags($body);
+            }
+            
+            // Send email
+            $success = $mail->send();
+            
+            // Log activity
+            if (function_exists('logActivity')) {
+                $status = $success ? 'SUCCESS' : 'FAILED';
+                logActivity('EMAIL_SENT', "To: $to, Subject: $subject, Status: $status");
+            }
+            
+            return $success;
+            
+        } catch (Exception $e) {
+            // Log error
+            error_log("Email sending failed: {$mail->ErrorInfo}");
+            if (function_exists('logError')) {
+                logError("Email error: {$mail->ErrorInfo}", 'EMAIL_SEND_ERROR');
+            }
+            return false;
+        }
     }
     
     /**
@@ -60,7 +126,7 @@ class EmailService {
     /**
      * Get default email templates
      */
-    private static function getDefaultTemplate($template_type) {
+    public static function getDefaultTemplate($template_type) {
         $templates = [
             'paper_submitted' => [
                 'subject' => 'Paper Submission Received - {{paper_title}}',
@@ -100,12 +166,10 @@ class EmailService {
                         <p><strong>Reviewed by:</strong> {{reviewed_by}}</p>
                     </div>
                     
-                    {{#reviewer_comments}}
                     <div style="background-color: #f8f9fa; padding: 15px; border-radius: 8px; margin: 20px 0;">
                         <h4>Reviewer Comments:</h4>
                         <p>{{reviewer_comments}}</p>
                     </div>
-                    {{/reviewer_comments}}
                     
                     <p>Your paper will now be published on our research platform. You will receive another notification when it becomes publicly available.</p>
                     
@@ -129,12 +193,10 @@ class EmailService {
                         <p><strong>Review Date:</strong> {{review_date}}</p>
                     </div>
                     
-                    {{#reviewer_comments}}
                     <div style="background-color: #fff3cd; padding: 15px; border-radius: 8px; margin: 20px 0; border-left: 4px solid #ffc107;">
                         <h4>Reviewer Feedback:</h4>
                         <p>{{reviewer_comments}}</p>
                     </div>
-                    {{/reviewer_comments}}
                     
                     <p>We encourage you to address the reviewer feedback and resubmit your paper. Our goal is to help you publish high-quality research.</p>
                     
@@ -185,12 +247,6 @@ class EmailService {
             $body = str_replace($placeholder, $value, $body);
         }
         
-        // Handle conditional blocks (simple implementation)
-        $body = preg_replace('/\{\{#(\w+)\}\}.*?\{\{\/\1\}\}/s', '', $body);
-        if (!empty($variables['reviewer_comments'])) {
-            $body = preg_replace('/\{\{#reviewer_comments\}\}(.*?)\{\{\/reviewer_comments\}\}/s', '$1', $body);
-        }
-        
         return ['subject' => $subject, 'body' => $body];
     }
     
@@ -199,6 +255,11 @@ class EmailService {
      */
     public static function sendPaperSubmissionNotification($paperData, $userEmail, $conn) {
         $template = self::getEmailTemplate('paper_submitted', $conn);
+        
+        if (!$template) {
+            error_log("Email template 'paper_submitted' not found");
+            return false;
+        }
         
         $variables = [
             'author_name' => $paperData['author_name'],
@@ -221,6 +282,7 @@ class EmailService {
         $template = self::getEmailTemplate($template_type, $conn);
         
         if (!$template) {
+            error_log("Email template '$template_type' not found");
             return false;
         }
         

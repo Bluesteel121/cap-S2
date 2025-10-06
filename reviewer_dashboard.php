@@ -9,11 +9,7 @@ if (!isset($_SESSION['username']) || $_SESSION['role'] !== 'reviewer') {
 
 // Include required files
 require_once 'connect.php';
-require_once 'email_config.php';
 require_once 'user_activity_logger.php';
-
-// Initialize email templates
-initializeDefaultEmailTemplates($conn);
 
 // Handle paper review submissions
 if ($_POST && isset($_POST['action'])) {
@@ -48,7 +44,7 @@ if ($_POST && isset($_POST['action'])) {
         $paper_data = $paper_result->fetch_assoc();
         
         if ($paper_data) {
-            // Insert reviewer feedback into a separate table (or update existing table with reviewer fields)
+            // Insert reviewer feedback
             $review_sql = "UPDATE paper_submissions SET 
                           reviewer_status = ?, 
                           reviewer_comments = ?, 
@@ -63,17 +59,13 @@ if ($_POST && isset($_POST['action'])) {
                 // Log the review action
                 logActivity('REVIEWER_ACTION', "Paper ID: $paper_id, Status: $new_status, Reviewer: {$_SESSION['username']}");
                 
-                // Send notification to admin (you might want to implement this)
-                // EmailService::sendReviewerNotificationToAdmin($paper_data, $_SESSION['username'], $new_status, $conn);
-                
                 $success_message = "Review submitted successfully! Admin has been notified of your recommendation.";
                 
                 // Log metrics
-                $metrics_sql = "INSERT INTO paper_metrics (paper_id, metric_type, user_name, metric_date, additional_data) VALUES (?, ?, ?, NOW(), ?)";
+                $metrics_sql = "INSERT INTO paper_metrics (paper_id, metric_type, created_at) VALUES (?, ?, NOW())";
                 $metrics_stmt = $conn->prepare($metrics_sql);
                 $metric_type = 'reviewer_action';
-                $additional_data = json_encode(['action' => $new_status, 'reviewer' => $_SESSION['username']]);
-                $metrics_stmt->bind_param("isss", $paper_id, $metric_type, $_SESSION['username'], $additional_data);
+                $metrics_stmt->bind_param("is", $paper_id, $metric_type);
                 $metrics_stmt->execute();
                 
             } else {
@@ -93,12 +85,11 @@ if ($_POST && isset($_POST['action'])) {
 $status_filter = $_GET['status'] ?? 'pending_review';
 $search_query = $_GET['search'] ?? '';
 
-// Build query for papers that need review or have been reviewed by this reviewer
+// Build query for papers
 $sql = "SELECT * FROM paper_submissions WHERE 1=1";
 $params = [];
 $types = "";
 
-// Show papers that are pending review or under review, or papers this reviewer has already reviewed
 if ($status_filter === 'my_reviews') {
     $sql .= " AND reviewed_by = ?";
     $params[] = $_SESSION['username'];
@@ -158,7 +149,7 @@ try {
     $stats = ['total_available' => 0, 'my_reviews' => 0, 'my_approved' => 0, 'my_rejected' => 0, 'revisions_requested' => 0, 'pending_review' => 0];
 }
 
-// Status badge colors function for reviewer statuses
+// Status badge colors
 function getReviewerStatusBadge($reviewer_status, $status) {
     if ($reviewer_status) {
         switch($reviewer_status) {
@@ -174,7 +165,6 @@ function getReviewerStatusBadge($reviewer_status, $status) {
                 return 'bg-gray-100 text-gray-800 border-gray-200';
         }
     } else {
-        // Show original status if no reviewer status
         switch($status) {
             case 'pending':
                 return 'bg-yellow-100 text-yellow-800 border-yellow-200';
@@ -252,6 +242,12 @@ function getDisplayStatus($reviewer_status, $status) {
         .profile-pic:hover {
             border-color: #f59e0b;
             transform: scale(1.05);
+        }
+        .pdf-viewer-container {
+            width: 100%;
+            height: 600px;
+            border: 1px solid #e5e7eb;
+            border-radius: 0.5rem;
         }
     </style>
 </head>
@@ -521,9 +517,9 @@ function getDisplayStatus($reviewer_status, $status) {
         </div>
     </div>
 
-    <!-- Review Modal -->
-    <div id="reviewModal" class="fixed inset-0 bg-gray-600 bg-opacity-50 hidden items-center justify-center z-50">
-        <div class="bg-white rounded-lg shadow-xl max-w-3xl w-full mx-4">
+    <!-- Review Modal with PDF Viewer -->
+    <div id="reviewModal" class="fixed inset-0 bg-gray-600 bg-opacity-50 hidden items-center justify-center z-50 overflow-y-auto">
+        <div class="bg-white rounded-lg shadow-xl max-w-6xl w-full mx-4 my-8">
             <div class="p-6 border-b">
                 <div class="flex justify-between items-center">
                     <h3 class="text-xl font-semibold text-gray-800">
@@ -534,87 +530,84 @@ function getDisplayStatus($reviewer_status, $status) {
                     </button>
                 </div>
             </div>
-            <form method="POST" class="p-6" onsubmit="return confirmReview(event)">
-                <input type="hidden" name="paper_id" id="reviewPaperId">
-                
-                <div class="mb-4">
-                    <h4 class="font-semibold text-gray-800 mb-2" id="reviewPaperTitle"></h4>
-                </div>
-
-                <div class="bg-green-50 border border-green-200 p-4 rounded-lg mb-6">
-                    <div class="flex items-start">
-                        <i class="fas fa-info-circle text-green-600 mr-2 mt-1"></i>
-                        <div class="text-sm text-green-800">
-                            <p class="font-semibold">Reviewer Guidelines</p>
-                            <p>Your review will be submitted to the admin team for final decision. Please provide detailed feedback to help improve the quality of research.</p>
-                        </div>
+            
+            <div class="p-6 grid grid-cols-1 lg:grid-cols-2 gap-6">
+                <!-- Left: PDF Viewer -->
+                <div class="space-y-4">
+                    <h4 class="font-semibold text-gray-800">Submitted Document</h4>
+                    <div id="pdfViewerContainer" class="pdf-viewer-container">
+                        <iframe id="pdfViewer" class="w-full h-full rounded" frameborder="0"></iframe>
                     </div>
+                    <a id="downloadPdfLink" href="#" target="_blank" class="block text-center bg-purple-500 hover:bg-purple-600 text-white px-4 py-2 rounded-md transition">
+                        <i class="fas fa-download mr-2"></i>Download Document
+                    </a>
                 </div>
 
-                <div class="mb-6">
-                    <label class="block text-sm font-medium text-gray-700 mb-2">
-                        Review Comments
-                        <span class="text-red-500">*</span>
-                    </label>
-                    <textarea name="comments" rows="5" required
-                        class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-green-500"
-                        placeholder="Provide detailed feedback on the paper's methodology, findings, clarity, and overall quality..."></textarea>
-                    <p class="text-xs text-gray-500 mt-1">
-                        Your comments will help the admin make an informed decision about the paper.
-                    </p>
-                </div>
+                <!-- Right: Review Form -->
+                <div>
+                    <form method="POST" onsubmit="return confirmReview(event)">
+                        <input type="hidden" name="paper_id" id="reviewPaperId">
+                        
+                        <div class="mb-4">
+                            <h4 class="font-semibold text-gray-800 mb-2" id="reviewPaperTitle"></h4>
+                        </div>
 
-                <div class="mb-6">
-                    <label class="block text-sm font-medium text-gray-700 mb-2">
-                        Recommendation Summary
-                    </label>
-                    <textarea name="reviewer_recommendation" rows="2"
-                        class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-green-500"
-                        placeholder="Brief recommendation summary (e.g., 'Accept with minor revisions', 'Reject due to methodology issues')"></textarea>
-                </div>
+                        <div class="bg-green-50 border border-green-200 p-4 rounded-lg mb-6">
+                            <div class="flex items-start">
+                                <i class="fas fa-info-circle text-green-600 mr-2 mt-1"></i>
+                                <div class="text-sm text-green-800">
+                                    <p class="font-semibold">Reviewer Guidelines</p>
+                                    <p>Your review will be submitted to the admin team for final decision. Please provide detailed feedback to help improve research quality.</p>
+                                </div>
+                            </div>
+                        </div>
 
-                <div class="flex flex-wrap gap-3">
-                    <button type="submit" name="action" value="under_review" 
-                        class="bg-blue-500 hover:bg-blue-600 text-white px-6 py-3 rounded-md transition">
-                        <i class="fas fa-clock mr-2"></i>
-                        <div class="text-left">
-                            <div class="font-semibold">Set Under Review</div>
-                            <div class="text-xs opacity-75">Mark as being reviewed</div>
+                        <div class="mb-6">
+                            <label class="block text-sm font-medium text-gray-700 mb-2">
+                                Review Comments
+                                <span class="text-red-500">*</span>
+                            </label>
+                            <textarea name="comments" rows="5" required
+                                class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-green-500"
+                                placeholder="Provide detailed feedback on methodology, findings, clarity, and quality..."></textarea>
                         </div>
-                    </button>
-                    <button type="submit" name="action" value="recommend_approve" 
-                        class="bg-green-500 hover:bg-green-600 text-white px-6 py-3 rounded-md transition">
-                        <i class="fas fa-thumbs-up mr-2"></i>
-                        <div class="text-left">
-                            <div class="font-semibold">Recommend Approval</div>
-                            <div class="text-xs opacity-75">Suggest for publication</div>
+
+                        <div class="mb-6">
+                            <label class="block text-sm font-medium text-gray-700 mb-2">
+                                Recommendation Summary
+                            </label>
+                            <textarea name="reviewer_recommendation" rows="2"
+                                class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-green-500"
+                                placeholder="Brief recommendation (e.g., 'Accept with minor revisions')"></textarea>
                         </div>
-                    </button>
-                    <button type="submit" name="action" value="request_revisions" 
-                        class="bg-orange-500 hover:bg-orange-600 text-white px-6 py-3 rounded-md transition">
-                        <i class="fas fa-edit mr-2"></i>
-                        <div class="text-left">
-                            <div class="font-semibold">Request Revisions</div>
-                            <div class="text-xs opacity-75">Needs improvements</div>
+
+                        <div class="flex flex-col gap-3">
+                            <button type="submit" name="action" value="under_review" 
+                                class="bg-blue-500 hover:bg-blue-600 text-white px-4 py-2 rounded-md transition">
+                                <i class="fas fa-clock mr-2"></i>Set Under Review
+                            </button>
+                            <button type="submit" name="action" value="recommend_approve" 
+                                class="bg-green-500 hover:bg-green-600 text-white px-4 py-2 rounded-md transition">
+                                <i class="fas fa-thumbs-up mr-2"></i>Recommend Approval
+                            </button>
+                            <button type="submit" name="action" value="request_revisions" 
+                                class="bg-orange-500 hover:bg-orange-600 text-white px-4 py-2 rounded-md transition">
+                                <i class="fas fa-edit mr-2"></i>Request Revisions
+                            </button>
+                            <button type="submit" name="action" value="recommend_reject" 
+                                class="bg-red-500 hover:bg-red-600 text-white px-4 py-2 rounded-md transition">
+                                <i class="fas fa-thumbs-down mr-2"></i>Recommend Rejection
+                            </button>
                         </div>
-                    </button>
-                    <button type="submit" name="action" value="recommend_reject" 
-                        class="bg-red-500 hover:bg-red-600 text-white px-6 py-3 rounded-md transition">
-                        <i class="fas fa-thumbs-down mr-2"></i>
-                        <div class="text-left">
-                            <div class="font-semibold">Recommend Rejection</div>
-                            <div class="text-xs opacity-75">Not suitable for publication</div>
-                        </div>
-                    </button>
+                    </form>
                 </div>
-            </form>
+            </div>
         </div>
     </div>
 
     <!-- Footer -->
     <footer class="bg-green-600 text-white text-center py-4 mt-12">
         <p>&copy; 2025 Camarines Norte Lowland Rainfed Research Station. All rights reserved.</p>
-        <p class="text-sm opacity-75">Reviewer Dashboard - Maintaining Research Excellence</p>
     </footer>
 
     <script>
@@ -622,11 +615,7 @@ function getDisplayStatus($reviewer_status, $status) {
 
         function logout() {
             if (confirm('Are you sure you want to log out?')) {
-                fetch('logout.php', {
-                    method: 'POST'
-                }).then(() => {
-                    window.location.href = 'index.php';
-                });
+                window.location.href = 'logout.php';
             }
         }
 
@@ -647,82 +636,32 @@ function getDisplayStatus($reviewer_status, $status) {
                             </div>
                         </div>
                         
-                        <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
-                            <div>
-                                <h4 class="font-semibold text-gray-800 mb-2">Primary Author:</h4>
-                                <p class="text-gray-700 bg-gray-50 p-3 rounded">${paper.author_name}</p>
-                            </div>
-                            <div>
-                                <h4 class="font-semibold text-gray-800 mb-2">Submitted by:</h4>
-                                <p class="text-gray-700 bg-gray-50 p-3 rounded">${paper.user_name}</p>
-                            </div>
-                        </div>
-
-                        ${paper.co_authors ? `
-                        <div>
-                            <h4 class="font-semibold text-gray-800 mb-2">Co-Authors:</h4>
-                            <p class="text-gray-700 bg-gray-50 p-3 rounded">${paper.co_authors}</p>
-                        </div>
-                        ` : ''}
-                        
-                        <div>
-                            <h4 class="font-semibold text-gray-800 mb-2">Keywords:</h4>
-                            <p class="text-gray-700 bg-gray-50 p-3 rounded">${paper.keywords}</p>
-                        </div>
-                        
                         <div>
                             <h4 class="font-semibold text-gray-800 mb-2">Abstract:</h4>
                             <p class="text-gray-700 bg-gray-50 p-3 rounded whitespace-pre-wrap">${paper.abstract}</p>
                         </div>
-                        
-                        <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
-                            <div>
-                                <h4 class="font-semibold text-gray-800 mb-2">Submission Date:</h4>
-                                <p class="text-gray-700 bg-gray-50 p-3 rounded">${new Date(paper.submission_date).toLocaleDateString()}</p>
+
+                        ${paper.file_path ? `
+                        <div>
+                            <h4 class="font-semibold text-gray-800 mb-2">Submitted Document:</h4>
+                            <div class="pdf-viewer-container">
+                                <iframe src="${paper.file_path}" class="w-full h-full rounded" frameborder="0"></iframe>
                             </div>
-                            <div>
-                                <h4 class="font-semibold text-gray-800 mb-2">Current Status:</h4>
-                                <span class="inline-flex px-3 py-1 text-sm font-semibold rounded-full ${getStatusBadgeClass(paper.reviewer_status, paper.status)}">
-                                    ${getDisplayStatusText(paper.reviewer_status, paper.status)}
-                                </span>
-                            </div>
+                            <a href="${paper.file_path}" target="_blank" class="mt-2 inline-block bg-purple-500 hover:bg-purple-600 text-white px-4 py-2 rounded-md transition">
+                                <i class="fas fa-download mr-2"></i>Download Document
+                            </a>
                         </div>
+                        ` : ''}
                         
                         ${paper.reviewer_comments ? `
                         <div class="bg-green-50 border border-green-200 p-4 rounded-lg">
-                            <h4 class="font-semibold text-green-800 mb-2">
-                                <i class="fas fa-user-check mr-2"></i>My Review Comments:
-                            </h4>
+                            <h4 class="font-semibold text-green-800 mb-2">My Review:</h4>
                             <p class="text-green-700 mb-2">${paper.reviewer_comments}</p>
                             ${paper.reviewer_recommendation ? `
                                 <p class="text-sm"><strong>Recommendation:</strong> ${paper.reviewer_recommendation}</p>
                             ` : ''}
-                            <p class="text-xs text-green-600 mt-2">
-                                <i class="fas fa-clock mr-1"></i>
-                                Reviewed: ${paper.review_date ? new Date(paper.review_date).toLocaleDateString() : 'Recently'}
-                            </p>
                         </div>
-                        ` : `
-                        <div class="bg-yellow-50 border border-yellow-200 p-4 rounded-lg">
-                            <h4 class="font-semibold text-yellow-800 mb-2">
-                                <i class="fas fa-exclamation-circle mr-2"></i>Review Needed
-                            </h4>
-                            <p class="text-yellow-700">This paper has not been reviewed yet. Click "Review Paper" to provide your evaluation.</p>
-                        </div>
-                        `}
-
-                        <div class="bg-blue-50 p-4 rounded-lg border-l-4 border-blue-400">
-                            <h4 class="font-semibold text-blue-800 mb-2">
-                                <i class="fas fa-info-circle mr-2"></i>Reviewer Guidelines
-                            </h4>
-                            <ul class="text-sm text-blue-700 space-y-1">
-                                <li>• Evaluate the research methodology and validity</li>
-                                <li>• Assess the clarity and quality of writing</li>
-                                <li>• Check for originality and contribution to the field</li>
-                                <li>• Provide constructive feedback for improvements</li>
-                                <li>• Make a clear recommendation to the admin team</li>
-                            </ul>
-                        </div>
+                        ` : ''}
                     </div>
                 `;
                 document.getElementById('paperModal').classList.remove('hidden');
@@ -731,11 +670,18 @@ function getDisplayStatus($reviewer_status, $status) {
         }
 
         function reviewPaper(paperId, paperTitle) {
+            const paper = submissions.find(p => p.id == paperId);
+            
             document.getElementById('reviewPaperId').value = paperId;
             document.getElementById('reviewPaperTitle').textContent = paperTitle;
             
-            // Pre-fill existing review if available
-            const paper = submissions.find(p => p.id == paperId);
+            // Load PDF in viewer
+            if (paper && paper.file_path) {
+                document.getElementById('pdfViewer').src = paper.file_path;
+                document.getElementById('downloadPdfLink').href = paper.file_path;
+            }
+            
+            // Pre-fill existing review
             if (paper && paper.reviewer_comments) {
                 document.querySelector('textarea[name="comments"]').value = paper.reviewer_comments;
             }
@@ -752,23 +698,17 @@ function getDisplayStatus($reviewer_status, $status) {
             const actionLabels = {
                 'recommend_approve': 'recommend this paper for approval',
                 'recommend_reject': 'recommend this paper for rejection',
-                'request_revisions': 'request revisions for this paper',
-                'under_review': 'mark this paper as under review'
+                'request_revisions': 'request revisions',
+                'under_review': 'mark as under review'
             };
             
-            const message = `Are you sure you want to ${actionLabels[action]}? Your recommendation will be sent to the admin team.`;
-            
-            if (!confirm(message)) {
+            if (!confirm(`Are you sure you want to ${actionLabels[action]}?`)) {
                 event.preventDefault();
                 return false;
             }
             
-            // Show processing state
-            const submitButton = event.submitter;
-            const originalHTML = submitButton.innerHTML;
-            submitButton.innerHTML = '<i class="fas fa-spinner fa-spin mr-2"></i>Submitting...';
-            submitButton.disabled = true;
-            
+            event.submitter.innerHTML = '<i class="fas fa-spinner fa-spin mr-2"></i>Submitting...';
+            event.submitter.disabled = true;
             return true;
         }
 
@@ -780,66 +720,19 @@ function getDisplayStatus($reviewer_status, $status) {
         function closeReviewModal() {
             document.getElementById('reviewModal').classList.add('hidden');
             document.getElementById('reviewModal').classList.remove('flex');
+            document.getElementById('pdfViewer').src = '';
         }
 
-        function getStatusBadgeClass(reviewer_status, status) {
-            if (reviewer_status) {
-                switch(reviewer_status) {
-                    case 'under_review': return 'bg-blue-100 text-blue-800 border border-blue-200';
-                    case 'reviewer_approved': return 'bg-green-100 text-green-800 border border-green-200';
-                    case 'reviewer_rejected': return 'bg-red-100 text-red-800 border border-red-200';
-                    case 'revisions_requested': return 'bg-orange-100 text-orange-800 border border-orange-200';
-                    default: return 'bg-gray-100 text-gray-800 border border-gray-200';
-                }
-            } else {
-                switch(status) {
-                    case 'pending': return 'bg-yellow-100 text-yellow-800 border border-yellow-200';
-                    case 'under_review': return 'bg-blue-100 text-blue-800 border border-blue-200';
-                    default: return 'bg-gray-100 text-gray-800 border border-gray-200';
-                }
-            }
-        }
-
-        function getDisplayStatusText(reviewer_status, status) {
-            if (reviewer_status) {
-                switch(reviewer_status) {
-                    case 'under_review': return 'Under Review';
-                    case 'reviewer_approved': return 'Recommended for Approval';
-                    case 'reviewer_rejected': return 'Recommended for Rejection';
-                    case 'revisions_requested': return 'Revisions Requested';
-                    default: return reviewer_status.replace('_', ' ').toUpperCase();
-                }
-            } else {
-                return 'Awaiting Review';
-            }
-        }
-
-        // Close modals when clicking outside
+        // Close modals on outside click
         document.getElementById('paperModal').addEventListener('click', function(e) {
-            if (e.target === this) {
-                closePaperModal();
-            }
+            if (e.target === this) closePaperModal();
         });
 
         document.getElementById('reviewModal').addEventListener('click', function(e) {
-            if (e.target === this) {
-                closeReviewModal();
-            }
+            if (e.target === this) closeReviewModal();
         });
 
-        // Auto-hide success message
-        const successMessage = document.querySelector('.bg-green-100');
-        if (successMessage) {
-            setTimeout(() => {
-                successMessage.style.transition = 'opacity 0.5s ease-out';
-                successMessage.style.opacity = '0';
-                setTimeout(() => {
-                    successMessage.remove();
-                }, 500);
-            }, 8000);
-        }
-
-        // Auto-refresh page after successful submission
+        // Auto-hide messages
         <?php if (isset($success_message)): ?>
             setTimeout(() => {
                 window.location.href = window.location.pathname + window.location.search;

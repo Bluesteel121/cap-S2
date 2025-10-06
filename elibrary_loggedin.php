@@ -1,21 +1,14 @@
 <?php
-// Include database connection
 require_once 'connect.php';
 
-// Start session and check if user is logged in
+// Check if user is NOT logged in and redirect to login
 session_start();
 
-// If not logged in, redirect to public version
+
 if (!isset($_SESSION['id']) || !isset($_SESSION['username']) || !isset($_SESSION['role'])) {
-    header("Location: elibrary.php");
+    header("Location: account.php");
     exit();
 }
-
-// Get user information
-$user_id = $_SESSION['id'];
-$username = $_SESSION['username'];
-$user_name = $_SESSION['name'];
-$user_role = $_SESSION['role'];
 
 // Get filter parameters
 $search_keyword = isset($_GET['search']) ? $_GET['search'] : '';
@@ -24,9 +17,8 @@ $year_filter = isset($_GET['year']) ? $_GET['year'] : '';
 $page = isset($_GET['page']) ? (int)$_GET['page'] : 1;
 $papers_per_page = 10;
 $offset = ($page - 1) * $papers_per_page;
-
-// Build WHERE clause for search and filters
-$where_conditions = ["status IN ('approved', 'published')"];
+// Build WHERE clause for search and filters - ONLY APPROVED PAPERS
+$where_conditions = ["status = 'approved'"];
 $params = [];
 $param_types = '';
 
@@ -96,7 +88,7 @@ if (empty($search_keyword) && empty($category_filter) && empty($year_filter)) {
                             COALESCE(SUM(CASE WHEN pm.metric_type = 'download' THEN 1 ELSE 0 END), 0) as total_downloads
                      FROM paper_submissions ps 
                      LEFT JOIN paper_metrics pm ON ps.id = pm.paper_id
-                     WHERE ps.status IN ('approved', 'published')
+                     WHERE ps.status = 'approved'
                      GROUP BY ps.id 
                      ORDER BY (COALESCE(SUM(CASE WHEN pm.metric_type = 'view' THEN 1 ELSE 0 END), 0) + 
                               COALESCE(SUM(CASE WHEN pm.metric_type = 'download' THEN 1 ELSE 0 END), 0)) DESC 
@@ -107,9 +99,9 @@ if (empty($search_keyword) && empty($category_filter) && empty($year_filter)) {
 
 // Get statistics
 $stats_sql = "SELECT 
-    (SELECT COUNT(*) FROM paper_submissions WHERE status IN ('approved', 'published')) as total_papers,
-    (SELECT COUNT(DISTINCT author_name) FROM paper_submissions WHERE status IN ('approved', 'published')) as total_researchers,
-    (SELECT COUNT(DISTINCT research_type) FROM paper_submissions WHERE status IN ('approved', 'published')) as research_categories,
+    (SELECT COUNT(*) FROM paper_submissions WHERE status = 'approved') as total_papers,
+    (SELECT COUNT(DISTINCT author_name) FROM paper_submissions WHERE status = 'approved') as total_researchers,
+    (SELECT COUNT(DISTINCT research_type) FROM paper_submissions WHERE status = 'approved') as research_categories,
     (SELECT COUNT(*) FROM paper_submissions WHERE status = 'under_review') as active_projects";
 $stats_result = $conn->query($stats_sql);
 $stats = $stats_result->fetch_assoc();
@@ -117,18 +109,11 @@ $stats = $stats_result->fetch_assoc();
 // Get category counts
 $category_sql = "SELECT research_type, COUNT(*) as count 
                 FROM paper_submissions 
-                WHERE status IN ('approved', 'published') 
+                WHERE status = 'approved' 
                 GROUP BY research_type 
                 ORDER BY count DESC";
 $category_result = $conn->query($category_sql);
 $categories = $category_result->fetch_all(MYSQLI_ASSOC);
-
-// Get user's submission count
-$user_submissions_sql = "SELECT COUNT(*) as count FROM paper_submissions WHERE user_name = ?";
-$user_submissions_stmt = $conn->prepare($user_submissions_sql);
-$user_submissions_stmt->bind_param('s', $username);
-$user_submissions_stmt->execute();
-$user_submissions_count = $user_submissions_stmt->get_result()->fetch_assoc()['count'];
 
 // Check if search is active
 $is_searching = !empty($search_keyword) || !empty($category_filter) || !empty($year_filter);
@@ -144,62 +129,49 @@ $is_searching = !empty($search_keyword) || !empty($category_filter) || !empty($y
 </head>
 <body class="bg-gray-100 min-h-screen">
 
-    <!-- Navigation Bar -->
-    <nav class="bg-[#115D5B] text-white p-4 shadow-lg">
-        <div class="container mx-auto flex justify-between items-center">
-            <div class="flex items-center">
-                <img src="Images/logo.png" alt="CNLRRS Logo" class="h-10 w-10 mr-2">
-                <span class="text-xl font-bold">CNLRRS Rainfed Research Station</span>
-            </div>
-            <div class="space-x-4">
-                <a href="loggedin_index.php" class="hover:underline">Home</a>
-                <a href="elibrary_loggedin.php" class="hover:underline font-semibold">E-Library</a>
-                <a href="#" class="hover:underline">About Us</a>
-            </div>
-           <div class="flex items-center space-x-4">
-                <div class="relative group">
-                    <button class="flex items-center space-x-2 bg-[#103635] px-4 py-2 rounded-xl">
-                        <i class="fas fa-user"></i>
-                        <span><?php echo htmlspecialchars($user_name); ?></span>
-                        <i class="fas fa-chevron-down text-sm"></i>
-                    </button>
-                    <div class="invisible opacity-0 group-hover:visible group-hover:opacity-100 transition-all duration-200 absolute right-0 mt-0 pt-2 w-48 z-50">
-                        <div class="bg-white rounded-lg shadow-xl">
-                            <a href="user_profile.php" class="block px-4 py-2 text-gray-800 hover:bg-gray-100 rounded-t-lg">
-                                <i class="fas fa-user-circle mr-2"></i>My Profile
-                            </a>
-                            <a href="my_submissions.php" class="block px-4 py-2 text-gray-800 hover:bg-gray-100">
-                                <i class="fas fa-file-alt mr-2"></i>My Submissions (<?php echo $user_submissions_count; ?>)
-                            </a>
-                            <a href="submit_paper.php" class="block px-4 py-2 text-gray-800 hover:bg-gray-100">
-                                <i class="fas fa-upload mr-2"></i>Submit Paper
-                            </a>
-                            <hr class="my-1">
-                            <a href="logout.php" class="block px-4 py-2 text-red-600 hover:bg-gray-100 rounded-b-lg">
-                                <i class="fas fa-sign-out-alt mr-2"></i>Logout
-                            </a>
-                        </div>
-                    </div>
-                </div>
-            </div>
-    </nav>
+  <!-- Navigation Bar -->
+<nav class="bg-[#115D5B] text-white p-4 shadow-lg">
+    <div class="container mx-auto flex justify-between items-center">
+        <div class="flex items-center">
+            <img src="Images/logo.png" alt="CNLRRS Logo" class="h-10 w-10 mr-2">
+            <span class="text-xl font-bold">CNLRRS Rainfed Research Station</span>
+        </div>
+        <div class="space-x-4">
+            <a href="loggedin_index.php" class="hover:underline">Home</a>
+            <a href="elibrary_loggedin.php" class="hover:underline">E-Library</a>
+            <a href="submit_paper.php" class="hover:underline">Submit Paper</a>
+            <a href="my_submissions.php" class="hover:underline">My Submissions</a>
+        </div>
+        <div class="flex items-center space-x-4">
+            <span class="text-sm">Welcome, <strong><?php echo htmlspecialchars($_SESSION['username']); ?></strong></span>
+            <a href="user_profile.php" class="hover:underline">
+                <i class="fas fa-user-circle"></i> Profile
+            </a>
+            <a href="logout.php" class="bg-red-600 hover:bg-red-700 text-white px-4 py-2 rounded-xl font-semibold">
+                <i class="fas fa-sign-out-alt"></i> Log Out
+            </a>
+        </div>
+    </div>
+</nav>
 
     <!-- Main Content -->
     <div class="container mx-auto p-4">
-        <!-- Welcome Banner -->
-        <div class="bg-gradient-to-r from-[#115D5B] to-[#1A4D3A] text-white rounded-lg p-6 mb-8 shadow-md">
-            <div class="flex justify-between items-center">
-                <div>
-                    <h1 class="text-2xl font-bold mb-2">Welcome back, <?php echo htmlspecialchars($user_name); ?>!</h1>
-                    <p class="text-gray-200">Explore the latest research or submit your own work.</p>
-                </div>
-                <div class="text-right">
-                    <div class="text-3xl font-bold"><?php echo $user_submissions_count; ?></div>
-                    <div class="text-sm text-gray-200">Your Submissions</div>
-                    <a href="submit_paper.php" class="mt-2 inline-block bg-white text-[#115D5B] px-4 py-2 rounded-lg text-sm font-semibold hover:bg-gray-100 transition">
-                        <i class="fas fa-plus mr-1"></i>Submit New Paper
+        <!-- Hero Section -->
+        <div class="flex flex-col md:flex-row items-center justify-between bg-white rounded-lg p-6 mb-8 shadow-md">
+            <div class="md:w-1/2 mb-4 md:mb-0">
+                <h1 class="text-3xl font-bold text-[#115D5B] mb-2">CNLRRS Queen Pineapple Research Repository</h1>
+                <p class="text-gray-700 mb-4">Access the latest research, studies, and publications about Queen Pineapple varieties, cultivation, health benefits, and more.</p>
+                <div class="mt-6 flex gap-4">
+                    <a href="#search-section" class="bg-[#1A4D3A] text-white px-6 py-3 rounded-md font-semibold border border-white hover:bg-[#16663F] transition rounded-lg">
+                        Browse Research
+                    </a>
+                    <a href="userlogin.php" class="bg-[#1A4D3A] border border-white text-white px-6 py-3 rounded-md font-semibold hover:bg-[#16663F] transition rounded-lg">
+                        Submit Paper
                     </a>
                 </div>
+            </div>
+            <div class="md:w-1/3">
+                <img src="Images/md2.jpg" alt="Queen Pineapple" class="rounded-lg shadow-md w-full h-auto max-w-md" />
             </div>
         </div>
 
@@ -208,7 +180,7 @@ $is_searching = !empty($search_keyword) || !empty($category_filter) || !empty($y
             <h2 class="text-xl font-bold text-gray-800 mb-4">
                 <i class="fas fa-search mr-2"></i>Advanced Search
             </h2>
-            <form method="GET" action="elibrary_loggedin.php" class="flex flex-col md:flex-row space-y-4 md:space-y-0 md:space-x-4">
+            <form method="GET" action="" class="flex flex-col md:flex-row space-y-4 md:space-y-0 md:space-x-4">
                 <div class="flex-1">
                     <input type="text" 
                            name="search" 
@@ -242,7 +214,7 @@ $is_searching = !empty($search_keyword) || !empty($category_filter) || !empty($y
                     <i class="fas fa-search mr-2"></i>Search
                 </button>
                 <?php if ($is_searching): ?>
-                <a href="elibrary_loggedin.php" class="bg-gray-500 hover:bg-gray-600 text-white px-6 py-3 rounded-lg transition-colors">
+                <a href="elibrary.php" class="bg-gray-500 hover:bg-gray-600 text-white px-6 py-3 rounded-lg transition-colors">
                     <i class="fas fa-times mr-2"></i>Clear
                 </a>
                 <?php endif; ?>
@@ -254,7 +226,7 @@ $is_searching = !empty($search_keyword) || !empty($category_filter) || !empty($y
                 <div class="flex items-center">
                     <i class="fas fa-info-circle text-blue-400 mr-2"></i>
                     <span class="text-blue-800 font-medium">
-                        Search Results: <?php echo $total_papers; ?> papers found
+                        Search Results: <?php echo $total_papers; ?> approved papers found
                         <?php if (!empty($search_keyword)): ?>
                             for "<?php echo htmlspecialchars($search_keyword); ?>"
                         <?php endif; ?>
@@ -270,18 +242,20 @@ $is_searching = !empty($search_keyword) || !empty($category_filter) || !empty($y
             <?php endif; ?>
         </div>
 
-        <!-- Papers Section -->
+        <!-- Search Results (Papers) -->
+         <?php if ($is_searching): ?>
         <div class="bg-white rounded-lg p-6 mb-8 shadow-md">
             <div class="flex justify-between items-center mb-6">
                 <h2 class="text-2xl font-bold text-gray-800">
                     <i class="fas fa-file-alt mr-2"></i>
-                    <?php echo $is_searching ? 'Search Results' : 'Research Papers'; ?>
+                    <?php echo $is_searching ? 'Search Results' : 'All Research Papers'; ?>
                 </h2>
                 <div class="text-sm text-gray-600">
                     <?php if ($total_papers > 0): ?>
                         Showing <?php echo (($page - 1) * $papers_per_page) + 1; ?> - <?php echo min($page * $papers_per_page, $total_papers); ?> of <?php echo $total_papers; ?> papers
-                    <?php endif; ?>
+                 
                 </div>
+            <?php endif; ?>
             </div>
 
             <?php if (empty($papers)): ?>
@@ -289,7 +263,7 @@ $is_searching = !empty($search_keyword) || !empty($category_filter) || !empty($y
                     <i class="fas fa-search text-gray-300 text-6xl mb-4"></i>
                     <h3 class="text-xl font-semibold text-gray-600 mb-2">No Papers Found</h3>
                     <p class="text-gray-500 mb-4">Try adjusting your search criteria or browse all papers.</p>
-                    <a href="elibrary_loggedin.php" class="bg-[#115D5B] hover:bg-[#0e4e4c] text-white px-6 py-3 rounded-lg">
+                    <a href="elibrary.php" class="bg-[#115D5B] hover:bg-[#0e4e4c] text-white px-6 py-3 rounded-lg">
                         View All Papers
                     </a>
                 </div>
@@ -299,15 +273,13 @@ $is_searching = !empty($search_keyword) || !empty($category_filter) || !empty($y
                     <div class="border-b border-gray-200 pb-6 <?php echo $index === count($papers) - 1 ? 'border-b-0 pb-0' : ''; ?>">
                         <div class="flex justify-between items-start mb-3">
                             <h3 class="text-xl font-semibold text-[#115D5B] mb-2 flex-1">
-                                <a href="research_details.php?id=<?php echo $paper['id']; ?>" 
-                                   class="hover:text-[#0e4e4c] hover:underline transition-colors cursor-pointer block">
-                                    <?php echo htmlspecialchars($paper['paper_title']); ?>
-                                </a>
+                                <?php echo htmlspecialchars($paper['paper_title']); ?>
                             </h3>
                             <div class="ml-4">
-                                <span class="px-3 py-1 text-xs rounded-full <?php echo $paper['status'] === 'published' ? 'bg-green-100 text-green-800' : 'bg-blue-100 text-blue-800'; ?>">
-                                    <?php echo ucfirst($paper['status']); ?>
+                                <span class="px-3 py-1 text-xs rounded-full bg-green-100 text-green-800">
+                                    Approved
                                 </span>
+                                
                             </div>
                         </div>
                         
@@ -316,27 +288,11 @@ $is_searching = !empty($search_keyword) || !empty($category_filter) || !empty($y
                             <?php if ($paper['co_authors']): ?>, <?php echo htmlspecialchars($paper['co_authors']); ?><?php endif; ?></span>
                             <span><i class="fas fa-calendar mr-1"></i><?php echo date('M d, Y', strtotime($paper['submission_date'])); ?></span>
                             <span><i class="fas fa-tag mr-1"></i><?php echo ucfirst(htmlspecialchars($paper['research_type'])); ?></span>
-                            <?php if (!empty($paper['affiliation'])): ?>
-                            <span><i class="fas fa-university mr-1"></i><?php echo htmlspecialchars($paper['affiliation']); ?></span>
-                            <?php endif; ?>
                         </div>
                         
                         <p class="text-gray-700 mb-4 leading-relaxed">
                             <?php echo htmlspecialchars(substr($paper['abstract'], 0, 300)) . '...'; ?>
                         </p>
-                        
-                        <?php if (!empty($paper['keywords'])): ?>
-                        <div class="flex flex-wrap gap-2 mb-4">
-                            <?php 
-                            $keywords = explode(',', $paper['keywords']);
-                            foreach (array_slice($keywords, 0, 5) as $keyword): 
-                            ?>
-                            <span class="bg-gray-100 text-gray-700 text-xs px-3 py-1 rounded-full">
-                                <?php echo htmlspecialchars(trim($keyword)); ?>
-                            </span>
-                            <?php endforeach; ?>
-                        </div>
-                        <?php endif; ?>
                         
                         <div class="flex flex-wrap items-center justify-between">
                             <div class="flex items-center space-x-4 mb-2">
@@ -349,32 +305,22 @@ $is_searching = !empty($search_keyword) || !empty($category_filter) || !empty($y
                             </div>
                             
                             <div class="flex items-center space-x-3">
-                                <a href="research_details.php?id=<?php echo $paper['id']; ?>" 
-                                   class="text-[#115D5B] hover:text-[#0e4e4c] font-medium text-sm px-3 py-1 rounded-md hover:bg-blue-50 transition-colors">
+                                <button onclick="showLoginPrompt()" 
+                                        class="text-[#115D5B] hover:text-[#0e4e4c] font-medium text-sm px-3 py-1 rounded-md hover:bg-blue-50 transition-colors">
                                     <i class="fas fa-info-circle mr-1"></i>Details
-                                </a>
+                                </button>
                                 <button onclick="showAbstract(<?php echo $paper['id']; ?>)" 
                                         class="text-blue-600 hover:text-blue-800 font-medium text-sm px-3 py-1 rounded-md hover:bg-blue-50 transition-colors">
                                     <i class="fas fa-eye mr-1"></i>Abstract
                                 </button>
-                                <?php if ($paper['file_path'] && file_exists($paper['file_path'])): ?>
-                                <a href="download_paper.php?id=<?php echo $paper['id']; ?>&view=1" 
-                                   target="_blank"
-                                   class="text-purple-600 hover:text-purple-800 font-medium text-sm px-3 py-1 rounded-md hover:bg-purple-50 transition-colors">
-                                    <i class="fas fa-eye mr-1"></i>View PDF
-                                </a>
-                                <a href="download_paper.php?id=<?php echo $paper['id']; ?>" 
-                                   class="text-green-600 hover:text-green-800 font-medium text-sm px-3 py-1 rounded-md hover:bg-green-50 transition-colors">
+                                <button onclick="showLoginPrompt()" 
+                                        class="text-green-600 hover:text-green-800 font-medium text-sm px-3 py-1 rounded-md hover:bg-green-50 transition-colors">
                                     <i class="fas fa-download mr-1"></i>Download
-                                </a>
-                                <?php endif; ?>
-                                <button onclick="showCitation(<?php echo $paper['id']; ?>)" 
-                                        class="text-gray-600 hover:text-gray-800 font-medium text-sm px-3 py-1 rounded-md hover:bg-gray-50 transition-colors">
-                                    <i class="fas fa-quote-right mr-1"></i>Cite
                                 </button>
                             </div>
                         </div>
                     </div>
+                    
                     <?php endforeach; ?>
                 </div>
 
@@ -516,6 +462,7 @@ $is_searching = !empty($search_keyword) || !empty($category_filter) || !empty($y
                 <div class="text-4xl font-bold text-[#115D5B] mb-2"><?php echo $stats['active_projects']; ?></div>
                 <p class="text-gray-700">Under Review</p>
             </div>
+            <?php endif; ?>
         </div>
 
         <?php endif; // End of non-searching sections ?>
