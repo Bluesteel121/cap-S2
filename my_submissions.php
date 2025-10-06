@@ -257,6 +257,7 @@ foreach ($submissions as $submission) {
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>My Submissions - CNLRRS</title>
+     <link rel="icon" href="Images/Favicon.ico">
     <script src="https://cdn.tailwindcss.com"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
     <style>
@@ -309,7 +310,7 @@ foreach ($submissions as $submission) {
     <header class="bg-gradient-to-r from-[#115D5B] to-[#0d4a47] text-white py-6 px-6 shadow-lg">
         <div class="max-w-7xl mx-auto flex items-center justify-between">
             <div class="flex items-center space-x-4">
-                <img src="Images/Logo.jpg" alt="CNLRRS Logo" class="h-12 w-auto object-contain">
+                <img src="Images/CNLRRS_icon.png" alt="CNLRRS Logo" class="h-12 w-auto object-contain">
                 <div>
                     <h1 class="text-2xl font-bold">My Paper Submissions</h1>
                     <p class="text-sm opacity-75">Track and manage your research submissions</p>
