@@ -85,7 +85,7 @@
         <!-- Links -->
         <div class="flex items-center gap-6 font-bold">
           <a href="index.php" class="hover:underline">Home</a>
-          <a href="#" class="hover:underline">Our Services</a>
+          <a href="OurService.php" class="hover:underline">Our Services</a>
           <a href="About.php" class="hover:underline">About Us</a>
         </div>
 
@@ -145,7 +145,7 @@
         <p class="text-sm text-gray-600">Explore agricultural studies showcasing decades of scientific research on Pineapple farming.</p>
       </a>
 
-      <a href="#" class="text-center bg-white rounded-lg p-6 shadow hover:shadow-md transition">
+      <a href="UserGuide.php" class="text-center bg-white rounded-lg p-6 shadow hover:shadow-md transition">
         <div class="bg-gray-200 p-4 rounded-full w-20 h-20 mx-auto flex items-center justify-center mb-3">
           <img src="Images/UserG.png" alt="User Guide" class="h-10" />
         </div>
@@ -153,7 +153,7 @@
         <p class="text-sm text-gray-600">Learn how to find and read articles of your interest.</p>
       </a>
 
-      <a href="#" class="text-center bg-white rounded-lg p-6 shadow hover:shadow-md transition">
+      <a href="elibrary.php" class="text-center bg-white rounded-lg p-6 shadow hover:shadow-md transition">
         <div class="bg-gray-200 p-4 rounded-full w-20 h-20 mx-auto flex items-center justify-center mb-3">
           <img src="Images/Collections.png" alt="Collections" class="h-10" />
         </div>
@@ -161,7 +161,7 @@
         <p class="text-sm text-gray-600">Browse the CNLRRS library and learn about its collection.</p>
       </a>
 
-      <a href="#" class="text-center bg-white rounded-lg p-6 shadow hover:shadow-md transition">
+      <a href="ForAuthor.php" class="text-center bg-white rounded-lg p-6 shadow hover:shadow-md transition">
         <div class="bg-gray-200 p-4 rounded-full w-20 h-20 mx-auto flex items-center justify-center mb-3">
           <img src="Images/Collections.png" alt="For Authors" class="h-10" />
         </div>
@@ -169,7 +169,7 @@
         <p class="text-sm text-gray-600">Navigate the CNLRRS submission methods easily.</p>
       </a>
 
-      <a href="#" class="text-center bg-white rounded-lg p-6 shadow hover:shadow-md transition">
+      <a href="ForPublisher.php" class="text-center bg-white rounded-lg p-6 shadow hover:shadow-md transition">
         <div class="bg-gray-200 p-4 rounded-full w-20 h-20 mx-auto flex items-center justify-center mb-3">
           <img src="Images/Collections.png" alt="For Publisher" class="h-10" />
         </div>
