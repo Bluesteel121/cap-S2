@@ -81,3 +81,5 @@
 [2025-10-06 21:28:10] Failed login attempt: No admin/reviewer user found with username 'jane'
 [2025-10-06 21:28:14] Successful login for admin user: 'john'
 [2025-10-07 00:06:08] Successful login for reviewer user: 'jane'
+[2025-10-08 03:41:08] Successful login for admin user: 'john'
+[2025-10-08 03:45:59] Successful login for admin user: 'john'
