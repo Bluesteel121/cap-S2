@@ -175,7 +175,7 @@ $is_searching = !empty($search_keyword) || !empty($category_filter) || !empty($y
                                 <i class="fas fa-upload mr-2"></i>Submit Paper
                             </a>
                             <hr class="my-1">
-                            <a href="logout.php" class="block px-4 py-2 text-red-600 hover:bg-gray-100 rounded-b-lg">
+                            <a href="index.php" class="block px-4 py-2 text-red-600 hover:bg-gray-100 rounded-b-lg">
                                 <i class="fas fa-sign-out-alt mr-2"></i>Logout
                             </a>
                         </div>

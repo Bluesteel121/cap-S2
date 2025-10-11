@@ -222,13 +222,13 @@ $is_searching = !empty($search_keyword) || !empty($category_filter) || !empty($y
         </form>
       </div>
 
-      <!-- Links -->
-      <div class="flex items-center gap-6 font-bold">
-        <a href="?view=home" class="hover:underline <?php echo $view === 'home' ? 'text-[#115D5B] underline' : ''; ?>">Home</a>
-        <a href="?view=library" class="hover:underline <?php echo $view === 'library' ? 'text-[#115D5B] underline' : ''; ?>">Research Library</a>
-        <a href="#" class="hover:underline">Our Services</a>
-        <a href="About.php" class="hover:underline">About Us</a>
-      </div>
+     <!-- Links -->
+<div class="flex items-center gap-6 font-bold">
+  <a href="?view=home" class="hover:underline <?php echo $view === 'home' ? 'text-[#115D5B] underline' : ''; ?>">Home</a>
+  <a href="?view=library" class="hover:underline <?php echo $view === 'library' ? 'text-[#115D5B] underline' : ''; ?>">Research Library</a>
+  <a href="?view=services" class="hover:underline <?php echo $view === 'services' ? 'text-[#115D5B] underline' : ''; ?>">Our Services</a>
+  <a href="?view=about" class="hover:underline <?php echo $view === 'about' ? 'text-[#115D5B] underline' : ''; ?>">About Us</a>
+</div> 
 
       <!-- Profile Picture with User's Initial Image -->
       <img src="Images/initials profile/<?php echo strtolower(substr($_SESSION['name'], 0, 1)); ?>.png" 
@@ -605,8 +605,11 @@ $is_searching = !empty($search_keyword) || !empty($category_filter) || !empty($y
                 </div>
               </div>
             </div>
+            
             <?php endforeach; ?>
+            
           </div>
+          
 
           <!-- Pagination -->
           <?php if ($total_pages > 1): ?>
@@ -653,6 +656,7 @@ $is_searching = !empty($search_keyword) || !empty($category_filter) || !empty($y
         <?php endif; ?>
       </div>
       <?php endif; ?>
+      
 
       <!-- Show other sections only when not searching -->
       <?php if (!$is_searching): ?>
