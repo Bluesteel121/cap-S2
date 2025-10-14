@@ -9,8 +9,8 @@ if (!$paper_id) {
     exit();
 }
 
-// Get paper details
-$sql = "SELECT paper_title, author_name, co_authors, submission_date, affiliation 
+// Get paper details with enhanced fields
+$sql = "SELECT paper_title, author_name, co_authors, affiliation, submission_date, research_type 
         FROM paper_submissions 
         WHERE id = ? AND status IN ('approved', 'published')";
 $stmt = $conn->prepare($sql);
@@ -25,10 +25,12 @@ if ($result->num_rows === 0) {
 
 $paper = $result->fetch_assoc();
 $year = date('Y', strtotime($paper['submission_date']));
+$month = date('F', strtotime($paper['submission_date']));
+$day = date('d', strtotime($paper['submission_date']));
 
 // Parse authors
 $authors_array = [];
-$authors_array[] = $paper['author_name'];
+$authors_array[] = trim($paper['author_name']);
 if (!empty($paper['co_authors'])) {
     $co_authors = explode(',', $paper['co_authors']);
     foreach ($co_authors as $co_author) {
@@ -77,18 +79,48 @@ function formatAuthorsChicago($authors) {
     }
 }
 
+function formatAuthorsIEEE($authors) {
+    if (count($authors) == 1) {
+        return $authors[0];
+    } else {
+        $formatted = '';
+        for ($i = 0; $i < count($authors) - 1; $i++) {
+            $formatted .= $authors[$i] . ', ';
+        }
+        $formatted .= 'and ' . $authors[count($authors) - 1];
+        return $formatted;
+    }
+}
+
 // Generate citations
-$apa = formatAuthorsAPA($authors_array) . ' (' . $year . '). ' . $paper['paper_title'] . '. CNLRRS Queen Pineapple Research Repository.';
+$apa = formatAuthorsAPA($authors_array) . ' (' . $year . '). ' . $paper['paper_title'] . '. ' . 
+       $paper['affiliation'] . '. CNLRRS Queen Pineapple Research Repository.';
 
-$mla = formatAuthorsMLA($authors_array) . '. "' . $paper['paper_title'] . '." CNLRRS Queen Pineapple Research Repository, ' . $year . '.';
+$mla = formatAuthorsMLA($authors_array) . '. "' . $paper['paper_title'] . '." ' . 
+       $paper['affiliation'] . ', CNLRRS Queen Pineapple Research Repository, ' . $year . '.';
 
-$chicago = formatAuthorsChicago($authors_array) . '. "' . $paper['paper_title'] . '." CNLRRS Queen Pineapple Research Repository (' . $year . ').';
+$chicago = formatAuthorsChicago($authors_array) . '. ' . $year . '. "' . $paper['paper_title'] . 
+           '." ' . $paper['affiliation'] . '. CNLRRS Queen Pineapple Research Repository.';
+
+$ieee = formatAuthorsIEEE($authors_array) . ', "' . $paper['paper_title'] . '," ' . 
+        $paper['affiliation'] . ', CNLRRS Queen Pineapple Research Repository, ' . $month . ' ' . $year . '.';
+
+$bibtex = "@article{" . strtolower(str_replace(' ', '', $authors_array[0])) . $year . ",\n" .
+          "  author = {" . implode(' and ', $authors_array) . "},\n" .
+          "  title = {" . $paper['paper_title'] . "},\n" .
+          "  institution = {" . $paper['affiliation'] . "},\n" .
+          "  year = {" . $year . "},\n" .
+          "  type = {" . ucfirst(str_replace('_', ' ', $paper['research_type'])) . "},\n" .
+          "  publisher = {CNLRRS Queen Pineapple Research Repository}\n" .
+          "}";
 
 // Return citations as JSON
 echo json_encode([
     'apa' => $apa,
     'mla' => $mla,
-    'chicago' => $chicago
+    'chicago' => $chicago,
+    'ieee' => $ieee,
+    'bibtex' => $bibtex
 ]);
 
 $stmt->close();

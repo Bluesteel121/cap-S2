@@ -483,91 +483,352 @@ $is_searching = !empty($search_keyword) || !empty($category_filter) || !empty($y
         </div>
     </footer>
 
-    <!-- Modal for Abstract Display -->
+   <!-- Modal for Abstract Display -->
     <div id="abstractModal" class="fixed inset-0 bg-black bg-opacity-50 hidden z-50">
         <div class="flex items-center justify-center min-h-screen p-4">
             <div class="bg-white rounded-lg p-6 max-w-4xl w-full max-h-[80vh] overflow-y-auto shadow-2xl">
                 <div class="flex justify-between items-center mb-6">
-                    <h3 class="text-xl font-semibold text-gray-800">Research Abstract</h3>
-                    <button onclick="closeAbstract()" class="text-gray-500 hover:text-gray-700 p-2 rounded-full hover:bg-gray-100 transition-colors">
+                    <h3 class="text-xl font-semibold text-gray-800">
+                        <i class="fas fa-file-alt mr-2"></i>Research Abstract & Details
+                    </h3>
+                    <button onclick="closeAbstract()" 
+                            class="text-gray-500 hover:text-gray-700 p-2 rounded-full hover:bg-gray-100 transition-colors">
                         <i class="fas fa-times text-xl"></i>
                     </button>
                 </div>
                 <div id="abstractContent" class="text-gray-700">
-                    <!-- Abstract content will be loaded here -->
+                    <!-- Abstract content will be loaded here dynamically -->
                 </div>
             </div>
         </div>
     </div>
 
-    <script>
-        function showAbstract(paperId) {
-            document.getElementById('abstractContent').innerHTML = '<p>Loading abstract...</p>';
-            document.getElementById('abstractModal').classList.remove('hidden');
-            
-            fetch(`get_abstract.php?id=${paperId}`)
-                .then(response => response.json())
-                .then(data => {
-                    if (data.error) {
-                        document.getElementById('abstractContent').innerHTML = `<p class="text-red-600">${data.error}</p>`;
-                    } else {
-                        document.getElementById('abstractContent').innerHTML = `
-                            <h4 class="font-semibold mb-2">${data.title}</h4>
-                            <p class="text-sm text-gray-600 mb-3">Authors: ${data.authors}</p>
-                            <p class="leading-relaxed mb-4">${data.abstract}</p>
-                            <div class="flex justify-end">
-                                <button onclick="showLoginPrompt()" 
-                                   class="bg-[#115D5B] hover:bg-[#0e4e4c] text-white px-4 py-2 rounded-lg text-sm">
-                                    Login to View Full Details
+    <!-- Modal for Citation Display -->
+    <div id="citationModal" class="fixed inset-0 bg-black bg-opacity-50 hidden z-50">
+        <div class="flex items-center justify-center min-h-screen p-4">
+            <div class="bg-white rounded-lg p-6 max-w-2xl w-full max-h-[80vh] overflow-y-auto shadow-2xl">
+                <div class="flex justify-between items-center mb-6">
+                    <h3 class="text-xl font-semibold text-gray-800">
+                        <i class="fas fa-quote-right mr-2"></i>Citation Formats
+                    </h3>
+                    <button onclick="closeCitation()" 
+                            class="text-gray-500 hover:text-gray-700 p-2 rounded-full hover:bg-gray-100 transition-colors">
+                        <i class="fas fa-times text-xl"></i>
+                    </button>
+                </div>
+                <div id="citationContent" class="text-gray-700">
+                    <!-- Citation content will be loaded here dynamically -->
+                </div>
+            </div>
+        </div>
+    </div>
+
+   <script>
+// Enhanced Abstract Display Function with Complete Metadata
+function showAbstract(paperId) {
+    document.getElementById('abstractContent').innerHTML = '<div class="text-center py-4"><i class="fas fa-spinner fa-spin text-3xl text-blue-500"></i><p class="mt-2">Loading abstract...</p></div>';
+    document.getElementById('abstractModal').classList.remove('hidden');
+    
+    fetch(`get_abstract.php?id=${paperId}`)
+        .then(response => response.json())
+        .then(data => {
+            if (data.error) {
+                document.getElementById('abstractContent').innerHTML = 
+                    `<div class="text-center py-8">
+                        <i class="fas fa-exclamation-circle text-red-500 text-5xl mb-4"></i>
+                        <p class="text-red-600">${data.error}</p>
+                    </div>`;
+            } else {
+                let htmlContent = `
+                    <div class="space-y-4">
+                        <div class="border-b pb-4">
+                            <h4 class="font-bold text-xl mb-3 text-gray-800">${data.title}</h4>
+                            
+                            <div class="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
+                                <div>
+                                    <span class="font-semibold text-gray-700"><i class="fas fa-user mr-1"></i>Authors:</span>
+                                    <p class="text-gray-600">${data.authors}</p>
+                                </div>
+                                
+                                ${data.author_email ? `
+                                <div>
+                                    <span class="font-semibold text-gray-700"><i class="fas fa-envelope mr-1"></i>Contact:</span>
+                                    <p class="text-gray-600">${data.author_email}</p>
+                                </div>` : ''}
+                                
+                                ${data.affiliation ? `
+                                <div>
+                                    <span class="font-semibold text-gray-700"><i class="fas fa-university mr-1"></i>Affiliation:</span>
+                                    <p class="text-gray-600">${data.affiliation}</p>
+                                </div>` : ''}
+                                
+                                ${data.research_type ? `
+                                <div>
+                                    <span class="font-semibold text-gray-700"><i class="fas fa-flask mr-1"></i>Research Type:</span>
+                                    <p class="text-gray-600">${data.research_type}</p>
+                                </div>` : ''}
+                                
+                                ${data.submission_year ? `
+                                <div>
+                                    <span class="font-semibold text-gray-700"><i class="fas fa-calendar mr-1"></i>Year:</span>
+                                    <p class="text-gray-600">${data.submission_year}</p>
+                                </div>` : ''}
+                                
+                                ${data.funding_source ? `
+                                <div>
+                                    <span class="font-semibold text-gray-700"><i class="fas fa-hand-holding-usd mr-1"></i>Funding:</span>
+                                    <p class="text-gray-600">${data.funding_source}</p>
+                                </div>` : ''}
+                                
+                                ${data.research_period ? `
+                                <div>
+                                    <span class="font-semibold text-gray-700"><i class="fas fa-clock mr-1"></i>Research Period:</span>
+                                    <p class="text-gray-600">${data.research_period}</p>
+                                </div>` : ''}
+                            </div>
+                        </div>
+                        
+                        ${data.keywords ? `
+                        <div class="pb-4">
+                            <h5 class="font-semibold text-gray-700 mb-2"><i class="fas fa-tags mr-1"></i>Keywords</h5>
+                            <div class="flex flex-wrap gap-2">
+                                ${data.keywords.split(',').map(keyword => 
+                                    `<span class="bg-blue-100 text-blue-800 text-xs px-3 py-1 rounded-full">${keyword.trim()}</span>`
+                                ).join('')}
+                            </div>
+                        </div>` : ''}
+                        
+                        <div class="pb-4">
+                            <h5 class="font-semibold text-gray-700 mb-2"><i class="fas fa-align-left mr-1"></i>Abstract</h5>
+                            <div class="bg-gray-50 p-4 rounded-lg">
+                                <p class="text-gray-700 leading-relaxed whitespace-pre-line">${data.abstract}</p>
+                            </div>
+                        </div>
+                        
+                        ${data.methodology ? `
+                        <div class="pb-4">
+                            <h5 class="font-semibold text-gray-700 mb-2"><i class="fas fa-microscope mr-1"></i>Methodology</h5>
+                            <div class="bg-gray-50 p-4 rounded-lg">
+                                <p class="text-gray-700 leading-relaxed whitespace-pre-line">${data.methodology}</p>
+                            </div>
+                        </div>` : ''}
+                        
+                        ${data.ethics_approval ? `
+                        <div class="pb-4">
+                            <h5 class="font-semibold text-gray-700 mb-2"><i class="fas fa-shield-alt mr-1"></i>Ethics Approval</h5>
+                            <div class="bg-gray-50 p-4 rounded-lg">
+                                <p class="text-gray-700 leading-relaxed">${data.ethics_approval}</p>
+                            </div>
+                        </div>` : ''}
+                        
+                        <div class="flex justify-end space-x-3 pt-4 border-t">
+                            ${data.file_path ? `
+                            <a href="paper_viewer.php?id=${paperId}" 
+                               target="_blank"
+                               class="bg-[#115D5B] hover:bg-[#0e4e4c] text-white px-4 py-2 rounded-lg text-sm transition-colors">
+                                <i class="fas fa-eye mr-1"></i>View Full Paper
+                            </a>
+                            <a href="download_paper.php?id=${paperId}" 
+                               class="bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-lg text-sm transition-colors">
+                                <i class="fas fa-download mr-1"></i>Download
+                            </a>` : `
+                            <button onclick="showLoginPrompt()" 
+                               class="bg-[#115D5B] hover:bg-[#0e4e4c] text-white px-4 py-2 rounded-lg text-sm">
+                                <i class="fas fa-sign-in-alt mr-1"></i>Login to View Full Details
+                            </button>`}
+                        </div>
+                    </div>
+                `;
+                
+                document.getElementById('abstractContent').innerHTML = htmlContent;
+            }
+        })
+        .catch(error => {
+            console.error('Error:', error);
+            document.getElementById('abstractContent').innerHTML = 
+                `<div class="text-center py-8">
+                    <i class="fas fa-exclamation-triangle text-yellow-500 text-5xl mb-4"></i>
+                    <p class="text-red-600">Error loading abstract. Please try again.</p>
+                </div>`;
+        });
+}
+
+function closeAbstract() {
+    document.getElementById('abstractModal').classList.add('hidden');
+}
+
+// Enhanced Citation Display Function with Multiple Formats
+function showCitation(paperId) {
+    document.getElementById('citationContent').innerHTML = '<div class="text-center py-4"><i class="fas fa-spinner fa-spin text-3xl text-blue-500"></i><p class="mt-2">Loading citation formats...</p></div>';
+    document.getElementById('citationModal').classList.remove('hidden');
+    
+    fetch(`get_citation.php?id=${paperId}`)
+        .then(response => response.json())
+        .then(data => {
+            if (data.error) {
+                document.getElementById('citationContent').innerHTML = 
+                    `<p class="text-red-600">${data.error}</p>`;
+            } else {
+                document.getElementById('citationContent').innerHTML = `
+                    <div class="space-y-4">
+                        <div class="border-b pb-4">
+                            <div class="flex justify-between items-center mb-2">
+                                <h4 class="font-semibold text-gray-800">APA Format (7th Edition)</h4>
+                                <button onclick="copyCitation('apa', event)" 
+                                        class="text-blue-600 hover:text-blue-800 text-sm transition-colors">
+                                    <i class="fas fa-copy mr-1"></i>Copy
                                 </button>
                             </div>
-                        `;
-                    }
-                })
-                .catch(error => {
-                    document.getElementById('abstractContent').innerHTML = '<p class="text-red-600">Error loading abstract.</p>';
-                });
-        }
-
-        function closeAbstract() {
-            document.getElementById('abstractModal').classList.add('hidden');
-        }
-
-        function showLoginPrompt() {
-            if (confirm('You need to login to access this feature. Would you like to login now?')) {
-                window.location.href = 'userlogin.php';
+                            <p id="apa-citation" class="text-sm bg-gray-50 p-3 rounded leading-relaxed">${data.apa}</p>
+                        </div>
+                        
+                        <div class="border-b pb-4">
+                            <div class="flex justify-between items-center mb-2">
+                                <h4 class="font-semibold text-gray-800">MLA Format (9th Edition)</h4>
+                                <button onclick="copyCitation('mla', event)" 
+                                        class="text-blue-600 hover:text-blue-800 text-sm transition-colors">
+                                    <i class="fas fa-copy mr-1"></i>Copy
+                                </button>
+                            </div>
+                            <p id="mla-citation" class="text-sm bg-gray-50 p-3 rounded leading-relaxed">${data.mla}</p>
+                        </div>
+                        
+                        <div class="border-b pb-4">
+                            <div class="flex justify-between items-center mb-2">
+                                <h4 class="font-semibold text-gray-800">Chicago Format (17th Edition)</h4>
+                                <button onclick="copyCitation('chicago', event)" 
+                                        class="text-blue-600 hover:text-blue-800 text-sm transition-colors">
+                                    <i class="fas fa-copy mr-1"></i>Copy
+                                </button>
+                            </div>
+                            <p id="chicago-citation" class="text-sm bg-gray-50 p-3 rounded leading-relaxed">${data.chicago}</p>
+                        </div>
+                        
+                        <div class="border-b pb-4">
+                            <div class="flex justify-between items-center mb-2">
+                                <h4 class="font-semibold text-gray-800">IEEE Format</h4>
+                                <button onclick="copyCitation('ieee', event)" 
+                                        class="text-blue-600 hover:text-blue-800 text-sm transition-colors">
+                                    <i class="fas fa-copy mr-1"></i>Copy
+                                </button>
+                            </div>
+                            <p id="ieee-citation" class="text-sm bg-gray-50 p-3 rounded leading-relaxed">${data.ieee}</p>
+                        </div>
+                        
+                        <div>
+                            <div class="flex justify-between items-center mb-2">
+                                <h4 class="font-semibold text-gray-800">BibTeX Format</h4>
+                                <button onclick="copyCitation('bibtex', event)" 
+                                        class="text-blue-600 hover:text-blue-800 text-sm transition-colors">
+                                    <i class="fas fa-copy mr-1"></i>Copy
+                                </button>
+                            </div>
+                            <pre id="bibtex-citation" class="text-xs bg-gray-50 p-3 rounded overflow-x-auto font-mono">${data.bibtex}</pre>
+                        </div>
+                        
+                        <div class="bg-blue-50 border-l-4 border-blue-400 p-4 mt-4">
+                            <p class="text-sm text-blue-800">
+                                <i class="fas fa-info-circle mr-2"></i>
+                                <strong>Note:</strong> Always verify citation format requirements with your institution or publisher.
+                            </p>
+                        </div>
+                    </div>
+                `;
             }
-        }
+        })
+        .catch(error => {
+            console.error('Error:', error);
+            document.getElementById('citationContent').innerHTML = 
+                '<p class="text-red-600">Error loading citation formats. Please try again.</p>';
+        });
+}
 
-        // Close modal when clicking outside
-        document.getElementById('abstractModal').addEventListener('click', function(e) {
+function closeCitation() {
+    document.getElementById('citationModal').classList.add('hidden');
+}
+
+function copyCitation(format, event) {
+    const citation = document.getElementById(`${format}-citation`).innerText;
+    navigator.clipboard.writeText(citation).then(() => {
+        // Create temporary success message
+        const btn = event.target.closest('button');
+        const originalHTML = btn.innerHTML;
+        btn.innerHTML = '<i class="fas fa-check mr-1"></i>Copied!';
+        btn.classList.remove('text-blue-600', 'hover:text-blue-800');
+        btn.classList.add('text-green-600');
+        
+        setTimeout(() => {
+            btn.innerHTML = originalHTML;
+            btn.classList.remove('text-green-600');
+            btn.classList.add('text-blue-600', 'hover:text-blue-800');
+        }, 2000);
+    }).catch(err => {
+        alert('Failed to copy citation. Please try selecting and copying manually.');
+    });
+}
+
+function showLoginPrompt() {
+    if (confirm('You need to login to access this feature. Would you like to login now?')) {
+        window.location.href = 'userlogin.php';
+    }
+}
+
+// Initialize event listeners when DOM is loaded
+document.addEventListener('DOMContentLoaded', function() {
+    // Close modals when clicking outside
+    const abstractModal = document.getElementById('abstractModal');
+    const citationModal = document.getElementById('citationModal');
+    
+    if (abstractModal) {
+        abstractModal.addEventListener('click', function(e) {
             if (e.target === this) {
                 closeAbstract();
             }
         });
-
-        // Smooth scrolling for anchor links
-        document.querySelectorAll('a[href^="#"]').forEach(anchor => {
-            anchor.addEventListener('click', function (e) {
-                e.preventDefault();
-                const target = document.querySelector(this.getAttribute('href'));
-                if (target) {
-                    target.scrollIntoView({
-                        behavior: 'smooth',
-                        block: 'start'
-                    });
-                }
-            });
+    }
+    
+    if (citationModal) {
+        citationModal.addEventListener('click', function(e) {
+            if (e.target === this) {
+                closeCitation();
+            }
         });
-
-        // Auto-submit search form on Enter key
-        document.querySelector('input[name="search"]').addEventListener('keypress', function(e) {
+    }
+    
+    // Smooth scrolling for anchor links
+    document.querySelectorAll('a[href^="#"]').forEach(anchor => {
+        anchor.addEventListener('click', function (e) {
+            e.preventDefault();
+            const target = document.querySelector(this.getAttribute('href'));
+            if (target) {
+                target.scrollIntoView({
+                    behavior: 'smooth',
+                    block: 'start'
+                });
+            }
+        });
+    });
+    
+    // Auto-submit search form on Enter key
+    const searchInput = document.querySelector('input[name="search"]');
+    if (searchInput) {
+        searchInput.addEventListener('keypress', function(e) {
             if (e.key === 'Enter') {
                 e.preventDefault();
                 this.form.submit();
             }
         });
-    </script>
+    }
+    
+    // Close modal on Escape key
+    document.addEventListener('keydown', function(e) {
+        if (e.key === 'Escape') {
+            closeAbstract();
+            closeCitation();
+        }
+    });
+});
+</script>
 
 </body>
 </html>
