@@ -81,6 +81,7 @@
 [2025-10-06 21:28:10] Failed login attempt: No admin/reviewer user found with username 'jane'
 [2025-10-06 21:28:14] Successful login for admin user: 'john'
 [2025-10-07 00:06:08] Successful login for reviewer user: 'jane'
+<<<<<<< HEAD
 [2025-10-07 01:45:38] Successful login for admin user: 'john'
 [2025-10-07 06:44:21] Successful login for admin user: 'john'
 [2025-10-08 03:52:59] Successful login for admin user: 'john'
@@ -96,3 +97,7 @@
 [2025-10-09 04:12:49] Successful login for admin user: 'john'
 [2025-10-09 07:52:27] Successful login for admin user: 'john'
 [2025-10-09 08:02:37] Successful login for admin user: 'john'
+=======
+[2025-10-08 03:41:08] Successful login for admin user: 'john'
+[2025-10-08 03:45:59] Successful login for admin user: 'john'
+>>>>>>> a5c290e80f2069a6285396c7325facd972a94f4b
