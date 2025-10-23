@@ -263,6 +263,26 @@ if (isset($_SESSION['username'])) {
 $conn->close();
 ?>
 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -398,15 +418,7 @@ $conn->close();
                                 <li>Research keywords and methodology</li>
                             </ul>
                         </div>
-                        <div>
-                            <h3 class="font-semibold mb-2">Optional Documents:</h3>
-                            <ul class="list-disc list-inside space-y-1">
-                                <li>DOST Research Proposal Template
-                                    <a href="Images/worksheet.xlsx" download class="text-blue-600 underline ml-2">
-                                         Download Here</a> 
-                                </li>
-                            </ul>
-                        </div>
+                        
                     </div>
                 </div>
             </div>
