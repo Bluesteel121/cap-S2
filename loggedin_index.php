@@ -146,29 +146,12 @@ if ($view === 'library') {
 // Check if search is active
 $is_searching = !empty($search_keyword) || !empty($category_filter) || !empty($year_filter);
 ?>
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 <!DOCTYPE html>
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>CNLRRS Research Library</title>
-   <link rel="icon" href="Images/Favicon.ico">
   <script src="https://cdn.tailwindcss.com"></script>
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
 </head>
@@ -238,13 +221,13 @@ $is_searching = !empty($search_keyword) || !empty($category_filter) || !empty($y
         </form>
       </div>
 
-     <!-- Links -->
-<div class="flex items-center gap-6 font-bold">
-  <a href="?view=home" class="hover:underline <?php echo $view === 'home' ? 'text-[#115D5B] underline' : ''; ?>">Home</a>
-  <a href="?view=library" class="hover:underline <?php echo $view === 'library' ? 'text-[#115D5B] underline' : ''; ?>">Research Library</a>
-  <a href="?view=services" class="hover:underline <?php echo $view === 'services' ? 'text-[#115D5B] underline' : ''; ?>">Our Services</a>
-  <a href="?view=about" class="hover:underline <?php echo $view === 'about' ? 'text-[#115D5B] underline' : ''; ?>">About Us</a>
-</div> 
+      <!-- Links -->
+      <div class="flex items-center gap-6 font-bold">
+        <a href="?view=home" class="hover:underline <?php echo $view === 'home' ? 'text-[#115D5B] underline' : ''; ?>">Home</a>
+        <a href="?view=library" class="hover:underline <?php echo $view === 'library' ? 'text-[#115D5B] underline' : ''; ?>">Research Library</a>
+        <a href="#" class="hover:underline">Our Services</a>
+        <a href="About.php" class="hover:underline">About Us</a>
+      </div>
 
       <!-- Profile Picture with User's Initial Image -->
       <img src="Images/initials profile/<?php echo strtolower(substr($_SESSION['name'], 0, 1)); ?>.png" 
@@ -315,7 +298,7 @@ $is_searching = !empty($search_keyword) || !empty($category_filter) || !empty($y
       <div class="max-w-7xl mx-auto grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-6 px-4">
         
         <!-- Card Component -->
-        <a href="#" class="text-center bg-white rounded-lg p-6 shadow hover:shadow-md transition">
+        <a href="About.php" class="text-center bg-white rounded-lg p-6 shadow hover:shadow-md transition">
           <div class="bg-gray-200 p-4 rounded-full w-20 h-20 mx-auto flex items-center justify-center mb-3">
             <img src="Images/About CN.png" alt="About CNLRRS" class="h-10" />
           </div>
@@ -323,7 +306,7 @@ $is_searching = !empty($search_keyword) || !empty($category_filter) || !empty($y
           <p class="text-sm text-gray-600">Explore agricultural studies showcasing decades of scientific research on Pineapple farming.</p>
         </a>
 
-        <a href="#" class="text-center bg-white rounded-lg p-6 shadow hover:shadow-md transition">
+        <a href="UserGuide.php" class="text-center bg-white rounded-lg p-6 shadow hover:shadow-md transition">
           <div class="bg-gray-200 p-4 rounded-full w-20 h-20 mx-auto flex items-center justify-center mb-3">
             <img src="Images/UserG.png" alt="User Guide" class="h-10" />
           </div>
@@ -339,7 +322,7 @@ $is_searching = !empty($search_keyword) || !empty($category_filter) || !empty($y
           <p class="text-sm text-gray-600">Browse the CNLRRS library and learn about its collection.</p>
         </a>
 
-        <a href="#" class="text-center bg-white rounded-lg p-6 shadow hover:shadow-md transition">
+        <a href="ForAuthor.php" class="text-center bg-white rounded-lg p-6 shadow hover:shadow-md transition">
           <div class="bg-gray-200 p-4 rounded-full w-20 h-20 mx-auto flex items-center justify-center mb-3">
             <img src="Images/Collections.png" alt="For Authors" class="h-10" />
           </div>
@@ -347,7 +330,7 @@ $is_searching = !empty($search_keyword) || !empty($category_filter) || !empty($y
           <p class="text-sm text-gray-600">Navigate the CNLRRS submission methods easily.</p>
         </a>
 
-        <a href="#" class="text-center bg-white rounded-lg p-6 shadow hover:shadow-md transition">
+        <a href="ForPublisher.php" class="text-center bg-white rounded-lg p-6 shadow hover:shadow-md transition">
           <div class="bg-gray-200 p-4 rounded-full w-20 h-20 mx-auto flex items-center justify-center mb-3">
             <img src="Images/Collections.png" alt="For Publisher" class="h-10" />
           </div>
@@ -621,11 +604,8 @@ $is_searching = !empty($search_keyword) || !empty($category_filter) || !empty($y
                 </div>
               </div>
             </div>
-            
             <?php endforeach; ?>
-            
           </div>
-          
 
           <!-- Pagination -->
           <?php if ($total_pages > 1): ?>
@@ -672,7 +652,6 @@ $is_searching = !empty($search_keyword) || !empty($category_filter) || !empty($y
         <?php endif; ?>
       </div>
       <?php endif; ?>
-      
 
       <!-- Show other sections only when not searching -->
       <?php if (!$is_searching): ?>
