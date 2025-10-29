@@ -452,8 +452,9 @@ function formatNumber($number) {
     <a href="admin_review_papers.php"><i class="fas fa-eye mr-3"></i>Review Submissions</a>
     <a href="admin_user_management.php"><i class="fas fa-users mr-3"></i>Manage Users</a>
     <a href="#"><i class="fas fa-book mr-3"></i>Publications</a>
-    <a href="#"><i class="fas fa-chart-bar mr-3"></i>Reports & Analytics</a>
+    <a href="admin_analytics.php"><i class="fas fa-chart-bar mr-3"></i>Analytics</a>
     <a href="edit_profile.php"><i class="fas fa-user-edit mr-3"></i>Edit Profile</a>
+    <a href="admin_reports.php"><i class="fas fa-chart-pie mr-3"></i>Comprehensive Reports</a>
     <div class="mt-8 border-t border-white border-opacity-20 pt-4">
       <a href="index.php" onclick="logout()"><i class="fas fa-sign-out-alt mr-3"></i>Log Out</a>
     </div>
@@ -612,6 +613,16 @@ function formatNumber($number) {
             <p class="opacity-90 leading-relaxed">View detailed reports, statistics, and platform analytics</p>
           </div>
         </a>
+        
+<a href="admin_reports.php" class="admin-card enhanced-card p-8 shadow-lg transition-all w-full max-w-sm">
+  <div class="text-center">
+    <div class="icon-container p-6 rounded-full w-20 h-20 mx-auto flex items-center justify-center mb-6">
+      <i class="fas fa-chart-pie text-3xl"></i>
+    </div>
+    <h3 class="text-xl font-bold mb-3">Reports</h3>
+    <p class="opacity-90 leading-relaxed">Generate detailed analytics, insights, and system performance reports</p>
+  </div>
+</a>
 
       </div>
     </section>

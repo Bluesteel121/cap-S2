@@ -2,9 +2,13 @@
 session_start();
 include 'connect.php';
 
-// Enable error reporting for debugging
+// Disable error display, enable logging
 error_reporting(E_ALL);
-ini_set('display_errors', 1);
+ini_set('display_errors', 0);
+ini_set('log_errors', 1);
+
+// Set content type header
+header('Content-Type: application/json');
 
 // Check if user is admin
 if (!isset($_SESSION['username']) || $_SESSION['role'] !== 'admin') {
@@ -17,8 +21,9 @@ if (!isset($_SESSION['username']) || $_SESSION['role'] !== 'admin') {
 $startDate = isset($_GET['start']) ? $_GET['start'] : date('Y-m-d', strtotime('-7 days'));
 $endDate = isset($_GET['end']) ? $_GET['end'] : date('Y-m-d');
 
-// Helper function - define early so other functions can use it
+// Helper function
 function getTimeAgo($datetime) {
+    if (empty($datetime)) return 'N/A';
     $time = time() - strtotime($datetime);
     
     if ($time < 60) return 'just now';
@@ -30,12 +35,11 @@ function getTimeAgo($datetime) {
 }
 
 try {
-    // Test database connection
     if (!$conn) {
         throw new Exception("Database connection failed");
     }
 
-    // Prepare response array with enhanced data
+    // Prepare response array
     $response = [
         'metrics' => getEnhancedKeyMetrics($conn, $startDate, $endDate),
         'submissions' => getSubmissionsOverTime($conn, $startDate, $endDate),
@@ -46,18 +50,16 @@ try {
         'topPublications' => getEnhancedTopPublications($conn),
         'activeUsers' => getEnhancedActiveUsers($conn),
         'recentActivity' => getEnhancedRecentActivity($conn),
-        // New enhanced metrics
         'fundingAnalysis' => getFundingAnalysis($conn),
         'researchTypeDistribution' => getResearchTypeDistribution($conn),
         'submissionQuality' => getSubmissionQualityMetrics($conn)
     ];
 
-    header('Content-Type: application/json');
     echo json_encode($response);
 } catch (Exception $e) {
     error_log("Analytics error: " . $e->getMessage());
     http_response_code(500);
-    echo json_encode(['error' => 'Database error: ' . $e->getMessage()]);
+    echo json_encode(['error' => 'An error occurred while loading analytics data']);
     exit();
 }
 
@@ -66,33 +68,30 @@ function getEnhancedKeyMetrics($conn, $startDate, $endDate) {
     
     try {
         // Total users
-        $stmt = $conn->prepare("SELECT COUNT(*) as total FROM accounts");
-        $stmt->execute();
-        $result = $stmt->get_result();
+        $result = $conn->query("SELECT COUNT(*) as total FROM accounts");
         $metrics['totalUsers'] = (int)$result->fetch_assoc()['total'];
         
-        // User growth calculation
-        $daysDiff = (strtotime($endDate) - strtotime($startDate)) / 86400;
-        $prevStartDate = date('Y-m-d', strtotime($startDate . ' -' . $daysDiff . ' days'));
+        // User growth
+        $daysDiff = max(1, (strtotime($endDate) - strtotime($startDate)) / 86400);
+        $prevStartDate = date('Y-m-d', strtotime($startDate . ' -' . ceil($daysDiff) . ' days'));
         
-        // Current period users
         $stmt = $conn->prepare("SELECT COUNT(*) as total FROM accounts WHERE DATE(created_at) BETWEEN ? AND ?");
         $stmt->bind_param("ss", $startDate, $endDate);
         $stmt->execute();
         $currentPeriodUsers = (int)$stmt->get_result()->fetch_assoc()['total'];
+        $stmt->close();
         
-        // Previous period users
         $stmt = $conn->prepare("SELECT COUNT(*) as total FROM accounts WHERE DATE(created_at) BETWEEN ? AND ?");
         $stmt->bind_param("ss", $prevStartDate, $startDate);
         $stmt->execute();
         $prevPeriodUsers = (int)$stmt->get_result()->fetch_assoc()['total'];
+        $stmt->close();
         
-        $metrics['userGrowth'] = $prevPeriodUsers > 0 ? round((($currentPeriodUsers - $prevPeriodUsers) / $prevPeriodUsers) * 100, 1) : 0;
+        $metrics['userGrowth'] = $prevPeriodUsers > 0 ? 
+            round((($currentPeriodUsers - $prevPeriodUsers) / $prevPeriodUsers) * 100, 1) : 0;
         
         // Total publications
-        $stmt = $conn->prepare("SELECT COUNT(*) as total FROM paper_submissions");
-        $stmt->execute();
-        $result = $stmt->get_result();
+        $result = $conn->query("SELECT COUNT(*) as total FROM paper_submissions");
         $metrics['totalPublications'] = (int)$result->fetch_assoc()['total'];
         
         // Publication growth
@@ -100,18 +99,19 @@ function getEnhancedKeyMetrics($conn, $startDate, $endDate) {
         $stmt->bind_param("ss", $startDate, $endDate);
         $stmt->execute();
         $currentPeriodPubs = (int)$stmt->get_result()->fetch_assoc()['total'];
+        $stmt->close();
         
         $stmt = $conn->prepare("SELECT COUNT(*) as total FROM paper_submissions WHERE DATE(submission_date) BETWEEN ? AND ?");
         $stmt->bind_param("ss", $prevStartDate, $startDate);
         $stmt->execute();
         $prevPeriodPubs = (int)$stmt->get_result()->fetch_assoc()['total'];
+        $stmt->close();
         
-        $metrics['publicationGrowth'] = $prevPeriodPubs > 0 ? round((($currentPeriodPubs - $prevPeriodPubs) / $prevPeriodPubs) * 100, 1) : 0;
+        $metrics['publicationGrowth'] = $prevPeriodPubs > 0 ? 
+            round((($currentPeriodPubs - $prevPeriodPubs) / $prevPeriodPubs) * 100, 1) : 0;
         
-        // Total views from paper_metrics table
-        $stmt = $conn->prepare("SELECT COUNT(*) as total FROM paper_metrics WHERE metric_type = 'view'");
-        $stmt->execute();
-        $result = $stmt->get_result();
+        // Total views
+        $result = $conn->query("SELECT COUNT(*) as total FROM paper_metrics WHERE metric_type = 'view'");
         $metrics['totalViews'] = (int)$result->fetch_assoc()['total'];
         
         // Views growth
@@ -119,68 +119,65 @@ function getEnhancedKeyMetrics($conn, $startDate, $endDate) {
         $stmt->bind_param("ss", $startDate, $endDate);
         $stmt->execute();
         $currentViews = (int)$stmt->get_result()->fetch_assoc()['total'];
+        $stmt->close();
         
         $stmt = $conn->prepare("SELECT COUNT(*) as total FROM paper_metrics WHERE metric_type = 'view' AND DATE(created_at) BETWEEN ? AND ?");
         $stmt->bind_param("ss", $prevStartDate, $startDate);
         $stmt->execute();
         $prevViews = (int)$stmt->get_result()->fetch_assoc()['total'];
+        $stmt->close();
         
-        $metrics['viewsGrowth'] = $prevViews > 0 ? round((($currentViews - $prevViews) / $prevViews) * 100, 1) : 0;
+        $metrics['viewsGrowth'] = $prevViews > 0 ? 
+            round((($currentViews - $prevViews) / $prevViews) * 100, 1) : 0;
         
         // Total downloads
-        $stmt = $conn->prepare("SELECT COUNT(*) as total FROM paper_metrics WHERE metric_type = 'download'");
-        $stmt->execute();
-        $result = $stmt->get_result();
+        $result = $conn->query("SELECT COUNT(*) as total FROM paper_metrics WHERE metric_type = 'download'");
         $metrics['totalDownloads'] = (int)$result->fetch_assoc()['total'];
         
         // Pending reviews
-        $stmt = $conn->prepare("SELECT COUNT(*) as total FROM paper_submissions WHERE status IN ('pending', 'under_review')");
-        $stmt->execute();
-        $result = $stmt->get_result();
+        $result = $conn->query("SELECT COUNT(*) as total FROM paper_submissions WHERE status IN ('pending', 'under_review')");
         $metrics['pendingReviews'] = (int)$result->fetch_assoc()['total'];
         
         // Average review time
-        $stmt = $conn->prepare("
+        $result = $conn->query("
             SELECT AVG(DATEDIFF(COALESCE(review_date, updated_at), submission_date)) as avg_time 
             FROM paper_submissions 
             WHERE status NOT IN ('pending') AND submission_date IS NOT NULL
         ");
-        $stmt->execute();
-        $result = $stmt->get_result();
         $avgTime = $result->fetch_assoc()['avg_time'];
         $metrics['avgReviewTime'] = $avgTime ? round($avgTime, 1) : 0;
         
-        // Enhanced metrics for new features
-        
-        // Papers with complete enhanced data
-        $stmt = $conn->prepare("
+        // Enhanced submissions (complete data)
+        $result = $conn->query("
             SELECT COUNT(*) as total FROM paper_submissions 
-            WHERE author_email IS NOT NULL AND affiliation IS NOT NULL
+            WHERE author_email IS NOT NULL AND author_email != '' 
+            AND affiliation IS NOT NULL AND affiliation != ''
         ");
-        $stmt->execute();
-        $result = $stmt->get_result();
         $metrics['enhancedSubmissions'] = (int)$result->fetch_assoc()['total'];
         
-        // Funded research count
-        $stmt = $conn->prepare("
+        // Funded research
+        $result = $conn->query("
             SELECT COUNT(*) as total FROM paper_submissions 
             WHERE funding_source IS NOT NULL AND funding_source != ''
         ");
-        $stmt->execute();
-        $result = $stmt->get_result();
         $metrics['fundedResearch'] = (int)$result->fetch_assoc()['total'];
         
-        // Average quality score (based on ratings)
-        $stmt = $conn->prepare("
-            SELECT AVG(rating) as avg_rating, COUNT(*) as total_ratings
-            FROM paper_reviews 
-            WHERE rating IS NOT NULL AND rating BETWEEN 1 AND 5
+        // Since paper_reviews table doesn't exist, use reviewer_status from paper_submissions
+        $result = $conn->query("
+            SELECT 
+                COUNT(*) as total_reviews,
+                AVG(CASE 
+                    WHEN reviewer_status = 'reviewer_approved' THEN 5
+                    WHEN reviewer_status = 'revisions_requested' THEN 3
+                    WHEN reviewer_status = 'reviewer_rejected' THEN 1
+                    ELSE NULL
+                END) as avg_rating
+            FROM paper_submissions 
+            WHERE reviewer_status IS NOT NULL
         ");
-        $stmt->execute();
-        $result = $stmt->get_result();
         $qualityData = $result->fetch_assoc();
         $metrics['avgQualityScore'] = $qualityData['avg_rating'] ? round($qualityData['avg_rating'], 1) : 0;
-        $metrics['totalRatings'] = (int)$qualityData['total_ratings'];
+        $metrics['totalRatings'] = (int)$qualityData['total_reviews'];
         
         return $metrics;
     } catch (Exception $e) {
@@ -191,8 +188,6 @@ function getEnhancedKeyMetrics($conn, $startDate, $endDate) {
 
 function getSubmissionsOverTime($conn, $startDate, $endDate) {
     try {
-        $submissions = [];
-        
         $stmt = $conn->prepare("
             SELECT DATE(submission_date) as date, COUNT(*) as count
             FROM paper_submissions 
@@ -208,8 +203,10 @@ function getSubmissionsOverTime($conn, $startDate, $endDate) {
         while ($row = $result->fetch_assoc()) {
             $data[$row['date']] = (int)$row['count'];
         }
+        $stmt->close();
         
-        // Fill in missing dates with 0
+        // Fill missing dates
+        $submissions = [];
         $current = new DateTime($startDate);
         $end = new DateTime($endDate);
         
@@ -231,8 +228,6 @@ function getSubmissionsOverTime($conn, $startDate, $endDate) {
 
 function getUserGrowthOverTime($conn, $startDate, $endDate) {
     try {
-        $userGrowth = [];
-        
         $stmt = $conn->prepare("
             SELECT DATE(created_at) as date, COUNT(*) as count
             FROM accounts 
@@ -248,8 +243,10 @@ function getUserGrowthOverTime($conn, $startDate, $endDate) {
         while ($row = $result->fetch_assoc()) {
             $data[$row['date']] = (int)$row['count'];
         }
+        $stmt->close();
         
-        // Fill in missing dates with 0
+        // Fill missing dates
+        $userGrowth = [];
         $current = new DateTime($startDate);
         $end = new DateTime($endDate);
         
@@ -271,9 +268,7 @@ function getUserGrowthOverTime($conn, $startDate, $endDate) {
 
 function getStatusDistribution($conn) {
     try {
-        $stmt = $conn->prepare("SELECT status, COUNT(*) as count FROM paper_submissions GROUP BY status");
-        $stmt->execute();
-        $result = $stmt->get_result();
+        $result = $conn->query("SELECT status, COUNT(*) as count FROM paper_submissions GROUP BY status");
         
         $distribution = [
             'pending' => 0,
@@ -293,53 +288,71 @@ function getStatusDistribution($conn) {
         return $distribution;
     } catch (Exception $e) {
         error_log("Error in getStatusDistribution: " . $e->getMessage());
-        return [];
+        return [
+            'pending' => 0,
+            'under_review' => 0,
+            'approved' => 0,
+            'rejected' => 0,
+            'published' => 0
+        ];
     }
 }
 
 function getEnhancedCategoriesDistribution($conn) {
     try {
-        // Use the enhanced research_type field instead of basic categories
-        $stmt = $conn->prepare("
+        $result = $conn->query("
             SELECT 
                 CASE 
                     WHEN research_type = 'experimental' THEN 'Experimental'
                     WHEN research_type = 'observational' THEN 'Observational'
                     WHEN research_type = 'review' THEN 'Literature Review'
                     WHEN research_type = 'case_study' THEN 'Case Study'
-                    ELSE 'Other'
+                    WHEN research_type = 'other' THEN 'Other'
+                    ELSE 'Unspecified'
                 END as category_name,
                 COUNT(*) as count 
             FROM paper_submissions 
-            WHERE research_type IS NOT NULL AND research_type != '' 
             GROUP BY research_type 
-            ORDER BY count DESC 
-            LIMIT 10
+            ORDER BY count DESC
         ");
-        $stmt->execute();
-        $result = $stmt->get_result();
         
         $categories = [];
         while ($row = $result->fetch_assoc()) {
             $categories[$row['category_name']] = (int)$row['count'];
         }
         
+        if (empty($categories)) {
+            $categories = ['General' => 0];
+        }
+        
         return $categories;
     } catch (Exception $e) {
         error_log("Error in getEnhancedCategoriesDistribution: " . $e->getMessage());
-        return [];
+        return ['General' => 0];
     }
 }
 
 function getRatingsDistribution($conn) {
     try {
-        $stmt = $conn->prepare("SELECT rating, COUNT(*) as count FROM paper_reviews WHERE rating IS NOT NULL AND rating BETWEEN 1 AND 5 GROUP BY rating ORDER BY rating");
-        $stmt->execute();
-        $result = $stmt->get_result();
+        // Since paper_reviews doesn't exist, use reviewer_status as proxy
+        $result = $conn->query("
+            SELECT 
+                CASE 
+                    WHEN reviewer_status = 'reviewer_approved' THEN 5
+                    WHEN reviewer_status = 'revisions_requested' THEN 3
+                    WHEN reviewer_status = 'reviewer_rejected' THEN 1
+                END as rating,
+                COUNT(*) as count
+            FROM paper_submissions 
+            WHERE reviewer_status IS NOT NULL
+            GROUP BY reviewer_status
+        ");
         
         $ratings = [1 => 0, 2 => 0, 3 => 0, 4 => 0, 5 => 0];
         while ($row = $result->fetch_assoc()) {
-            $ratings[(int)$row['rating']] = (int)$row['count'];
+            if ($row['rating']) {
+                $ratings[(int)$row['rating']] = (int)$row['count'];
+            }
         }
         
         return $ratings;
@@ -355,35 +368,25 @@ function getEnhancedTopPublications($conn) {
             SELECT 
                 ps.id,
                 ps.paper_title as title, 
-                ps.author_name as author,
+                COALESCE(ps.author_name, 'Unknown') as author,
                 ps.affiliation,
                 ps.research_type,
                 ps.funding_source,
-                COALESCE(pm_views.view_count, 0) as views,
-                COALESCE(pm_downloads.download_count, 0) as downloads,
-                COALESCE(pr.avg_rating, 0) as rating,
+                (SELECT COUNT(*) FROM paper_metrics WHERE paper_id = ps.id AND metric_type = 'view') as views,
+                (SELECT COUNT(*) FROM paper_metrics WHERE paper_id = ps.id AND metric_type = 'download') as downloads,
+                CASE 
+                    WHEN ps.reviewer_status = 'reviewer_approved' THEN 5.0
+                    WHEN ps.reviewer_status = 'revisions_requested' THEN 3.0
+                    WHEN ps.reviewer_status = 'reviewer_rejected' THEN 1.0
+                    ELSE 0
+                END as rating,
                 ps.status
             FROM paper_submissions ps
-            LEFT JOIN (
-                SELECT paper_id, COUNT(*) as view_count 
-                FROM paper_metrics 
-                WHERE metric_type = 'view' 
-                GROUP BY paper_id
-            ) pm_views ON ps.id = pm_views.paper_id
-            LEFT JOIN (
-                SELECT paper_id, COUNT(*) as download_count 
-                FROM paper_metrics 
-                WHERE metric_type = 'download' 
-                GROUP BY paper_id
-            ) pm_downloads ON ps.id = pm_downloads.paper_id
-            LEFT JOIN (
-                SELECT paper_id, AVG(rating) as avg_rating 
-                FROM paper_reviews 
-                WHERE rating IS NOT NULL 
-                GROUP BY paper_id
-            ) pr ON ps.id = pr.paper_id
             WHERE ps.status IN ('approved', 'published') 
-            ORDER BY (COALESCE(pm_views.view_count, 0) + COALESCE(pm_downloads.download_count, 0) * 3) DESC
+            ORDER BY (
+                (SELECT COUNT(*) FROM paper_metrics WHERE paper_id = ps.id AND metric_type = 'view') + 
+                (SELECT COUNT(*) FROM paper_metrics WHERE paper_id = ps.id AND metric_type = 'download') * 3
+            ) DESC
             LIMIT 5
         ");
         $stmt->execute();
@@ -394,7 +397,7 @@ function getEnhancedTopPublications($conn) {
             $publications[] = [
                 'title' => $row['title'] ?: 'Untitled',
                 'author' => $row['author'] ?: 'Unknown Author',
-                'affiliation' => $row['affiliation'] ?: 'Not specified',
+                'affiliation' => $row['affiliation'] ?: '',
                 'research_type' => $row['research_type'] ?: 'other',
                 'funding_source' => $row['funding_source'] ?: null,
                 'views' => (int)$row['views'],
@@ -403,6 +406,7 @@ function getEnhancedTopPublications($conn) {
                 'status' => $row['status']
             ];
         }
+        $stmt->close();
         
         return $publications;
     } catch (Exception $e) {
@@ -418,23 +422,22 @@ function getEnhancedActiveUsers($conn) {
                 a.name,
                 a.username,
                 a.email,
-                COUNT(ps.id) as submissions,
-                COALESCE(pm.total_views, 0) as views,
+                COUNT(DISTINCT ps.id) as submissions,
+                (SELECT COUNT(*) 
+                 FROM paper_metrics pm 
+                 JOIN paper_submissions ps2 ON pm.paper_id = ps2.id 
+                 WHERE (ps2.user_name = a.username OR ps2.author_name = a.name) 
+                 AND pm.metric_type = 'view') as views,
                 MAX(ps.submission_date) as last_submission,
-                MAX(ual.created_at) as last_activity,
                 COUNT(DISTINCT CASE WHEN ps.funding_source IS NOT NULL AND ps.funding_source != '' THEN ps.id END) as funded_papers,
-                AVG(CASE WHEN pr.rating IS NOT NULL THEN pr.rating END) as avg_rating
+                AVG(CASE 
+                    WHEN ps.reviewer_status = 'reviewer_approved' THEN 5
+                    WHEN ps.reviewer_status = 'revisions_requested' THEN 3
+                    WHEN ps.reviewer_status = 'reviewer_rejected' THEN 1
+                    ELSE NULL
+                END) as avg_rating
             FROM accounts a
             LEFT JOIN paper_submissions ps ON a.username = ps.user_name OR a.name = ps.author_name
-            LEFT JOIN (
-                SELECT ps.author_name, COUNT(pm.id) as total_views
-                FROM paper_submissions ps
-                JOIN paper_metrics pm ON ps.id = pm.paper_id
-                WHERE pm.metric_type = 'view'
-                GROUP BY ps.author_name
-            ) pm ON a.name = pm.author_name
-            LEFT JOIN user_activity_logs ual ON a.id = ual.user_id
-            LEFT JOIN paper_reviews pr ON ps.id = pr.paper_id
             WHERE a.role = 'user'
             GROUP BY a.id, a.name, a.username, a.email
             HAVING submissions > 0
@@ -446,7 +449,7 @@ function getEnhancedActiveUsers($conn) {
         
         $users = [];
         while ($row = $result->fetch_assoc()) {
-            $lastActivity = $row['last_activity'] ?: $row['last_submission'];
+            $lastActivity = $row['last_submission'];
             $lastActivityFormatted = $lastActivity ? date('M j, Y', strtotime($lastActivity)) : 'Unknown';
             
             $users[] = [
@@ -459,6 +462,7 @@ function getEnhancedActiveUsers($conn) {
                 'lastActivity' => $lastActivityFormatted
             ];
         }
+        $stmt->close();
         
         return $users;
     } catch (Exception $e) {
@@ -471,10 +475,14 @@ function getEnhancedRecentActivity($conn) {
     try {
         $activities = [];
         
-        // Get recent enhanced submissions
+        // Recent submissions
         $stmt = $conn->prepare("
-            SELECT 'submission' as type, user_name as user, paper_title as title, 
-                   research_type, funding_source, created_at, author_email
+            SELECT 'submission' as type, 
+                   COALESCE(user_name, 'Anonymous') as user, 
+                   paper_title as title, 
+                   research_type, 
+                   funding_source, 
+                   created_at
             FROM paper_submissions 
             ORDER BY created_at DESC 
             LIMIT 5
@@ -485,18 +493,19 @@ function getEnhancedRecentActivity($conn) {
         while ($row = $result->fetch_assoc()) {
             $timeAgo = getTimeAgo($row['created_at']);
             $description = 'Submitted ';
-            if ($row['research_type']) {
-                $description .= ucfirst($row['research_type']) . ' research: ';
+            if (!empty($row['research_type']) && $row['research_type'] != 'other') {
+                $description .= ucfirst(str_replace('_', ' ', $row['research_type'])) . ' research: ';
             }
-            $description .= '"' . substr($row['title'], 0, 40) . (strlen($row['title']) > 40 ? '...' : '') . '"';
+            $title = $row['title'] ?: 'Untitled';
+            $description .= '"' . (strlen($title) > 40 ? substr($title, 0, 40) . '...' : $title) . '"';
             
-            if ($row['funding_source']) {
-                $description .= ' (Funded by ' . substr($row['funding_source'], 0, 20) . ')';
+            if (!empty($row['funding_source'])) {
+                $description .= ' (Funded)';
             }
             
             $activities[] = [
                 'type' => 'submission',
-                'user' => $row['user'] ?: 'Anonymous',
+                'user' => $row['user'],
                 'description' => $description,
                 'time' => $timeAgo,
                 'icon' => 'fas fa-file-upload',
@@ -504,15 +513,17 @@ function getEnhancedRecentActivity($conn) {
                 'timestamp' => $row['created_at']
             ];
         }
+        $stmt->close();
         
-        // Get recent reviews with enhanced info
+        // Recent status changes from user_activity_logs
         $stmt = $conn->prepare("
-            SELECT 'review' as type, pr.reviewer_name as user, ps.paper_title as title, 
-                   pr.rating, pr.recommendations, pr.created_at, ps.research_type
-            FROM paper_reviews pr
-            JOIN paper_submissions ps ON pr.paper_id = ps.id
-            WHERE pr.review_status = 'completed'
-            ORDER BY pr.created_at DESC 
+            SELECT 
+                ual.activity_description as description,
+                ual.username as user,
+                ual.created_at
+            FROM user_activity_logs ual
+            WHERE ual.activity_description LIKE '%status changed%'
+            ORDER BY ual.created_at DESC 
             LIMIT 3
         ");
         $stmt->execute();
@@ -520,28 +531,24 @@ function getEnhancedRecentActivity($conn) {
         
         while ($row = $result->fetch_assoc()) {
             $timeAgo = getTimeAgo($row['created_at']);
-            $description = 'Reviewed "' . substr($row['title'], 0, 30) . (strlen($row['title']) > 30 ? '...' : '') . '"';
-            if ($row['rating']) {
-                $description .= ' (Rating: ' . $row['rating'] . '/5)';
-            }
-            if ($row['recommendations']) {
-                $description .= ' - ' . ucfirst(str_replace('_', ' ', $row['recommendations']));
-            }
             
             $activities[] = [
-                'type' => 'review',
+                'type' => 'status_change',
                 'user' => $row['user'],
-                'description' => $description,
+                'description' => $row['description'],
                 'time' => $timeAgo,
-                'icon' => 'fas fa-star',
-                'color' => 'yellow',
+                'icon' => 'fas fa-exchange-alt',
+                'color' => 'green',
                 'timestamp' => $row['created_at']
             ];
         }
+        $stmt->close();
         
-        // Get recent user registrations
+        // Recent registrations
         $stmt = $conn->prepare("
-            SELECT 'registration' as type, name as user, email, created_at
+            SELECT 
+                COALESCE(name, 'New User') as user, 
+                created_at
             FROM accounts 
             WHERE role = 'user'
             ORDER BY created_at DESC 
@@ -555,15 +562,16 @@ function getEnhancedRecentActivity($conn) {
             $activities[] = [
                 'type' => 'registration',
                 'user' => 'System',
-                'description' => ($row['user'] ?: 'New researcher') . ' joined the platform',
+                'description' => $row['user'] . ' joined the platform',
                 'time' => $timeAgo,
                 'icon' => 'fas fa-user-plus',
                 'color' => 'purple',
                 'timestamp' => $row['created_at']
             ];
         }
+        $stmt->close();
         
-        // Sort by timestamp and return top 10
+        // Sort by timestamp
         usort($activities, function($a, $b) {
             return strtotime($b['timestamp']) - strtotime($a['timestamp']);
         });
@@ -581,13 +589,14 @@ function getFundingAnalysis($conn) {
             SELECT 
                 CASE 
                     WHEN funding_source IS NULL OR funding_source = '' THEN 'Self-funded/Institutional'
-                    ELSE funding_source
+                    ELSE LEFT(funding_source, 50)
                 END as funding_category,
                 COUNT(*) as submission_count,
                 COUNT(CASE WHEN status = 'published' THEN 1 END) as published_count,
                 COUNT(CASE WHEN status = 'approved' THEN 1 END) as approved_count,
                 COUNT(CASE WHEN status = 'rejected' THEN 1 END) as rejected_count,
-                AVG(CASE WHEN review_date IS NOT NULL THEN DATEDIFF(review_date, submission_date) END) as avg_review_days
+                AVG(CASE WHEN review_date IS NOT NULL AND submission_date IS NOT NULL 
+                    THEN DATEDIFF(review_date, submission_date) END) as avg_review_days
             FROM paper_submissions
             GROUP BY funding_category
             HAVING submission_count > 0
@@ -612,6 +621,7 @@ function getFundingAnalysis($conn) {
                 'avg_review_days' => $row['avg_review_days'] ? round($row['avg_review_days'], 1) : null
             ];
         }
+        $stmt->close();
         
         return $funding;
     } catch (Exception $e) {
@@ -623,11 +633,16 @@ function getFundingAnalysis($conn) {
 function getResearchTypeDistribution($conn) {
     try {
         $stmt = $conn->prepare("
-            SELECT research_type, COUNT(*) as count,
-                   AVG(CASE WHEN pr.rating IS NOT NULL THEN pr.rating END) as avg_rating
-            FROM paper_submissions ps
-            LEFT JOIN paper_reviews pr ON ps.id = pr.paper_id
-            WHERE research_type IS NOT NULL AND research_type != ''
+            SELECT 
+                COALESCE(research_type, 'other') as research_type, 
+                COUNT(*) as count,
+                AVG(CASE 
+                    WHEN reviewer_status = 'reviewer_approved' THEN 5
+                    WHEN reviewer_status = 'revisions_requested' THEN 3
+                    WHEN reviewer_status = 'reviewer_rejected' THEN 1
+                    ELSE NULL
+                END) as avg_rating
+            FROM paper_submissions
             GROUP BY research_type
             ORDER BY count DESC
         ");
@@ -636,12 +651,14 @@ function getResearchTypeDistribution($conn) {
         
         $distribution = [];
         while ($row = $result->fetch_assoc()) {
+            $type = $row['research_type'] ?: 'other';
             $distribution[] = [
-                'type' => $row['research_type'],
+                'type' => $type,
                 'count' => (int)$row['count'],
                 'avg_rating' => $row['avg_rating'] ? round($row['avg_rating'], 1) : 0
             ];
         }
+        $stmt->close();
         
         return $distribution;
     } catch (Exception $e) {
@@ -652,7 +669,7 @@ function getResearchTypeDistribution($conn) {
 
 function getSubmissionQualityMetrics($conn) {
     try {
-        $stmt = $conn->prepare("
+        $result = $conn->query("
             SELECT 
                 COUNT(*) as total_submissions,
                 COUNT(CASE WHEN author_email IS NOT NULL AND author_email != '' THEN 1 END) as with_email,
@@ -665,8 +682,6 @@ function getSubmissionQualityMetrics($conn) {
                 AVG(CASE WHEN LENGTH(abstract) > 0 THEN LENGTH(abstract) END) as avg_abstract_length
             FROM paper_submissions
         ");
-        $stmt->execute();
-        $result = $stmt->get_result();
         $row = $result->fetch_assoc();
         
         $total = (int)$row['total_submissions'];
@@ -686,6 +701,19 @@ function getSubmissionQualityMetrics($conn) {
         ];
     } catch (Exception $e) {
         error_log("Error in getSubmissionQualityMetrics: " . $e->getMessage());
-        return [];
+        return [
+            'total_submissions' => 0,
+            'completion_rates' => [
+                'email' => 0,
+                'affiliation' => 0,
+                'funding' => 0,
+                'research_dates' => 0,
+                'terms_agreement' => 0,
+                'email_consent' => 0,
+                'data_consent' => 0
+            ],
+            'avg_abstract_length' => 0
+        ];
     }
 }
+?>
