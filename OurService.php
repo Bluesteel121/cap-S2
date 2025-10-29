@@ -1,3 +1,9 @@
+<?php
+session_start();
+// Check if user is logged in
+$is_logged_in = isset($_SESSION['name']);
+?>
+
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -79,15 +85,48 @@
 
       <!-- Links -->
       <div class="flex items-center gap-6 font-bold">
-        <a href="index.php" class="hover:underline">Home</a>
-        <a href="OurServices.php" class="hover:underline">Our Services</a>
+        <a href="<?php echo $is_logged_in ? 'loggedin_index.php' : 'index.php'; ?>" class="hover:underline">Home</a>
+        <a href="<?php echo $is_logged_in ? 'loggedin_index.php?view=library' : 'elibrary.php'; ?>" class="hover:underline">Research Library</a>
+        <a href="OurServices.php" class="hover:underline text-[#115D5B] underline">Our Services</a>
+        <a href="ForAuthor.php" class="hover:underline">For Authors</a>
         <a href="About.php" class="hover:underline">About Us</a>
       </div>
 
-      <!-- Login -->
-      <a href="account.php" class="bg-[#103635] text-white px-6 py-2 rounded-xl font-semibold">Log In</a>
+      <!-- Login / Profile Picture -->
+      <?php if ($is_logged_in): ?>
+        <!-- Profile Picture with User's Initial Image -->
+        <img src="Images/initials profile/<?php echo strtolower(substr($_SESSION['name'], 0, 1)); ?>.png" 
+             alt="Profile Picture" 
+             class="profile-pic w-10 h-10 rounded-full cursor-pointer object-cover"
+             onclick="toggleSidebar()" 
+             title="<?php echo htmlspecialchars($_SESSION['name']); ?>"
+             onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';">
+
+        <!-- Fallback div -->
+        <div class="profile-pic w-10 h-10 rounded-full cursor-pointer flex items-center justify-center bg-gradient-to-br from-[#115D5B] to-[#103625] text-white font-bold text-lg uppercase"
+             onclick="toggleSidebar()" 
+             title="<?php echo htmlspecialchars($_SESSION['name']); ?>"
+             style="display: none;">
+          <?php echo strtoupper(substr($_SESSION['name'], 0, 1)); ?>
+        </div>
+      <?php else: ?>
+        <!-- Login Button -->
+        <a href="account.php" class="bg-[#103635] text-white px-6 py-2 rounded-xl font-semibold">Log In</a>
+      <?php endif; ?>
     </div>
   </nav>
+  
+  <!-- Sidebar Navigation (only show when logged in) -->
+  <?php if ($is_logged_in): ?>
+  <div id="mySidebar" class="sidebar">
+      <a href="javascript:void(0)" class="closebtn" onclick="closeSidebar()">&times;</a>
+      <a href="#">Settings</a>
+      <a href="edit_profile.php">Profile</a>
+      <a href="my_submissions.php"><i class="fas fa-file-alt mr-2"></i>My Submissions</a>
+      <a href="submit_paper.php"><i class="fas fa-plus mr-2"></i>Submit Paper</a>
+      <a href="index.php" onclick="logout()">Log Out</a>
+  </div>
+  <?php endif; ?>
   
   <div class="w-full flex justify-center my-1">
     <img src="Images/ServicesCn.png" alt="Section Divider" class="w-full h-26 object-cover" />
@@ -227,9 +266,6 @@
   </div>
 </section>
 
-</body>
-</html>
-
 <!-- Footer -->
 <footer class="bg-[#115D5B] text-white text-center py-4 mt-16">
   <p>&copy; 2025 Camarines Norte Lowland Rainfed Research Station. All rights reserved.</p>
@@ -237,14 +273,45 @@
 
 <!-- Scripts -->
 <script>
-  // Hamburger toggle
-  const menuToggle = document.getElementById('menu-toggle');
-  const navMenu = document.getElementById('nav-menu');
-  if (menuToggle) {
-    menuToggle.addEventListener('click', () => {
-      navMenu.classList.toggle('hidden');
-    });
+  // Sidebar toggle functionality (only needed when logged in)
+  function toggleSidebar() {
+      const sidebar = document.getElementById('mySidebar');
+      if (sidebar) {
+          if (sidebar.style.width === '250px') {
+              sidebar.style.width = '0';
+          } else {
+              sidebar.style.width = '250px';
+          }
+      }
   }
+
+  function closeSidebar() {
+      const sidebar = document.getElementById('mySidebar');
+      if (sidebar) {
+          sidebar.style.width = '0';
+      }
+  }
+
+  // Logout function
+  function logout() {
+      fetch('logout.php', {
+          method: 'POST'
+      }).then(() => {
+          window.location.href = 'index.php';
+      });
+  }
+
+  // Close sidebar when clicking outside
+  document.addEventListener('click', function(event) {
+      const sidebar = document.getElementById('mySidebar');
+      if (!sidebar) return;
+      
+      const profilePic = event.target.closest('.profile-pic');
+      
+      if (!sidebar.contains(event.target) && !profilePic && sidebar.style.width === '250px') {
+          closeSidebar();
+      }
+  });
 
   // Hide header on scroll down, show on scroll up
   let lastScrollTop = 0;
@@ -253,12 +320,72 @@
   window.addEventListener('scroll', () => {
     const scrollTop = window.scrollY || document.documentElement.scrollTop;
     if (scrollTop > lastScrollTop) {
-      header.style.transform = 'translateY(-100%)'; // hide
+      header.style.transform = 'translateY(-100%)';
     } else {
-      header.style.transform = 'translateY(0)'; // show
+      header.style.transform = 'translateY(0)';
     }
-    lastScrollTop = scrollTop <= 0 ? 0 : scrollTop; // For Mobile
+    lastScrollTop = scrollTop <= 0 ? 0 : scrollTop;
   });
 </script>
+
+<style>
+  /* Profile picture styles */
+  .profile-pic {
+    width: 40px;
+    height: 40px;
+    border-radius: 50%;
+    object-fit: cover;
+    cursor: pointer;
+    border: 2px solid #115D5B;
+    transition: transform 0.2s;
+  }
+
+  .profile-pic:hover {
+    transform: scale(1.1);
+  }
+
+  /* Sidebar styles */
+  .sidebar {
+    height: 100%;
+    width: 0;
+    position: fixed;
+    z-index: 1000;
+    top: 0;
+    left: 0;
+    background-color: #115D5B;
+    overflow-x: hidden;
+    transition: 0.5s;
+    padding-top: 60px;
+    color: white;
+  }
+
+  .sidebar a {
+    padding: 8px 8px 8px 32px;
+    text-decoration: none;
+    font-size: 25px;
+    color: white;
+    display: block;
+    transition: 0.3s;
+  }
+
+  .sidebar a:hover {
+    background-color: #103625;
+  }
+
+  .sidebar .closebtn {
+    position: absolute;
+    top: 0;
+    right: 25px;
+    font-size: 36px;
+    margin-left: 50px;
+    color: white;
+  }
+
+  /* Header transition */
+  #main-header {
+    transition: transform 0.3s ease-in-out;
+  }
+</style>
+
 </body>
 </html>

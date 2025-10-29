@@ -224,7 +224,6 @@ $is_searching = !empty($search_keyword) || !empty($category_filter) || !empty($y
       <!-- Links -->
       <div class="flex items-center gap-6 font-bold">
         <a href="?view=home" class="hover:underline <?php echo $view === 'home' ? 'text-[#115D5B] underline' : ''; ?>">Home</a>
-        <a href="?view=library" class="hover:underline <?php echo $view === 'library' ? 'text-[#115D5B] underline' : ''; ?>">Research Library</a>
         <a href="#" class="hover:underline">Our Services</a>
         <a href="About.php" class="hover:underline">About Us</a>
       </div>
