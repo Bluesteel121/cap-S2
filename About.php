@@ -86,9 +86,7 @@ $is_logged_in = isset($_SESSION['name']);
       <!-- Links -->
       <div class="flex items-center gap-6 font-bold">
         <a href="<?php echo $is_logged_in ? 'loggedin_index.php' : 'index.php'; ?>" class="hover:underline">Home</a>
-        <a href="<?php echo $is_logged_in ? 'loggedin_index.php?view=library' : 'elibrary.php'; ?>" class="hover:underline">Research Library</a>
-        <a href="OurServices.php" class="hover:underline">Our Services</a>
-        <a href="ForAuthor.php" class="hover:underline">For Authors</a>
+        <a href="OurService.php" class="hover:underline">Our Services</a>
         <a href="About.php" class="hover:underline text-[#115D5B] underline">About Us</a>
       </div>
 
