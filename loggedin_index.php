@@ -305,7 +305,7 @@ $is_searching = !empty($search_keyword) || !empty($category_filter) || !empty($y
           <p class="text-sm text-gray-600">Explore agricultural studies showcasing decades of scientific research on Pineapple farming.</p>
         </a>
 
-        <a href="UserGuide.php" class="text-center bg-white rounded-lg p-6 shadow hover:shadow-md transition">
+        <a href="User_Guide.php" class="text-center bg-white rounded-lg p-6 shadow hover:shadow-md transition">
           <div class="bg-gray-200 p-4 rounded-full w-20 h-20 mx-auto flex items-center justify-center mb-3">
             <img src="Images/UserG.png" alt="User Guide" class="h-10" />
           </div>
@@ -313,7 +313,7 @@ $is_searching = !empty($search_keyword) || !empty($category_filter) || !empty($y
           <p class="text-sm text-gray-600">Learn how to find and read articles of your interest.</p>
         </a>
 
-        <a href="#" class="text-center bg-white rounded-lg p-6 shadow hover:shadow-md transition">
+        <a href="elibrary_loggedin.php" class="text-center bg-white rounded-lg p-6 shadow hover:shadow-md transition">
           <div class="bg-gray-200 p-4 rounded-full w-20 h-20 mx-auto flex items-center justify-center mb-3">
             <img src="Images/Collections.png" alt="Collections" class="h-10" />
           </div>
