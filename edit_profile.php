@@ -177,25 +177,48 @@ closeConnection();
 <body class="bg-gray-100 pt-20">
 
 <!-- Header -->
-<header id="main-header" class="bg-white text-[#103625] px-6 py-3 shadow-lg fixed top-0 left-0 w-full z-50 transition-transform duration-300">
-    <div class="container mx-auto flex justify-between items-center">
-        <!-- Logo and Title -->
-        <div class="flex items-center space-x-4">
-            <img src="Images/Logo.jpg" alt="CNLRRS Logo" class="h-20 w-auto object-contain">
-            <h1 class="text-xl font-bold leading-tight">Camarines Norte Lowland <br class="hidden sm:block" /> Rainfed Research Station</h1>
-        </div>
-
-        <img src="Images/Ph.png" alt="PH Logo" class="h-20 w-auto object-contain">
-        <img src="Images/Da.png" alt="DA Logo" class="h-20 w-auto object-contain">
-        <div class="text-center md:text-middle mt-2 md:mt-0">
-            <p class="text-sm font-bold">DEPARTMENT OF AGRICULTURE</p>
-            <p class="text-xs font-bold">Address: Calasgasan, Daet, Philippines</p>
-            <p class="text-xs font-bold">Email: dacnlrrs@gmail.com</p>
-            <p class="text-xs font-bold">Contact No.: 0951 609 9599</p>
-        </div>
-
-        <img src="Images/Bago.png" alt="Bagong Pilipinas Logo" class="h-20 w-auto object-contain">
+<header id="main-header" class="fixed top-0 left-0 w-full z-50 bg-white shadow-lg h-16 sm:h-20 md:h-24 lg:h-28">
+  <div class="max-w-7xl mx-auto px-1 sm:px-3 md:px-6 flex flex-wrap justify-between items-center gap-1 sm:gap-2 md:gap-4 h-full">
+    
+    <!-- Logo and Title -->
+    <div class="flex items-center space-x-1 sm:space-x-2 md:space-x-4 flex-shrink-0">
+      <img src="Images/Logo.jpg" alt="CNLRRS Logo" class="h-8 sm:h-12 md:h-16 lg:h-20 xl:h-24 object-contain" />
+      <h1 class="text-[10px] sm:text-xs md:text-sm lg:text-lg font-bold leading-tight">
+        <span class="block sm:hidden">CNLRRS</span>
+        <span class="hidden sm:block">
+          Camarines Norte Lowland <br class="hidden sm:block" />
+          Rainfed Research Station
+        </span>
+      </h1>
     </div>
+
+    <!-- Partner Logos -->
+    <div class="flex items-center space-x-1 sm:space-x-2 md:space-x-4 flex-shrink-0">
+      <img src="Images/Ph.png" alt="Philippines Logo" class="h-8 sm:h-12 md:h-16 lg:h-20 xl:h-24 object-contain"/>
+      <img src="Images/Da.png" alt="CNLRRS Logo" class="h-8 sm:h-12 md:h-16 lg:h-20 xl:h-24 object-contain" />
+    </div>
+
+    <!-- Contact Info Section -->
+    <div class="flex items-center space-x-1 sm:space-x-2 md:space-x-4 flex-shrink-0 min-w-0">
+      <!-- Text Info -->
+      <div class="text-[8px] sm:text-xs md:text-sm font-semibold text-center leading-tight">
+        <p class="md:hidden">DA</p>
+        <p class="hidden md:block">DEPARTMENT OF AGRICULTURE</p>
+        
+        <p class="sm:hidden">Daet, PH</p>
+        <p class="hidden sm:block">Calasgasan, Daet, Philippines</p>
+        
+        <p class="md:hidden">
+          <a href="mailto:dacnlrrs@gmail.com" class="underline">Email</a>
+        </p>
+        <p class="hidden md:block">Email: <a href="mailto:dacnlrrs@gmail.com" class="underline">dacnlrrs@gmail.com</a></p>
+        
+        <p>0951 609 9599</p>
+      </div>
+      <!-- Logo -->
+      <img src="Images/Bago.png" alt="Bagong Pilipinas Logo" class="h-8 sm:h-12 md:h-16 lg:h-20 xl:h-24 object-contain" />
+    </div>
+  </div>
 </header>
 
 <nav class="bg-white border-b py-10 px-10">
