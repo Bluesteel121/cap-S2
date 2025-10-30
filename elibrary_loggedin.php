@@ -176,10 +176,8 @@ $is_searching = !empty($search_keyword) || !empty($category_filter) || !empty($y
                                 <a href="submit_paper.php" class="block px-4 py-2 text-gray-800 hover:bg-gray-100">
                                     <i class="fas fa-upload mr-2"></i>Submit Paper
                                 </a>
-                                <hr class="my-1">
-                                <a href="index.php" class="block px-4 py-2 text-red-600 hover:bg-gray-100 rounded-b-lg">
-                                    <i class="fas fa-sign-out-alt mr-2"></i>Logout
-                                </a>
+                               
+                                
                             </div>
                         </div>
                     </div>
@@ -204,6 +202,7 @@ $is_searching = !empty($search_keyword) || !empty($category_filter) || !empty($y
                         <a href="loggedin_index.php" class="block py-2 px-4 hover:bg-[#103635] rounded">Home</a>
                         <a href="elibrary_loggedin.php" class="block py-2 px-4 bg-[#103635] rounded font-semibold">E-Library</a>
                         <a href="About.php" class="block py-2 px-4 hover:bg-[#103635] rounded">About Us</a>
+
                         <hr class="border-[#103635]">
                         <a href="user_profile.php" class="block py-2 px-4 hover:bg-[#103635] rounded">
                             <i class="fas fa-user-circle mr-2"></i>My Profile
