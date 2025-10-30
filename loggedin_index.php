@@ -209,7 +209,8 @@ $is_searching = !empty($search_keyword) || !empty($category_filter) || !empty($y
   <!-- Navigation -->
   <nav class="border-t mt-2">
     <div class="max-w-7xl mx-auto px-6 py-4 flex flex-wrap justify-between items-center gap-4">
-      <!-- Search Bar -->
+      
+    <!-- Search Bar -->
       <div class="flex flex-grow max-w-xl border border-[#103635] rounded-full overflow-hidden">
         <form method="GET" action="" class="flex w-full">
           <input type="hidden" name="view" value="library">
@@ -217,7 +218,9 @@ $is_searching = !empty($search_keyword) || !empty($category_filter) || !empty($y
           <button type="submit" class="px-4">
             <img src="Images/Search magni.png" alt="Search" class="h-5" />
           </button>
-          <a href="?view=library" class="px-4 text-sm font-semibold text-[#103635] hover:underline">Advanced</a>
+          <div class="flex items-center ">
+           <a href="elibrary_loggedin.php" class="  px-4 text-sm font-semibold text-[#103635] hover:underline">Advanced</a>
+          </div>
         </form>
       </div>
 

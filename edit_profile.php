@@ -203,31 +203,45 @@ closeConnection();
         <!-- Search with Advance -->
         <div class="flex flex-grow max-w-xl border border-green-900 rounded-full overflow-hidden">
             <input type="text" placeholder="Search publications, articles, keywords, etc." class="flex-grow px-4 py-2 text-sm text-gray-700 placeholder-gray-500 focus:outline-none" />
-            <button class="px-4 text-green-900 text-xl">🔍</button>
-            <button class="bg-transparent px-4 font-semibold text-green-900 hover:underline">Advance</button>
+            <button class="px-0.1 text-green-900 text-xl hover:underline">🔍</button>
+            <button class="bg-transparent px-6 font-semibold text-green-900 hover:underline">Search</button>
         </div>
 
         <!-- Navigation Links -->
         <div class="flex items-center gap-6 text-green-900 font-semibold text-sm">
             <a href="loggedin_index.php" class="hover:underline">Home</a>
-            <a href="#" class="hover:underline">Our Services</a>
-            <a href="#" class="hover:underline">About Us</a>
+            <a href="OurService.php" class="hover:underline">Our Services</a>
+            <a href="About.php" class="hover:underline">About Us</a>
         </div>
 
-        <!-- Profile Picture with Initial -->
-        <div class="profile-pic cursor-pointer" onclick="toggleSidebar()">
-            <?php echo strtoupper(substr($user_data['name'], 0, 1)); ?>
-        </div>
+        <!-- Profile Picture with User's Initial Image -->
+      <img src="Images/initials profile/<?php echo strtolower(substr($_SESSION['name'], 0, 1)); ?>.png" 
+           alt="Profile Picture" 
+           class="profile-pic w-10 h-10 rounded-full cursor-pointer object-cover"
+           onclick="toggleSidebar()" 
+           title="<?php echo htmlspecialchars($_SESSION['name']); ?>"
+           onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';">
+
+      <!-- Fallback div -->
+      <div class="profile-pic w-10 h-10 rounded-full cursor-pointer flex items-center justify-center bg-gradient-to-br from-[#115D5B] to-[#103625] text-white font-bold text-lg uppercase"
+           onclick="toggleSidebar()" 
+           title="<?php echo htmlspecialchars($_SESSION['name']); ?>"
+           style="display: none;">
+        <?php echo strtoupper(substr($_SESSION['name'], 0, 1)); ?>
+      </div>
     </div>
 </nav>
 
 <!-- Sidebar -->
 <div id="mySidebar" class="sidebar">
-    <a href="javascript:void(0)" class="closebtn" onclick="closeSidebar()">&times;</a>
-    <a href="#">Settings</a>
-    <a href="edit_profile.php">Profile</a>
-    <a href="index.php">Log Out</a>
-</div>
+      <a href="javascript:void(0)" class="closebtn" onclick="closeSidebar()">&times;</a>
+      <a href="#">Settings</a>
+      <a href="edit_profile.php">Profile</a>
+      <a href="my_submissions.php"><i class="fas fa-file-alt mr-2"></i>My Submissions</a>
+      <a href="submit_paper.php"><i class="fas fa-plus mr-2"></i>Submit Paper</a>
+      <a href="index.php" onclick="logout()">Log Out</a>
+
+  </div>
 
 <!-- Main Content -->
 <div class="container mx-auto px-4 py-8 max-w-4xl">
