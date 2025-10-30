@@ -214,9 +214,7 @@ $is_searching = !empty($search_keyword) || !empty($category_filter) || !empty($y
                         <a href="submit_paper.php" class="block py-2 px-4 hover:bg-[#103635] rounded">
                             <i class="fas fa-upload mr-2"></i>Submit Paper
                         </a>
-                        <a href="index.php" class="block py-2 px-4 hover:bg-red-600 rounded text-red-200">
-                            <i class="fas fa-sign-out-alt mr-2"></i>Logout
-                        </a>
+                       
                     </div>
                 </div>
             </div>
