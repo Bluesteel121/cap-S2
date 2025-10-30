@@ -204,7 +204,7 @@ $is_searching = !empty($search_keyword) || !empty($category_filter) || !empty($y
                         <a href="About.php" class="block py-2 px-4 hover:bg-[#103635] rounded">About Us</a>
 
                         <hr class="border-[#103635]">
-                        <a href="user_profile.php" class="block py-2 px-4 hover:bg-[#103635] rounded">
+                        <a href="edit_profile.php" class="block py-2 px-4 hover:bg-[#103635] rounded">
                             <i class="fas fa-user-circle mr-2"></i>My Profile
                         </a>
                         <a href="my_submissions.php" class="block py-2 px-4 hover:bg-[#103635] rounded">
