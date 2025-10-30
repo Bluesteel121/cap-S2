@@ -139,8 +139,8 @@ $is_searching = !empty($search_keyword) || !empty($category_filter) || !empty($y
             </div>
             <div class="space-x-4">
                 <a href="index.php" class="hover:underline">Home</a>
-                <a href="#" class="hover:underline">Our Services</a>
-                <a href="#" class="hover:underline">About Us</a>
+                <a href="OurService.php" class="hover:underline">Our Services</a>
+                <a href="About.php" class="hover:underline">About Us</a>
             </div>
             <a href="userlogin.php" class="bg-[#103635] text-white px-6 py-2 rounded-xl font-semibold">Log In</a>
         </div>

@@ -148,13 +148,13 @@ $is_searching = !empty($search_keyword) || !empty($category_filter) || !empty($y
     <nav class="bg-[#115D5B] text-white p-4 shadow-lg">
         <div class="container mx-auto flex justify-between items-center">
             <div class="flex items-center">
-                <img src="Images/logo.png" alt="CNLRRS Logo" class="h-10 w-10 mr-2">
+                <img src="Images/CNLRRS_icon.png" alt="CNLRRS Logo" class="h-10 w-10 mr-2">
                 <span class="text-xl font-bold">CNLRRS Rainfed Research Station</span>
             </div>
             <div class="space-x-4">
                 <a href="loggedin_index.php" class="hover:underline">Home</a>
                 <a href="elibrary_loggedin.php" class="hover:underline font-semibold">E-Library</a>
-                <a href="#" class="hover:underline">About Us</a>
+                <a href="About.php" class="hover:underline">About Us</a>
             </div>
            <div class="flex items-center space-x-4">
                 <div class="relative group">
