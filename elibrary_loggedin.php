@@ -167,7 +167,7 @@ $is_searching = !empty($search_keyword) || !empty($category_filter) || !empty($y
                         </button>
                         <div class="invisible opacity-0 group-hover:visible group-hover:opacity-100 transition-all duration-200 absolute right-0 mt-0 pt-2 w-48 z-50">
                             <div class="bg-white rounded-lg shadow-xl">
-                                <a href="user_profile.php" class="block px-4 py-2 text-gray-800 hover:bg-gray-100 rounded-t-lg">
+                                <a href="edit_profile.php" class="block px-4 py-2 text-gray-800 hover:bg-gray-100 rounded-t-lg">
                                     <i class="fas fa-user-circle mr-2"></i>My Profile
                                 </a>
                                 <a href="my_submissions.php" class="block px-4 py-2 text-gray-800 hover:bg-gray-100">
