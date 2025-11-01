@@ -95,7 +95,7 @@ logPageView('User Signup Page');
                     </button>
                 </div>
             </div>
-              <div class="mb-4">
+            <div class="mb-4">
                 <label class="block text-sm font-medium text-gray-700 mb-1">Birth Date</label>
                 <div class="grid grid-cols-3 gap-2">
                     <div>
@@ -128,7 +128,7 @@ logPageView('User Signup Page');
                 </div>
                 <input type="hidden" id="birth_date" name="birth_date">
             </div>
-            
+
             <div class="mb-4 flex items-center">
                 <input type="checkbox" id="is_outside_philippines" name="is_outside_philippines" value="true" class="form-checkbox h-4 w-4 text-green-600 rounded focus:ring-green-500">
                 <label class="ml-2 block text-sm text-gray-900" for="is_outside_philippines">I reside outside the Philippines</label>
@@ -178,6 +178,81 @@ logPageView('User Signup Page');
     </div>
 
     <script>
+        // Initialize birthdate dropdowns
+        function initializeBirthdateDropdowns() {
+            const birthYearSelect = document.getElementById('birth_year');
+            const currentYear = new Date().getFullYear();
+            
+            // Populate birth year dropdown (100 years back from current year)
+            for (let year = currentYear; year >= currentYear - 100; year--) {
+                const option = document.createElement('option');
+                option.value = year;
+                option.textContent = year;
+                birthYearSelect.appendChild(option);
+            }
+            
+            // Populate days initially (1-31)
+            updateDays();
+        }
+
+        // Populate birth day dropdown based on selected month and year
+        function updateDays() {
+            const monthSelect = document.getElementById('birth_month');
+            const daySelect = document.getElementById('birth_day');
+            const yearSelect = document.getElementById('birth_year');
+            
+            const month = parseInt(monthSelect.value);
+            const year = parseInt(yearSelect.value) || new Date().getFullYear();
+            
+            const currentDay = daySelect.value; // Save current selection
+            
+            // Clear existing days
+            daySelect.innerHTML = '<option value="">Day</option>';
+            
+            let daysInMonth = 31; // Default
+            
+            if (month) {
+                // Calculate days in month
+                daysInMonth = new Date(year, month, 0).getDate();
+            }
+            
+            // Populate days
+            for (let day = 1; day <= daysInMonth; day++) {
+                const option = document.createElement('option');
+                const dayValue = day.toString().padStart(2, '0');
+                option.value = dayValue;
+                option.textContent = day;
+                if (dayValue === currentDay) {
+                    option.selected = true;
+                }
+                daySelect.appendChild(option);
+            }
+            
+            updateBirthDateField();
+        }
+
+        // Update hidden birth_date field
+        function updateBirthDateField() {
+            const month = document.getElementById('birth_month').value;
+            const day = document.getElementById('birth_day').value;
+            const year = document.getElementById('birth_year').value;
+            const birthDateField = document.getElementById('birth_date');
+            
+            if (month && day && year) {
+                birthDateField.value = `${year}-${month}-${day}`;
+            } else {
+                birthDateField.value = '';
+            }
+        }
+
+        // Event listeners for birthdate dropdowns
+        document.getElementById('birth_month').addEventListener('change', updateDays);
+        document.getElementById('birth_year').addEventListener('change', updateDays);
+        document.getElementById('birth_day').addEventListener('change', updateBirthDateField);
+
+        // Initialize on page load
+        initializeBirthdateDropdowns();
+
         function togglePassword(passwordFieldId, iconId) {
             const passwordField = document.getElementById(passwordFieldId);
             const icon = document.getElementById(iconId);
