@@ -11,6 +11,7 @@ logPageView('User Signup Page');
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>User Signup</title>
+    <link rel="icon" href="Images/Favicon.ico">
     <script src="https://cdn.tailwindcss.com"></script>
     <!-- Add Font Awesome for eye icon -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
@@ -94,11 +95,40 @@ logPageView('User Signup Page');
                     </button>
                 </div>
             </div>
-            <div class="mb-4">
-                <label for="birth_date" class="block text-sm font-medium text-gray-700 mb-1">Birth Date</label>
-                <input type="date" id="birth_date" name="birth_date" class="border w-full px-4 py-2 rounded-lg focus:ring-green-500 focus:border-green-500" required>
+              <div class="mb-4">
+                <label class="block text-sm font-medium text-gray-700 mb-1">Birth Date</label>
+                <div class="grid grid-cols-3 gap-2">
+                    <div>
+                        <select id="birth_month" name="birth_month" class="border w-full px-3 py-2 rounded-lg focus:ring-green-500 focus:border-green-500" required>
+                            <option value="">Month</option>
+                            <option value="01">January</option>
+                            <option value="02">February</option>
+                            <option value="03">March</option>
+                            <option value="04">April</option>
+                            <option value="05">May</option>
+                            <option value="06">June</option>
+                            <option value="07">July</option>
+                            <option value="08">August</option>
+                            <option value="09">September</option>
+                            <option value="10">October</option>
+                            <option value="11">November</option>
+                            <option value="12">December</option>
+                        </select>
+                    </div>
+                    <div>
+                        <select id="birth_day" name="birth_day" class="border w-full px-3 py-2 rounded-lg focus:ring-green-500 focus:border-green-500" required>
+                            <option value="">Day</option>
+                        </select>
+                    </div>
+                    <div>
+                        <select id="birth_year" name="birth_year" class="border w-full px-3 py-2 rounded-lg focus:ring-green-500 focus:border-green-500" required>
+                            <option value="">Year</option>
+                        </select>
+                    </div>
+                </div>
+                <input type="hidden" id="birth_date" name="birth_date">
             </div>
-
+            
             <div class="mb-4 flex items-center">
                 <input type="checkbox" id="is_outside_philippines" name="is_outside_philippines" value="true" class="form-checkbox h-4 w-4 text-green-600 rounded focus:ring-green-500">
                 <label class="ml-2 block text-sm text-gray-900" for="is_outside_philippines">I reside outside the Philippines</label>
