@@ -407,15 +407,15 @@ function formatNumber($number) {
 
           <!-- Navigation Links -->
           <div class="nav-links text-green-900 font-semibold text-sm">
-            <a href="#" class="hover:text-green-700 transition-colors">Dashboard</a>
+            <a href="admin_loggedin_index.php" class="hover:text-green-700 transition-colors">Dashboard</a>
             <a href="admin_review_papers.php" class="bg-yellow-500 hover:bg-yellow-600 text-black px-4 py-2 rounded-lg transition-colors">
               <i class="fas fa-eye mr-1"></i>Reviews
             </a>
             <a href="admin_user_management.php" class="border-2 border-green-900 hover:bg-green-900 hover:text-white px-4 py-2 rounded-lg transition-colors">
               <i class="fas fa-users mr-1"></i>Users
             </a>
-            <a href="#" class="hover:text-green-700 transition-colors">Publications</a>
-            <a href="#" class="hover:text-green-700 transition-colors">Reports</a>
+            <a href="admin_review_papers.php" class="hover:text-green-700 transition-colors">Publications</a>
+            <a href="admin_reports.php" class="hover:text-green-700 transition-colors">Reports</a>
 
             <!-- Profile Picture with Admin Badge -->
             <div class="relative">
