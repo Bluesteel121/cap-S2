@@ -362,11 +362,13 @@ $is_searching = !empty($search_keyword) || !empty($category_filter) || !empty($y
     </div>
 
     <!-- Recommended Research Section -->
-    <section class="bg-white py-16 border-t">
-      <div class="max-w-7xl mx-auto px-6">
-        <h2 class="bg-[#103635] text-2xl md:text-3xl font-bold text-white text-center mb-8">
-          Recommended Research By CNLRRS
-        </h2>
+<section class="bg-gray-50 py-16 border-t">
+  <div class="max-w-7xl mx-auto px-6">
+    <div class="relative mb-12 text-center">
+      <h2 class="inline-block bg-[#103635] text-3xl md:text-4xl font-extrabold text-white px-8 py-3 rounded-full shadow-lg">
+        Recommended Research By CNLRRS
+      </h2>
+      
         <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
           
           <!-- Card 1 -->
@@ -379,7 +381,7 @@ $is_searching = !empty($search_keyword) || !empty($category_filter) || !empty($y
 
           <!-- Card 2 -->
           <div class="bg-gray-100 rounded-lg shadow p-6 hover:shadow-md transition">
-            <img src="Images/Soil.png" alt="Pineapple Soil & Growth Solutions" class="h-32 w-full object-cover rounded mb-4" />
+            <img src="Images/Soil.jpg" alt="Pineapple Soil & Growth Solutions" class="h-32 w-full object-cover rounded mb-4" />
             <h3 class="font-semibold text-lg mb-2">Pineapple Soil & Growth Solutions</h3>
             <p class="text-sm text-gray-700 mb-4">Improve your farming knowledge with Pineapple Soil Amendment guides. Learn the needs of pineapple farming.</p>
             <a href="?view=library&category=Soil Science" class="text-[#115D5B] font-semibold hover:underline">Learn more</a>
@@ -387,7 +389,7 @@ $is_searching = !empty($search_keyword) || !empty($category_filter) || !empty($y
 
           <!-- Card 3 -->
           <div class="bg-gray-100 rounded-lg shadow p-6 hover:shadow-md transition">
-            <img src="Images/Pests.png" alt="Pineapple Pest Resources" class="h-32 w-full object-cover rounded mb-4" />
+            <img src="Images/Pests.jpg" alt="Pineapple Pest Resources" class="h-32 w-full object-cover rounded mb-4" />
             <h3 class="font-semibold text-lg mb-2">Pineapple Pest Resources</h3>
             <p class="text-sm text-gray-700 mb-4">Get updated on pineapple pest management. Discover solutions that protect your crops and enhance productivity.</p>
             <a href="?view=library&category=Plant Pathology" class="text-[#115D5B] font-semibold hover:underline">Browse pest solutions</a>
