@@ -1,30 +1,6 @@
 <?php
-// Include database connection
-require_once 'connect.php';
 
-// Start session and check if user is logged in
 session_start();
-
-// If not logged in, redirect to public version
-if (!isset($_SESSION['id']) || !isset($_SESSION['username']) || !isset($_SESSION['role'])) {
-    header("Location: elibrary.php");
-    exit();
-}
-
-// Get user information
-$user_id = $_SESSION['id'];
-$username = $_SESSION['username'];
-$user_name = $_SESSION['name'];
-$user_role = $_SESSION['role'];
-
-// Get paper ID
-$paper_id = isset($_GET['id']) ? (int)$_GET['id'] : 0;
-
-if (!$paper_id) {
-    header("Location: elibrary_loggedin.php");
-    exit();
-}
-
 // Get paper details with metrics
 $sql = "SELECT ps.*, 
                COALESCE(SUM(CASE WHEN pm.metric_type = 'view' THEN 1 ELSE 0 END), 0) as total_views,
@@ -33,59 +9,54 @@ $sql = "SELECT ps.*,
         LEFT JOIN paper_metrics pm ON ps.id = pm.paper_id
         WHERE ps.id = ? AND ps.status IN ('approved', 'published')
         GROUP BY ps.id";
-$stmt = $conn->prepare($sql);
+
+if (!$stmt = $conn->prepare($sql)) {
+    die("Error preparing statement: " . $conn->error);
+}
+
 $stmt->bind_param('i', $paper_id);
-$stmt->execute();
+
+if (!$stmt->execute()) {
+    die("Error executing statement: " . $stmt->error);
+}
+
 $result = $stmt->get_result();
 
 if ($result->num_rows === 0) {
+    $_SESSION['error'] = "Paper not found or not available.";
     header("Location: elibrary_loggedin.php");
     exit();
 }
 
 $paper = $result->fetch_assoc();
 
-// Record view metric
-$view_sql = "INSERT INTO paper_metrics (paper_id, metric_type, user_id, ip_address, created_at) 
-             VALUES (?, 'view', ?, ?, NOW())";
-$view_stmt = $conn->prepare($view_sql);
-$user_ip = $_SERVER['REMOTE_ADDR'] ?? '127.0.0.1';
-$view_stmt->bind_param('iis', $paper_id, $user_id, $user_ip);
-$view_stmt->execute();
+// Record view metric - wrapped in try-catch
+try {
+    $view_sql = "INSERT INTO paper_metrics (paper_id, metric_type, user_id, ip_address, created_at) 
+                 VALUES (?, 'view', ?, ?, NOW())";
+    $view_stmt = $conn->prepare($view_sql);
+    $user_ip = $_SERVER['REMOTE_ADDR'] ?? '127.0.0.1';
+    $view_stmt->bind_param('iis', $paper_id, $user_id, $user_ip);
+    $view_stmt->execute();
+} catch (Exception $e) {
+    // Silently fail - don't break the page if metrics recording fails
+    error_log("Failed to record view metric: " . $e->getMessage());
+}
 
-// Log view activity
-$activity_sql = "INSERT INTO user_activity_logs (user_id, username, activity_type, activity_description, paper_id, ip_address, created_at)
-                 VALUES (?, ?, 'view_paper', ?, ?, ?, NOW())";
-$activity_stmt = $conn->prepare($activity_sql);
-$activity_desc = "Viewed paper: " . $paper['paper_title'];
-$activity_stmt->bind_param('issss', $user_id, $username, $activity_desc, $paper_id, $user_ip);
-$activity_stmt->execute();
-
-// Get related papers (same research type)
-$related_sql = "SELECT ps.id, ps.paper_title, ps.author_name, ps.submission_date, ps.research_type,
-                       COALESCE(SUM(CASE WHEN pm.metric_type = 'view' THEN 1 ELSE 0 END), 0) as total_views
-                FROM paper_submissions ps
-                LEFT JOIN paper_metrics pm ON ps.id = pm.paper_id
-                WHERE ps.research_type = ? AND ps.id != ? AND ps.status IN ('approved', 'published')
-                GROUP BY ps.id
-                ORDER BY total_views DESC
-                LIMIT 5";
-$related_stmt = $conn->prepare($related_sql);
-$related_stmt->bind_param('si', $paper['research_type'], $paper_id);
-$related_stmt->execute();
-$related_papers = $related_stmt->get_result()->fetch_all(MYSQLI_ASSOC);
-
-// Check if user has bookmarked this paper (optional feature for future)
-$is_bookmarked = false;
-
-// Format dates
-$submission_date = date('F d, Y', strtotime($paper['submission_date']));
-$research_period = '';
-if ($paper['research_start_date'] && $paper['research_end_date']) {
-    $research_period = date('M Y', strtotime($paper['research_start_date'])) . ' - ' . 
-                      date('M Y', strtotime($paper['research_end_date']));
+// Log view activity - wrapped in try-catch
+try {
+    $activity_sql = "INSERT INTO user_activity_logs (user_id, username, activity_type, activity_description, paper_id, ip_address, created_at)
+                     VALUES (?, ?, 'view_paper', ?, ?, ?, NOW())";
+    $activity_stmt = $conn->prepare($activity_sql);
+    $activity_desc = "Viewed paper: " . $paper['paper_title'];
+    $activity_stmt->bind_param('issss', $user_id, $username, $activity_desc, $paper_id, $user_ip);
+    $activity_stmt->execute();
+} catch (Exception $e) {
+    // Silently fail
+    error_log("Failed to log activity: " . $e->getMessage());
 }
 ?>
+
 <!DOCTYPE html>
 <html lang="en">
 <head>

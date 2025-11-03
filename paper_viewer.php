@@ -1,10 +1,20 @@
 <?php
+error_reporting(E_ALL);
+ini_set('display_errors', 1);
+ini_set('log_errors', 1);
+
 require_once 'connect.php';
 session_start();
 
+error_log("paper_viewer.php - Session: " . print_r($_SESSION, true));
+error_log("paper_viewer.php - GET: " . print_r($_GET, true));
+
 $paper_id = isset($_GET['id']) ? (int)$_GET['id'] : 0;
 
+error_log("paper_viewer.php - Paper ID: $paper_id");
+
 if (!$paper_id) {
+    error_log("paper_viewer.php - No paper ID provided");
     http_response_code(404);
     echo "Paper not found";
     exit();
