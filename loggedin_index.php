@@ -152,6 +152,7 @@ $is_searching = !empty($search_keyword) || !empty($category_filter) || !empty($y
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>CNLRRS Research Library</title>
+  <link rel="icon" href="Images/Favicon.ico">
   <script src="https://cdn.tailwindcss.com"></script>
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
 </head>
@@ -288,7 +289,11 @@ $is_searching = !empty($search_keyword) || !empty($category_filter) || !empty($y
         <h2 class="text-4xl md:text-5xl font-bold text-[#103635] text-outline-white leading-tight">
           Welcome to CNLRRS Research Library
         </h2>
+<<<<<<< HEAD
          <p class="font-bold mt-4 text-lg md:text-xl max-w-2xl text-[#103635]" 
+=======
+        <p class="font-bold mt-4 text-lg md:text-xl max-w-2xl text-[#103635]" 
+>>>>>>> f45e10da8af2b1313eda66040e71a60f38f3366c
    style="text-shadow:
       -1px -1px 0 white,
        1px -1px 0 white,
@@ -367,7 +372,11 @@ $is_searching = !empty($search_keyword) || !empty($category_filter) || !empty($y
       <h2 class="inline-block bg-[#103635] text-3xl md:text-4xl font-extrabold text-white px-8 py-3 rounded-full shadow-lg">
         Recommended Research By CNLRRS
       </h2>
+<<<<<<< HEAD
     </div>
+=======
+      
+>>>>>>> f45e10da8af2b1313eda66040e71a60f38f3366c
         <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
           
          <!-- Card 1 -->
