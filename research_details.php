@@ -1,5 +1,4 @@
 <?php
-<<<<<<< HEAD
 // Enable detailed error reporting
 error_reporting(E_ALL);
 ini_set('display_errors', 1);
@@ -7,11 +6,9 @@ ini_set('log_errors', 1);
 
 // Include database connection
 require_once 'connect.php';
-=======
->>>>>>> f45e10da8af2b1313eda66040e71a60f38f3366c
 
+// Start session and check if user is logged in
 session_start();
-<<<<<<< HEAD
 
 // Debug: Log session data
 error_log("Session data: " . print_r($_SESSION, true));
@@ -43,8 +40,6 @@ if (!$paper_id) {
     exit();
 }
 
-=======
->>>>>>> f45e10da8af2b1313eda66040e71a60f38f3366c
 // Get paper details with metrics
 $sql = "SELECT ps.*, 
                COALESCE(SUM(CASE WHEN pm.metric_type = 'view' THEN 1 ELSE 0 END), 0) as total_views,
@@ -55,29 +50,20 @@ $sql = "SELECT ps.*,
         GROUP BY ps.id";
 
 if (!$stmt = $conn->prepare($sql)) {
-<<<<<<< HEAD
     error_log("SQL prepare error: " . $conn->error);
     die("Database error: " . $conn->error);
-=======
-    die("Error preparing statement: " . $conn->error);
->>>>>>> f45e10da8af2b1313eda66040e71a60f38f3366c
 }
 
 $stmt->bind_param('i', $paper_id);
 
 if (!$stmt->execute()) {
-<<<<<<< HEAD
     error_log("SQL execute error: " . $stmt->error);
     die("Database error: " . $stmt->error);
-=======
-    die("Error executing statement: " . $stmt->error);
->>>>>>> f45e10da8af2b1313eda66040e71a60f38f3366c
 }
 
 $result = $stmt->get_result();
 
 if ($result->num_rows === 0) {
-<<<<<<< HEAD
     error_log("Paper not found: ID=$paper_id");
     ?>
     <!DOCTYPE html>
@@ -101,17 +87,12 @@ if ($result->num_rows === 0) {
     </body>
     </html>
     <?php
-=======
-    $_SESSION['error'] = "Paper not found or not available.";
-    header("Location: elibrary_loggedin.php");
->>>>>>> f45e10da8af2b1313eda66040e71a60f38f3366c
     exit();
 }
 
 $paper = $result->fetch_assoc();
 error_log("Paper found: " . $paper['paper_title']);
 
-<<<<<<< HEAD
 // Record view metric - with error handling
 try {
     $view_sql = "INSERT INTO paper_metrics (paper_id, metric_type, user_id, ip_address, created_at) 
@@ -196,37 +177,10 @@ $research_period = '';
 if (!empty($paper['research_start_date']) && !empty($paper['research_end_date'])) {
     $research_period = date('M Y', strtotime($paper['research_start_date'])) . ' - ' . 
                       date('M Y', strtotime($paper['research_end_date']));
-=======
-// Record view metric - wrapped in try-catch
-try {
-    $view_sql = "INSERT INTO paper_metrics (paper_id, metric_type, user_id, ip_address, created_at) 
-                 VALUES (?, 'view', ?, ?, NOW())";
-    $view_stmt = $conn->prepare($view_sql);
-    $user_ip = $_SERVER['REMOTE_ADDR'] ?? '127.0.0.1';
-    $view_stmt->bind_param('iis', $paper_id, $user_id, $user_ip);
-    $view_stmt->execute();
-} catch (Exception $e) {
-    // Silently fail - don't break the page if metrics recording fails
-    error_log("Failed to record view metric: " . $e->getMessage());
-}
-
-// Log view activity - wrapped in try-catch
-try {
-    $activity_sql = "INSERT INTO user_activity_logs (user_id, username, activity_type, activity_description, paper_id, ip_address, created_at)
-                     VALUES (?, ?, 'view_paper', ?, ?, ?, NOW())";
-    $activity_stmt = $conn->prepare($activity_sql);
-    $activity_desc = "Viewed paper: " . $paper['paper_title'];
-    $activity_stmt->bind_param('issss', $user_id, $username, $activity_desc, $paper_id, $user_ip);
-    $activity_stmt->execute();
-} catch (Exception $e) {
-    // Silently fail
-    error_log("Failed to log activity: " . $e->getMessage());
->>>>>>> f45e10da8af2b1313eda66040e71a60f38f3366c
 }
 
 error_log("Page rendering starting...");
 ?>
-
 <!DOCTYPE html>
 <html lang="en">
 <head>

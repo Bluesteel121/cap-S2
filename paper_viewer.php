@@ -1,12 +1,4 @@
 <?php
-<<<<<<< HEAD
-=======
-error_reporting(E_ALL);
-ini_set('display_errors', 1);
-ini_set('log_errors', 1);
-
-require_once 'connect.php';
->>>>>>> f45e10da8af2b1313eda66040e71a60f38f3366c
 session_start();
 error_reporting(E_ALL);
 ini_set('display_errors', 1);
@@ -14,9 +6,6 @@ ini_set('log_errors', 1);
 
 require_once 'connect.php';
 // REMOVED DUPLICATE session_start()
-
-error_log("paper_viewer.php - Session: " . print_r($_SESSION, true));
-error_log("paper_viewer.php - GET: " . print_r($_GET, true));
 
 error_log("paper_viewer.php - Session: " . print_r($_SESSION, true));
 error_log("paper_viewer.php - GET: " . print_r($_GET, true));
