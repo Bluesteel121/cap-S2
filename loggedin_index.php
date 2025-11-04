@@ -160,46 +160,53 @@ $is_searching = !empty($search_keyword) || !empty($category_filter) || !empty($y
 
 
 <!-- Header -->
-<header id="main-header" class="fixed top-0 left-0 w-full z-50 bg-white shadow-lg h-16 sm:h-20 md:h-24 lg:h-28">
-  <div class="max-w-7xl mx-auto px-1 sm:px-3 md:px-6 flex flex-wrap justify-between items-center gap-1 sm:gap-2 md:gap-4 h-full">
+<header id="main-header" class="fixed top-0 left-0 w-full z-50 bg-white shadow-lg h-auto min-h-[4rem] sm:min-h-[5rem] md:h-24 lg:h-28">
+  <div class="max-w-7xl mx-auto px-2 sm:px-4 md:px-6 py-2 md:py-0 flex flex-wrap justify-between items-center gap-2 sm:gap-3 md:gap-4 h-full">
     
     <!-- Logo and Title -->
-    <div class="flex items-center space-x-1 sm:space-x-2 md:space-x-4 flex-shrink-0">
-      <img src="Images/Logo.jpg" alt="CNLRRS Logo" class="h-8 sm:h-12 md:h-16 lg:h-20 xl:h-24 object-contain" />
-      <h1 class="text-[10px] sm:text-xs md:text-sm lg:text-lg font-bold leading-tight">
-        <span class="block sm:hidden">CNLRRS</span>
-        <span class="hidden sm:block">
-          Camarines Norte Lowland <br class="hidden sm:block" />
+    <div class="flex items-center space-x-2 sm:space-x-3 md:space-x-4 flex-shrink-0">
+      <img src="Images/Logo.jpg" alt="CNLRRS Logo" class="h-10 sm:h-14 md:h-16 lg:h-20 xl:h-24 object-contain" />
+      <h1 class="text-[11px] sm:text-xs md:text-sm lg:text-base xl:text-lg font-bold leading-tight">
+        <span class="block lg:hidden">CNLRRS</span>
+        <span class="hidden lg:block">
+          Camarines Norte Lowland <br />
           Rainfed Research Station
         </span>
       </h1>
     </div>
 
     <!-- Partner Logos -->
-    <div class="flex items-center space-x-1 sm:space-x-2 md:space-x-4 flex-shrink-0">
-      <img src="Images/Ph.png" alt="Philippines Logo" class="h-8 sm:h-12 md:h-16 lg:h-20 xl:h-24 object-contain"/>
-      <img src="Images/Da.png" alt="CNLRRS Logo" class="h-8 sm:h-12 md:h-16 lg:h-20 xl:h-24 object-contain" />
+    <div class="flex items-center space-x-2 sm:space-x-3 md:space-x-4 flex-shrink-0">
+      <img src="Images/Ph.png" alt="Philippines Logo" class="h-10 sm:h-14 md:h-16 lg:h-20 xl:h-24 object-contain"/>
+      <img src="Images/Da.png" alt="DA Logo" class="h-10 sm:h-14 md:h-16 lg:h-20 xl:h-24 object-contain" />
     </div>
 
     <!-- Contact Info Section -->
-    <div class="flex items-center space-x-1 sm:space-x-2 md:space-x-4 flex-shrink-0 min-w-0">
+    <div class="flex items-center space-x-2 sm:space-x-3 md:space-x-4 flex-shrink-0">
       <!-- Text Info -->
-      <div class="text-[8px] sm:text-xs md:text-sm font-semibold text-center leading-tight">
-        <p class="md:hidden">DA</p>
+      <div class="text-[9px] sm:text-[10px] md:text-xs lg:text-sm font-semibold text-left leading-tight">
         <p class="hidden md:block">DEPARTMENT OF AGRICULTURE</p>
+        <p class="md:hidden">DA</p>
         
-        <p class="sm:hidden">Daet, PH</p>
-        <p class="hidden sm:block">Calasgasan, Daet, Philippines</p>
+        <p class="hidden md:block">Calasgasan, Daet, Philippines</p>
+        <p class="md:hidden">Daet, PH</p>
         
+        <p class="hidden md:block">
+          Email: 
+          <a href="https://mail.google.com/mail/?view=cm&fs=1&to=dacnlrrs@gmail.com" 
+             target="_blank" 
+             class="underline hover:text-[#115D5B]">
+            dacnlrrs@gmail.com
+          </a>
+        </p>
         <p class="md:hidden">
           <a href="mailto:dacnlrrs@gmail.com" class="underline">Email</a>
         </p>
-        <p class="hidden md:block">Email: <a href="mailto:dacnlrrs@gmail.com" class="underline">dacnlrrs@gmail.com</a></p>
         
         <p>0951 609 9599</p>
       </div>
       <!-- Logo -->
-      <img src="Images/Bago.png" alt="Bagong Pilipinas Logo" class="h-8 sm:h-12 md:h-16 lg:h-20 xl:h-24 object-contain" />
+      <img src="Images/Bago.png" alt="Bagong Pilipinas Logo" class="h-10 sm:h-14 md:h-16 lg:h-20 xl:h-24 object-contain" />
     </div>
   </div>
 </header>
@@ -281,9 +288,15 @@ $is_searching = !empty($search_keyword) || !empty($category_filter) || !empty($y
         <h2 class="text-4xl md:text-5xl font-bold text-[#103635] text-outline-white leading-tight">
           Welcome to CNLRRS Research Library
         </h2>
-        <p class="font-bold mt-4 text-lg md:text-xl max-w-2xl text-[#103635] text-outline-white">
-          Access the latest research and publication about Queen Pineapple Varieties, cultivation, health benefits, and more.
-        </p>
+         <p class="font-bold mt-4 text-lg md:text-xl max-w-2xl text-[#103635]" 
+   style="text-shadow:
+      -1px -1px 0 white,
+       1px -1px 0 white,
+      -1px  1px 0 white,
+       1px  1px 0 white;">
+  Access the latest research and publication about Queen Pineapple Varieties, 
+  cultivation, health benefits, and more.
+</p>
         <div class="mt-6 flex gap-4">
           <a href="elibrary_loggedin.php" class="bg-[#1A4D3A] text-white px-6 py-3 rounded-md font-semibold border border-white hover:bg-[#16663F] transition rounded-lg">
             Browse Research
@@ -348,14 +361,16 @@ $is_searching = !empty($search_keyword) || !empty($category_filter) || !empty($y
     </div>
 
     <!-- Recommended Research Section -->
-    <section class="bg-white py-16 border-t">
-      <div class="max-w-7xl mx-auto px-6">
-        <h2 class="bg-[#103635] text-2xl md:text-3xl font-bold text-white text-center mb-8">
-          Recommended Research By CNLRRS
-        </h2>
+<section class="bg-gray-50 py-16 border-t">
+  <div class="max-w-7xl mx-auto px-6">
+    <div class="relative mb-12 text-center">
+      <h2 class="inline-block bg-[#103635] text-3xl md:text-4xl font-extrabold text-white px-8 py-3 rounded-full shadow-lg">
+        Recommended Research By CNLRRS
+      </h2>
+    </div>
         <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
           
-          <!-- Card 1 -->
+         <!-- Card 1 -->
           <div class="bg-gray-100 rounded-lg shadow p-6 hover:shadow-md transition">
             <img src="Images/Books.png" alt="Books & Collection Services" class="h-32 w-full object-cover rounded mb-4" />
             <h3 class="font-semibold text-lg mb-2">Books & Collection Services</h3>
@@ -365,7 +380,7 @@ $is_searching = !empty($search_keyword) || !empty($category_filter) || !empty($y
 
           <!-- Card 2 -->
           <div class="bg-gray-100 rounded-lg shadow p-6 hover:shadow-md transition">
-            <img src="Images/Soil.png" alt="Pineapple Soil & Growth Solutions" class="h-32 w-full object-cover rounded mb-4" />
+            <img src="Images/Soil.jpg" alt="Pineapple Soil & Growth Solutions" class="h-32 w-full object-cover rounded mb-4" />
             <h3 class="font-semibold text-lg mb-2">Pineapple Soil & Growth Solutions</h3>
             <p class="text-sm text-gray-700 mb-4">Improve your farming knowledge with Pineapple Soil Amendment guides. Learn the needs of pineapple farming.</p>
             <a href="?view=library&category=Soil Science" class="text-[#115D5B] font-semibold hover:underline">Learn more</a>
@@ -373,7 +388,7 @@ $is_searching = !empty($search_keyword) || !empty($category_filter) || !empty($y
 
           <!-- Card 3 -->
           <div class="bg-gray-100 rounded-lg shadow p-6 hover:shadow-md transition">
-            <img src="Images/Pests.png" alt="Pineapple Pest Resources" class="h-32 w-full object-cover rounded mb-4" />
+            <img src="Images/Pests.jpg" alt="Pineapple Pest Resources" class="h-32 w-full object-cover rounded mb-4" />
             <h3 class="font-semibold text-lg mb-2">Pineapple Pest Resources</h3>
             <p class="text-sm text-gray-700 mb-4">Get updated on pineapple pest management. Discover solutions that protect your crops and enhance productivity.</p>
             <a href="?view=library&category=Plant Pathology" class="text-[#115D5B] font-semibold hover:underline">Browse pest solutions</a>

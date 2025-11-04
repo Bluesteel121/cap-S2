@@ -188,12 +188,12 @@
 
 
 
-<!-- Recommended Research Section -->
-<section class="bg-white py-12 border-t">
+<section class="bg-gray-50 py-16 border-t">
   <div class="max-w-7xl mx-auto px-6">
-    <h2 class="bg-[#103635] text-2xl md:text-3xl font-bold text-white text-center mb-8">
-      Recommended Research By CNLRRS
-    </h2>
+    <div class="relative mb-12 text-center">
+      <h2 class="inline-block bg-[#103635] text-3xl md:text-4xl font-extrabold text-white px-8 py-3 rounded-full shadow-lg">
+        Recommended Research By CNLRRS
+      </h2>
     <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
       
       <!-- Card 1 -->

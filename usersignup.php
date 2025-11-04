@@ -11,6 +11,7 @@ logPageView('User Signup Page');
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>User Signup</title>
+    <link rel="icon" href="Images/Favicon.ico">
     <script src="https://cdn.tailwindcss.com"></script>
     <!-- Add Font Awesome for eye icon -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
@@ -95,8 +96,37 @@ logPageView('User Signup Page');
                 </div>
             </div>
             <div class="mb-4">
-                <label for="birth_date" class="block text-sm font-medium text-gray-700 mb-1">Birth Date</label>
-                <input type="date" id="birth_date" name="birth_date" class="border w-full px-4 py-2 rounded-lg focus:ring-green-500 focus:border-green-500" required>
+                <label class="block text-sm font-medium text-gray-700 mb-1">Birth Date</label>
+                <div class="grid grid-cols-3 gap-2">
+                    <div>
+                        <select id="birth_month" name="birth_month" class="border w-full px-3 py-2 rounded-lg focus:ring-green-500 focus:border-green-500" required>
+                            <option value="">Month</option>
+                            <option value="01">January</option>
+                            <option value="02">February</option>
+                            <option value="03">March</option>
+                            <option value="04">April</option>
+                            <option value="05">May</option>
+                            <option value="06">June</option>
+                            <option value="07">July</option>
+                            <option value="08">August</option>
+                            <option value="09">September</option>
+                            <option value="10">October</option>
+                            <option value="11">November</option>
+                            <option value="12">December</option>
+                        </select>
+                    </div>
+                    <div>
+                        <select id="birth_day" name="birth_day" class="border w-full px-3 py-2 rounded-lg focus:ring-green-500 focus:border-green-500" required>
+                            <option value="">Day</option>
+                        </select>
+                    </div>
+                    <div>
+                        <select id="birth_year" name="birth_year" class="border w-full px-3 py-2 rounded-lg focus:ring-green-500 focus:border-green-500" required>
+                            <option value="">Year</option>
+                        </select>
+                    </div>
+                </div>
+                <input type="hidden" id="birth_date" name="birth_date">
             </div>
 
             <div class="mb-4 flex items-center">
@@ -148,6 +178,71 @@ logPageView('User Signup Page');
     </div>
 
     <script>
+        // ===== BIRTHDATE FUNCTIONALITY =====
+        (function initBirthdate() {
+            const birthYearSelect = document.getElementById('birth_year');
+            const birthMonthSelect = document.getElementById('birth_month');
+            const birthDaySelect = document.getElementById('birth_day');
+            const birthDateField = document.getElementById('birth_date');
+            const currentYear = new Date().getFullYear();
+            
+            // Populate year dropdown (from current year back 100 years)
+            for (let year = currentYear; year >= currentYear - 100; year--) {
+                const option = document.createElement('option');
+                option.value = year;
+                option.textContent = year;
+                birthYearSelect.appendChild(option);
+            }
+            
+            // Update days based on month and year
+            function updateDays() {
+                const month = parseInt(birthMonthSelect.value);
+                const year = parseInt(birthYearSelect.value) || currentYear;
+                const currentDay = birthDaySelect.value;
+                
+                birthDaySelect.innerHTML = '<option value="">Day</option>';
+                
+                let daysInMonth = 31;
+                if (month) {
+                    daysInMonth = new Date(year, month, 0).getDate();
+                }
+                
+                for (let day = 1; day <= daysInMonth; day++) {
+                    const option = document.createElement('option');
+                    const dayValue = day.toString().padStart(2, '0');
+                    option.value = dayValue;
+                    option.textContent = day;
+                    if (dayValue === currentDay) {
+                        option.selected = true;
+                    }
+                    birthDaySelect.appendChild(option);
+                }
+                
+                updateBirthDateField();
+            }
+            
+            // Update hidden birth_date field
+            function updateBirthDateField() {
+                const month = birthMonthSelect.value;
+                const day = birthDaySelect.value;
+                const year = birthYearSelect.value;
+                
+                if (month && day && year) {
+                    birthDateField.value = `${year}-${month}-${day}`;
+                } else {
+                    birthDateField.value = '';
+                }
+            }
+            
+            birthMonthSelect.addEventListener('change', updateDays);
+            birthYearSelect.addEventListener('change', updateDays);
+            birthDaySelect.addEventListener('change', updateBirthDateField);
+            
+            // Initialize days
+            updateDays();
+        })();
+
+        // ===== PASSWORD TOGGLE =====
         function togglePassword(passwordFieldId, iconId) {
             const passwordField = document.getElementById(passwordFieldId);
             const icon = document.getElementById(iconId);
@@ -161,6 +256,7 @@ logPageView('User Signup Page');
             }
         }
 
+        // ===== ADDRESS TOGGLE =====
         var isOutsideCheckbox = document.getElementById('is_outside_philippines');
         var philippinesAddress = document.getElementById('philippines-address');
         var generalAddress = document.getElementById('general-address');
@@ -171,47 +267,36 @@ logPageView('User Signup Page');
 
         function toggleAddressFields() {
             if (isOutsideCheckbox.checked) {
-                // Show general address, hide Philippines address
                 philippinesAddress.style.display = 'none';
                 generalAddress.style.display = 'block';
                 
-                // Remove required from Philippines fields
                 provinceSelect.removeAttribute('required');
                 municipalitySelect.removeAttribute('required');
                 barangaySelect.removeAttribute('required');
                 
-                // Add required to general address
                 generalAddressField.setAttribute('required', 'required');
 
-                // Log address preference change
                 logActivityClient('ADDRESS_PREFERENCE_CHANGED', 'User selected outside Philippines');
             } else {
-                // Show Philippines address, hide general address
                 philippinesAddress.style.display = 'block';
                 generalAddress.style.display = 'none';
                 
-                // Add required to Philippines fields
                 provinceSelect.setAttribute('required', 'required');
                 municipalitySelect.setAttribute('required', 'required');
                 barangaySelect.setAttribute('required', 'required');
                 
-                // Remove required from general address
                 generalAddressField.removeAttribute('required');
 
-                // Log address preference change
                 logActivityClient('ADDRESS_PREFERENCE_CHANGED', 'User selected Philippines');
             }
         }
 
-        // Event listener for checkbox change
         isOutsideCheckbox.addEventListener('change', toggleAddressFields);
-
-        // Initial state setup
         toggleAddressFields();
 
-        // Function to populate dropdowns
+        // ===== LOCATION DROPDOWNS =====
         function populateDropdown(selectElement, data) {
-            selectElement.innerHTML = ''; // Clear existing options
+            selectElement.innerHTML = '';
             var defaultOptionText = '';
             if (selectElement.id === 'province') defaultOptionText = 'Select Province';
             if (selectElement.id === 'municipality') defaultOptionText = 'Select Municipality/City';
@@ -241,14 +326,13 @@ logPageView('User Signup Page');
                 logActivityClient('LOCATION_DATA_ERROR', 'Failed to load provinces');
             });
 
-        // Event listener for province selection
         provinceSelect.addEventListener('change', function() {
             var provinceId = this.value;
             var provinceName = this.options[this.selectedIndex].text;
             municipalitySelect.disabled = true;
             barangaySelect.disabled = true;
-            populateDropdown(municipalitySelect, []); // Clear municipalities
-            populateDropdown(barangaySelect, []); // Clear barangays
+            populateDropdown(municipalitySelect, []);
+            populateDropdown(barangaySelect, []);
 
             if (provinceId) {
                 logActivityClient('PROVINCE_SELECTED', 'Province: ' + provinceName);
@@ -262,12 +346,11 @@ logPageView('User Signup Page');
             }
         });
 
-        // Event listener for municipality selection
         municipalitySelect.addEventListener('change', function() {
             var municipalityId = this.value;
             var municipalityName = this.options[this.selectedIndex].text;
             barangaySelect.disabled = true;
-            populateDropdown(barangaySelect, []); // Clear barangays
+            populateDropdown(barangaySelect, []);
 
             if (municipalityId) {
                 logActivityClient('MUNICIPALITY_SELECTED', 'Municipality: ' + municipalityName);
@@ -281,7 +364,6 @@ logPageView('User Signup Page');
             }
         });
 
-        // Event listener for barangay selection
         barangaySelect.addEventListener('change', function() {
             var barangayName = this.options[this.selectedIndex].text;
             if (this.value) {
@@ -289,7 +371,7 @@ logPageView('User Signup Page');
             }
         });
 
-        // Form validation before submit
+        // ===== FORM VALIDATION =====
         document.getElementById('signupForm').addEventListener('submit', function(e) {
             var username = document.getElementById('username').value;
             var email = document.getElementById('email').value;
@@ -310,7 +392,6 @@ logPageView('User Signup Page');
                 }
             }
 
-            // Log signup attempt
             logActivityClient('SIGNUP_ATTEMPT', 'Username: ' + username + ', Email: ' + email);
         });
 

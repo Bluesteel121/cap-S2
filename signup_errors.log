@@ -67,3 +67,85 @@
 
 2025-09-21 15:27:54 - Determined address: kek
 2025-09-21 15:27:54 - Address validation passed.
+2025-11-01 16:52:15 - Script started.
+2025-11-01 16:52:15 - $_POST data: Array
+(
+    [username] => Dino
+    [fullname] => Dino TRX
+    [contact_number] => 0999195356
+    [email] => shanellearevalo9@gmail.com
+    [password] => 1234
+    [confirm_password] => 1234
+    [birth_month] => 04
+    [birth_day] => 25
+    [birth_year] => 2005
+    [birth_date] => 2005-04-25
+    [province] => Camarines Norte
+    [municipality] => Daet (Capital)
+    [barangay] => Lag-On
+    [general_address] => 
+)
+
+2025-11-01 16:52:15 - Determined address: Lag-On, Daet (Capital), Camarines Norte
+2025-11-01 16:52:15 - Address validation passed.
+2025-11-02 08:57:03 - Script started.
+2025-11-02 08:57:03 - $_POST data: Array
+(
+    [username] => Eula
+    [fullname] => Eula Rada
+    [contact_number] => 12345678907
+    [email] => example@gmail.com
+    [password] => 1234
+    [confirm_password] => 1234
+    [birth_month] => 06
+    [birth_day] => 08
+    [birth_year] => 1974
+    [birth_date] => 1974-06-08
+    [is_outside_philippines] => true
+    [province] => 
+    [general_address] => House and Lot
+)
+
+2025-11-02 08:57:03 - Determined address: House and Lot
+2025-11-02 08:57:03 - Address validation passed.
+2025-11-03 06:59:40 - Script started.
+2025-11-03 06:59:40 - $_POST data: Array
+(
+    [username] => Judecnlrrs
+    [fullname] => Jude Mike Castro
+    [contact_number] => 09106704211
+    [email] => jmcas272@gmail.com
+    [password] => jmcas272
+    [confirm_password] => jmcas272
+    [birth_month] => 02
+    [birth_day] => 27
+    [birth_year] => 1999
+    [birth_date] => 1999-02-27
+    [is_outside_philippines] => true
+    [province] => 
+    [general_address] => Talisay, Cam Norte
+)
+
+2025-11-03 06:59:40 - Determined address: Talisay, Cam Norte
+2025-11-03 06:59:40 - Address validation passed.
+2025-11-03 07:02:04 - Script started.
+2025-11-03 07:02:04 - $_POST data: Array
+(
+    [username] => Edton15
+    [fullname] => Edton Ecleo
+    [contact_number] => 09299714259
+    [email] => edtonecleo15@gmail.com
+    [password] => 100917Edton
+    [confirm_password] => 100917Edton
+    [birth_month] => 05
+    [birth_day] => 15
+    [birth_year] => 1994
+    [birth_date] => 1994-05-15
+    [province] => Camarines Sur
+    [municipality] => Pili (Capital)
+    [barangay] => San Agustin
+    [general_address] => 
+)
+
+2025-11-03 07:02:04 - Determined address: San Agustin, Pili (Capital), Camarines Sur
+2025-11-03 07:02:04 - Address validation passed.

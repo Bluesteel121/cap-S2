@@ -1,0 +1,80 @@
+# .htaccess file for uploads/papers directory
+# Optimized for Hostinger hosting
+
+# Enable rewrite engine
+<IfModule mod_rewrite.c>
+    RewriteEngine On
+</IfModule>
+
+# Allow access to PDF files
+<FilesMatch "\.(pdf|PDF)$">
+    Order Allow,Deny
+    Allow from all
+    Require all granted
+    
+    # Set proper MIME type
+    <IfModule mod_headers.c>
+        Header set Content-Type "application/pdf"
+        Header set X-Content-Type-Options "nosniff"
+    </IfModule>
+</FilesMatch>
+
+# Prevent directory listing
+Options -Indexes
+
+# Set proper MIME types
+<IfModule mod_mime.c>
+    AddType application/pdf .pdf
+    AddType application/pdf .PDF
+</IfModule>
+
+# Enable CORS if needed (for cross-domain access)
+<IfModule mod_headers.c>
+    <FilesMatch "\.(pdf|PDF)$">
+        Header set Access-Control-Allow-Origin "*"
+        Header set Access-Control-Allow-Methods "GET, OPTIONS"
+        Header set Access-Control-Allow-Headers "Content-Type"
+    </FilesMatch>
+</IfModule>
+
+# Disable ModSecurity for this directory (common Hostinger issue)
+<IfModule mod_security.c>
+    SecFilterEngine Off
+    SecFilterScanPOST Off
+</IfModule>
+
+# Alternative ModSecurity disable
+<IfModule mod_security2.c>
+    SecRuleEngine Off
+</IfModule>
+
+# PHP protection (prevent PHP execution in uploads folder for security)
+<FilesMatch "\.(php|php3|php4|php5|php7|phtml|phar)$">
+    Order Deny,Allow
+    Deny from all
+</FilesMatch>
+
+# Set proper file permissions
+<IfModule mod_headers.c>
+    Header unset X-Powered-By
+    Header unset Server
+</IfModule>
+
+# Enable compression for faster loading
+<IfModule mod_deflate.c>
+    <FilesMatch "\.(pdf|PDF)$">
+        SetOutputFilter DEFLATE
+    </FilesMatch>
+</IfModule>
+
+# Set cache control for PDFs
+<IfModule mod_expires.c>
+    ExpiresActive On
+    <FilesMatch "\.(pdf|PDF)$">
+        ExpiresDefault "access plus 1 month"
+    </FilesMatch>
+</IfModule>
+
+# Error handling
+ErrorDocument 403 "Access to this file is forbidden"
+ErrorDocument 404 "File not found"
