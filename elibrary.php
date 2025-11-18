@@ -41,9 +41,9 @@ if (!empty($category_filter)) {
 
 if (!empty($year_filter)) {
     if ($year_filter === 'older') {
-        $where_conditions[] = "YEAR(submission_date) <= 2020";
+        $where_conditions[] = "YEAR(research_end_date) <= 2020";
     } else {
-        $where_conditions[] = "YEAR(submission_date) = ?";
+        $where_conditions[] = "YEAR(research_end_date) = ?";
         $params[] = $year_filter;
         $param_types .= 'i';
     }
@@ -69,7 +69,7 @@ $sql = "SELECT ps.*,
         LEFT JOIN paper_metrics pm ON ps.id = pm.paper_id
         WHERE $where_clause 
         GROUP BY ps.id 
-        ORDER BY ps.submission_date DESC 
+        ORDER BY ps.research_end_date DESC 
         LIMIT ? OFFSET ?";
 
 $stmt = $conn->prepare($sql);
@@ -84,15 +84,14 @@ $papers = $stmt->get_result()->fetch_all(MYSQLI_ASSOC);
 $featured_papers = [];
 if (empty($search_keyword) && empty($category_filter) && empty($year_filter)) {
     $featured_sql = "SELECT ps.*, 
-                            COALESCE(SUM(CASE WHEN pm.metric_type = 'view' THEN 1 ELSE 0 END), 0) as total_views,
-                            COALESCE(SUM(CASE WHEN pm.metric_type = 'download' THEN 1 ELSE 0 END), 0) as total_downloads
-                     FROM paper_submissions ps 
-                     LEFT JOIN paper_metrics pm ON ps.id = pm.paper_id
-                     WHERE ps.status = 'approved'
-                     GROUP BY ps.id 
-                     ORDER BY (COALESCE(SUM(CASE WHEN pm.metric_type = 'view' THEN 1 ELSE 0 END), 0) + 
-                              COALESCE(SUM(CASE WHEN pm.metric_type = 'download' THEN 1 ELSE 0 END), 0)) DESC 
-                     LIMIT 3";
+                        COALESCE(SUM(CASE WHEN pm.metric_type = 'view' THEN 1 ELSE 0 END), 0) as total_views,
+                        COALESCE(SUM(CASE WHEN pm.metric_type = 'download' THEN 1 ELSE 0 END), 0) as total_downloads
+                 FROM paper_submissions ps 
+                 LEFT JOIN paper_metrics pm ON ps.id = pm.paper_id
+                 WHERE ps.status = 'approved'
+                 GROUP BY ps.id 
+                 ORDER BY ps.research_end_date DESC
+                 LIMIT 3";
     $featured_result = $conn->query($featured_sql);
     $featured_papers = $featured_result->fetch_all(MYSQLI_ASSOC);
 }
@@ -292,7 +291,7 @@ $is_searching = !empty($search_keyword) || !empty($category_filter) || !empty($y
                                 <span class="truncate"><?php echo htmlspecialchars($paper['author_name']); ?>
                                 <?php if ($paper['co_authors']): ?>, <?php echo htmlspecialchars($paper['co_authors']); ?><?php endif; ?></span>
                             </span>
-                            <span><i class="fas fa-calendar mr-1"></i><?php echo date('M d, Y', strtotime($paper['submission_date'])); ?></span>
+                            <span><i class="fas fa-calendar mr-1"></i>Research End: <?php echo date('M d, Y', strtotime($paper['research_end_date'])); ?></span>
                             <span><i class="fas fa-tag mr-1"></i><?php echo ucfirst(htmlspecialchars($paper['research_type'])); ?></span>
                         </div>
                         
@@ -419,7 +418,7 @@ $is_searching = !empty($search_keyword) || !empty($category_filter) || !empty($y
                     <div class="flex flex-col sm:flex-row sm:items-center gap-1 sm:gap-2 text-xs sm:text-sm text-gray-600 mb-2">
                         <span class="truncate">Authors: <?php echo htmlspecialchars($paper['author_name']); ?><?php if ($paper['co_authors']): ?>, <?php echo htmlspecialchars($paper['co_authors']); ?><?php endif; ?></span>
                         <span class="hidden sm:inline">•</span>
-                        <span><?php echo date('Y', strtotime($paper['submission_date'])); ?></span>
+                        <span><?php echo date('Y', strtotime($paper['research_end_date'])); ?></span>
                         <span class="hidden sm:inline">•</span>
                         <span><?php echo ucfirst(htmlspecialchars($paper['research_type'])); ?></span>
                     </div>
