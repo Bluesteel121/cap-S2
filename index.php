@@ -82,7 +82,7 @@
         <!-- Links -->
         <div class="flex items-center gap-6 font-bold">
           <a href="index.php" class="hover:underline">Home</a>
-          <a href="#" class="hover:underline">Our Services</a>
+          <a href="OurService.php" class="hover:underline">Our Services</a>
           <a href="About.php" class="hover:underline">About Us</a>
         </div>
 
