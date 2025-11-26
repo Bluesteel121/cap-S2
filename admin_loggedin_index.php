@@ -416,10 +416,6 @@ function formatNumber($number) {
             </a>
             <a href="admin_review_papers.php" class="hover:text-green-700 transition-colors">Publications</a>
             <a href="admin_reports.php" class="hover:text-green-700 transition-colors">Reports</a>
-<<<<<<< HEAD
-
-=======
->>>>>>> f45e10da8af2b1313eda66040e71a60f38f3366c
 
             <!-- Profile Picture with Admin Badge -->
             <div class="relative">
