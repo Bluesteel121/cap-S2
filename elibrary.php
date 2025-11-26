@@ -539,8 +539,25 @@ $is_searching = !empty($search_keyword) || !empty($category_filter) || !empty($y
     </div>
 
    <script>
+function trackPaperView(paperId) {
+    // Send async request to track view
+    fetch(`track_paper_view.php?id=${paperId}`)
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                console.log('View tracked for paper ID:', paperId);
+            }
+        })
+        .catch(error => {
+            console.error('Error tracking view:', error);
+        });
+}
+
+
 // Enhanced Abstract Display Function with Complete Metadata
 function showAbstract(paperId) {
+     trackPaperView(paperId);
+
     document.getElementById('abstractContent').innerHTML = '<div class="text-center py-4"><i class="fas fa-spinner fa-spin text-3xl text-blue-500"></i><p class="mt-2">Loading abstract...</p></div>';
     document.getElementById('abstractModal').classList.remove('hidden');
     document.body.style.overflow = 'hidden'; // Prevent background scrolling
@@ -678,6 +695,8 @@ function closeAbstract() {
 
 // Enhanced Citation Display Function with Multiple Formats
 function showCitation(paperId) {
+     trackPaperView(paperId);
+     
     document.getElementById('citationContent').innerHTML = '<div class="text-center py-4"><i class="fas fa-spinner fa-spin text-3xl text-blue-500"></i><p class="mt-2">Loading citation formats...</p></div>';
     document.getElementById('citationModal').classList.remove('hidden');
     document.body.style.overflow = 'hidden'; // Prevent background scrolling

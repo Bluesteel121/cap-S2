@@ -38,21 +38,15 @@ $file_path = $paper['file_path'];
 
 // Try multiple path resolution strategies for Hostinger
 $possible_paths = [
-    // Direct path as stored
     $file_path,
-    // Remove leading ./ or /
     ltrim($file_path, './'),
-    // Prepend document root
     $_SERVER['DOCUMENT_ROOT'] . '/' . ltrim($file_path, './'),
-    // Try with current directory
     __DIR__ . '/' . ltrim($file_path, './'),
-    // Try parent directory (common Hostinger structure)
     dirname(__DIR__) . '/' . ltrim($file_path, './')
 ];
 
 $absolute_path = null;
 foreach ($possible_paths as $path) {
-    error_log("Checking path: $path");
     if (file_exists($path) && is_readable($path)) {
         $absolute_path = $path;
         error_log("Found file at: $path");
@@ -61,13 +55,8 @@ foreach ($possible_paths as $path) {
 }
 
 if (!$absolute_path) {
-    // Log error for debugging
     error_log("File not found for paper ID: $paper_id");
     error_log("Stored path: $file_path");
-    error_log("Document root: " . $_SERVER['DOCUMENT_ROOT']);
-    error_log("Current dir: " . __DIR__);
-    error_log("Searched paths: " . print_r($possible_paths, true));
-    
     http_response_code(404);
     die("File not found on server. Path stored in DB: " . htmlspecialchars($file_path));
 }
@@ -75,28 +64,99 @@ if (!$absolute_path) {
 $file_extension = strtolower(pathinfo($absolute_path, PATHINFO_EXTENSION));
 $file_name = sanitizeFileName($paper['paper_title']) . '.' . $file_extension;
 
-// Record download metric (only for actual downloads, not views)
+// Get user IP with proxy detection
+$user_ip = $_SERVER['REMOTE_ADDR'] ?? '127.0.0.1';
+if (!empty($_SERVER['HTTP_X_FORWARDED_FOR'])) {
+    $ip_list = explode(',', $_SERVER['HTTP_X_FORWARDED_FOR']);
+    $user_ip = trim($ip_list[0]);
+} elseif (!empty($_SERVER['HTTP_CLIENT_IP'])) {
+    $user_ip = $_SERVER['HTTP_CLIENT_IP'];
+} elseif (!empty($_SERVER['HTTP_X_REAL_IP'])) {
+    $user_ip = $_SERVER['HTTP_X_REAL_IP'];
+}
+
+// IMPROVED: Record view metric for PDF viewer mode
+if ($view_mode && $file_extension === 'pdf') {
+    try {
+        // Check for duplicate views within last 30 minutes (reduced from 1 hour)
+        $view_check = "SELECT id FROM paper_metrics 
+                       WHERE paper_id = ? 
+                       AND metric_type = 'view' 
+                       AND user_id = ? 
+                       AND created_at > DATE_SUB(NOW(), INTERVAL 30 MINUTE)";
+        $view_stmt = $conn->prepare($view_check);
+        $view_stmt->bind_param('ii', $paper_id, $_SESSION['id']);
+        $view_stmt->execute();
+        $view_result = $view_stmt->get_result();
+        
+        if ($view_result->num_rows === 0) {
+            $view_sql = "INSERT INTO paper_metrics (paper_id, metric_type, user_id, ip_address, created_at) 
+                         VALUES (?, 'view', ?, ?, NOW())";
+            $view_insert_stmt = $conn->prepare($view_sql);
+            $view_insert_stmt->bind_param('iis', $paper_id, $_SESSION['id'], $user_ip);
+            $view_insert_stmt->execute();
+            $view_insert_stmt->close();
+            
+            // Log view activity
+            $view_activity_sql = "INSERT INTO user_activity_logs (user_id, username, activity_type, activity_description, paper_id, ip_address, created_at)
+                                  VALUES (?, ?, 'view_paper', ?, ?, ?, NOW())";
+            $view_activity_stmt = $conn->prepare($view_activity_sql);
+            $view_activity_desc = "Viewed paper: " . $paper['paper_title'];
+            $view_activity_stmt->bind_param('isssi', $_SESSION['id'], $_SESSION['username'], $view_activity_desc, $user_ip, $paper_id);
+            $view_activity_stmt->execute();
+            $view_activity_stmt->close();
+            
+            error_log("View tracked for paper ID: $paper_id by user: {$_SESSION['username']}");
+        } else {
+            error_log("Duplicate view prevented (within 30 min) for paper ID: $paper_id");
+        }
+        $view_stmt->close();
+        
+    } catch (mysqli_sql_exception $e) {
+        error_log("Error recording view metric: " . $e->getMessage());
+    }
+}
+
+// IMPROVED: Record download metric (only for actual downloads, not views)
 if (!$view_mode) {
     try {
-        $download_sql = "INSERT INTO paper_metrics (paper_id, metric_type, user_id, ip_address, created_at) 
-                         VALUES (?, 'download', ?, ?, NOW())";
-        $download_stmt = $conn->prepare($download_sql);
-        $user_ip = $_SERVER['REMOTE_ADDR'] ?? '127.0.0.1';
-        $download_stmt->bind_param('iis', $paper_id, $_SESSION['id'], $user_ip);
-        $download_stmt->execute();
-        $download_stmt->close();
+        // Check for duplicate downloads within last 2 minutes (reduced from 5 minutes)
+        // This prevents accidental double-clicks but allows re-downloads
+        $duplicate_check = "SELECT id FROM paper_metrics 
+                           WHERE paper_id = ? 
+                           AND metric_type = 'download' 
+                           AND user_id = ? 
+                           AND created_at > DATE_SUB(NOW(), INTERVAL 2 MINUTE)";
+        $dup_stmt = $conn->prepare($duplicate_check);
+        $dup_stmt->bind_param('ii', $paper_id, $_SESSION['id']);
+        $dup_stmt->execute();
+        $dup_result = $dup_stmt->get_result();
         
-        // Log download activity
-        $activity_sql = "INSERT INTO user_activity_logs (user_id, username, activity_type, activity_description, paper_id, ip_address, created_at)
-                         VALUES (?, ?, 'download_paper', ?, ?, ?, NOW())";
-        $activity_stmt = $conn->prepare($activity_sql);
-        $activity_desc = "Downloaded paper: " . $paper['paper_title'];
-        $activity_stmt->bind_param('issss', $_SESSION['id'], $_SESSION['username'], $activity_desc, $paper_id, $user_ip);
-        $activity_stmt->execute();
-        $activity_stmt->close();
+        if ($dup_result->num_rows === 0) {
+            $download_sql = "INSERT INTO paper_metrics (paper_id, metric_type, user_id, ip_address, created_at) 
+                             VALUES (?, 'download', ?, ?, NOW())";
+            $download_stmt = $conn->prepare($download_sql);
+            $download_stmt->bind_param('iis', $paper_id, $_SESSION['id'], $user_ip);
+            $download_stmt->execute();
+            $download_stmt->close();
+            
+            // Log download activity
+            $activity_sql = "INSERT INTO user_activity_logs (user_id, username, activity_type, activity_description, paper_id, ip_address, created_at)
+                             VALUES (?, ?, 'download_paper', ?, ?, ?, NOW())";
+            $activity_stmt = $conn->prepare($activity_sql);
+            $activity_desc = "Downloaded paper: " . $paper['paper_title'];
+            $activity_stmt->bind_param('isssi', $_SESSION['id'], $_SESSION['username'], $activity_desc, $user_ip, $paper_id);
+            $activity_stmt->execute();
+            $activity_stmt->close();
+            
+            error_log("Download tracked for paper ID: $paper_id by user: {$_SESSION['username']}");
+        } else {
+            error_log("Duplicate download prevented (within 2 min) for paper ID: $paper_id");
+        }
+        $dup_stmt->close();
+        
     } catch (mysqli_sql_exception $e) {
         error_log("Error recording download metric: " . $e->getMessage());
-        // Continue with download even if metric recording fails
     }
 }
 
@@ -154,7 +214,6 @@ if (isset($_SERVER['HTTP_RANGE']) && $file_extension === 'pdf') {
         $file = fopen($absolute_path, 'rb');
         fseek($file, $start);
         
-        // Output in chunks for better performance
         $buffer_size = 8192;
         while (!feof($file) && $length > 0) {
             $read_size = min($buffer_size, $length);
@@ -172,9 +231,7 @@ if (isset($_SERVER['HTTP_RANGE']) && $file_extension === 'pdf') {
 readfile($absolute_path);
 exit;
 
-// Helper function to sanitize filename
 function sanitizeFileName($filename) {
-    // Remove special characters and limit length
     $filename = preg_replace('/[^a-zA-Z0-9\s\-_]/', '', $filename);
     $filename = preg_replace('/\s+/', '_', $filename);
     $filename = substr($filename, 0, 200);
