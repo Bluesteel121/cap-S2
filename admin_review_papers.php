@@ -11,7 +11,6 @@ require_once 'connect.php';
 require_once 'email_config.php';
 require_once 'user_activity_logger.php';
 
-// Handle review submission
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
     header('Content-Type: application/json');
     
@@ -34,8 +33,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
         ];
         $new_status = $status_map[$action];
         
-        // Get paper details
-        $paper_sql = "SELECT ps.*, a.email FROM paper_submissions ps 
+        // Get paper details with author email
+        $paper_sql = "SELECT ps.*, a.email as user_email, a.name as author_full_name 
+                      FROM paper_submissions ps 
                       LEFT JOIN accounts a ON ps.user_name = a.username 
                       WHERE ps.id = ?";
         $stmt = $conn->prepare($paper_sql);
@@ -45,6 +45,26 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
         
         if (!$paper) {
             throw new Exception('Paper not found');
+        }
+        
+        // Validate email exists
+        $user_email = $paper['user_email'] ?? $paper['author_email'] ?? null;
+        if (!$user_email) {
+            // Try to find email by username or author name
+            $email_search_sql = "SELECT email FROM accounts WHERE username = ? OR name = ? LIMIT 1";
+            $email_stmt = $conn->prepare($email_search_sql);
+            $email_stmt->bind_param('ss', $paper['user_name'], $paper['author_name']);
+            $email_stmt->execute();
+            $email_result = $email_stmt->get_result();
+            
+            if ($email_row = $email_result->fetch_assoc()) {
+                $user_email = $email_row['email'];
+            }
+        }
+        
+        // If still no email, log warning but continue
+        if (!$user_email) {
+            error_log("WARNING: No email found for paper ID $paper_id, user: {$paper['user_name']}");
         }
         
         // Start transaction
@@ -65,7 +85,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
             throw new Exception('Failed to update paper status');
         }
         
-        // Create notification
+        // Create notification in database
         $notification_type = $new_status;
         $notification_messages = [
             'approved' => 'Your paper has been approved for publication.',
@@ -81,27 +101,66 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
         $stmt->bind_param('isss', $paper_id, $paper['user_name'], $notification_type, $notif_message);
         $stmt->execute();
         
-        // Send email notification
-        $user_email = $paper['email'] ?? $paper['author_email'];
-        if ($user_email) {
-            $paper['reviewed_by'] = $reviewer_name;
-            $paper['review_date'] = date('F j, Y');
-            EmailService::sendPaperReviewNotification($paper, $user_email, $new_status, $conn);
-        }
-        
-        // Log activity
-        logActivity('PAPER_REVIEWED', "Paper ID: $paper_id, Status: $new_status, Reviewer: $reviewer_name");
-        
+        // Commit database changes first
         $conn->commit();
         
+        // Prepare email data
+        $paper['reviewed_by'] = $reviewer_name;
+        $paper['review_date'] = date('F j, Y');
+        $paper['reviewer_comments'] = $reviewer_comments;
+        
+        // Send email notification - WITH COMPREHENSIVE ERROR HANDLING
+        $email_sent = false;
+        $email_error = null;
+        
+        if ($user_email) {
+            try {
+                // Attempt to send email
+                $email_sent = EmailService::sendPaperReviewNotification(
+                    $paper, 
+                    $user_email, 
+                    $new_status, 
+                    $conn
+                );
+                
+                if (!$email_sent) {
+                    $email_error = "Email send returned false";
+                    error_log("Email send failed for paper $paper_id to $user_email");
+                }
+            } catch (Exception $e) {
+                $email_error = $e->getMessage();
+                error_log("Exception sending email for paper $paper_id: " . $email_error);
+            }
+        } else {
+            $email_error = "No valid email address found";
+            error_log("Cannot send email for paper $paper_id: No email address");
+        }
+        
+        // Log activity with email status
+        $activity_msg = "Paper ID: $paper_id, Status: $new_status, Reviewer: $reviewer_name";
+        if ($email_sent) {
+            $activity_msg .= ", Email: Sent to $user_email";
+        } else {
+            $activity_msg .= ", Email: FAILED - $email_error";
+        }
+        logActivity('PAPER_REVIEWED', $activity_msg);
+        
+        // Return response with email status
         echo json_encode([
             'success' => true,
             'message' => 'Paper review submitted successfully',
-            'new_status' => $new_status
+            'new_status' => $new_status,
+            'email_sent' => $email_sent,
+            'email_info' => $email_sent 
+                ? "Email sent to $user_email" 
+                : "Warning: Email could not be sent - $email_error. The review was saved and will be retried automatically.",
+            'email_to' => $user_email
         ]);
         
     } catch (Exception $e) {
         if ($conn) $conn->rollback();
+        error_log("Review submission error: " . $e->getMessage());
+        
         echo json_encode([
             'success' => false,
             'error' => $e->getMessage()
