@@ -231,11 +231,11 @@ closeConnection();
         </div>
 
         <!-- Navigation Links -->
-        <div class="flex items-center gap-6 text-green-900 font-semibold text-sm">
-            <a href="loggedin_index.php" class="hover:underline">Home</a>
-            <a href="OurService.php" class="hover:underline">Our Services</a>
-            <a href="About.php" class="hover:underline">About Us</a>
-        </div>
+         <div class="flex items-center gap-6 font-bold">
+        <a href="?view=home" class="hover:underline <?php echo $view === 'home' ? 'text-[#115D5B] underline' : ''; ?>">Home</a>
+        <a href="OurService.php" class="hover:underline">Our Services</a>
+        <a href="About.php" class="hover:underline">About Us</a>
+      </div>
 
         <!-- Profile Picture with User's Initial Image -->
       <img src="Images/initials profile/<?php echo strtolower(substr($_SESSION['name'], 0, 1)); ?>.png" 
