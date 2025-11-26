@@ -259,15 +259,221 @@ $is_searching = !empty($search_keyword) || !empty($category_filter) || !empty($y
   </nav>
         
   <!-- Sidebar Navigation -->
-  <div id="mySidebar" class="sidebar">
-      <a href="javascript:void(0)" class="closebtn" onclick="closeSidebar()">&times;</a>
-      <a href="#">Settings</a>
-      <a href="edit_profile.php">Profile</a>
-      <a href="my_submissions.php"><i class="fas fa-file-alt mr-2"></i>My Submissions</a>
-      <a href="submit_paper.php"><i class="fas fa-plus mr-2"></i>Submit Paper</a>
-      <a href="index.php" onclick="logout()">Log Out</a>
+<div id="mySidebar" class="sidebar fixed left-0 top-0 h-screen w-64 bg-gradient-to-b from-[#115D5B] to-[#0e4e4c] text-white shadow-2xl transform transition-transform duration-300 z-40 overflow-y-auto">
+  
+  <!-- Close Button (Mobile Only) -->
+  <a href="javascript:void(0)" class="closebtn lg:hidden block absolute top-4 right-4 text-white hover:bg-white hover:bg-opacity-20 p-2 rounded-lg transition-colors text-2xl" onclick="closeSidebar()">&times;</a>
 
+  <!-- User Profile Section -->
+  <div class="px-6 py-6 border-b border-white border-opacity-20 mt-12 lg:mt-0">
+    <div class="flex items-center space-x-3 mb-4">
+      <div class="w-12 h-12 rounded-full bg-white bg-opacity-20 flex items-center justify-center">
+        <i class="fas fa-user text-lg"></i>
+      </div>
+      <div class="flex-1 min-w-0">
+        <h3 class="text-sm font-bold truncate"><?php echo isset($_SESSION['name']) ? htmlspecialchars($_SESSION['name']) : 'User'; ?></h3>
+        <p class="text-xs opacity-75 truncate"><?php echo isset($_SESSION['username']) ? htmlspecialchars($_SESSION['username']) : 'username'; ?></p>
+      </div>
+    </div>
   </div>
+
+  <!-- Navigation Links -->
+  <nav class="px-4 py-6 space-y-2 pb-40">
+    <div class="mb-6">
+      <p class="text-xs font-semibold text-white opacity-60 px-2 mb-3 uppercase tracking-wider">Main Menu</p>
+      
+      <a href="index.php" class="flex items-center px-4 py-3 rounded-lg hover:bg-white hover:bg-opacity-10 transition-colors group">
+        <i class="fas fa-home mr-3 text-lg"></i>
+        <span class="text-sm font-medium">Home</span>
+      </a>
+
+      <a href="#" class="flex items-center px-4 py-3 rounded-lg hover:bg-white hover:bg-opacity-10 transition-colors group">
+        <i class="fas fa-cog mr-3 text-lg"></i>
+        <span class="text-sm font-medium">Settings</span>
+      </a>
+
+      <a href="edit_profile.php" class="flex items-center px-4 py-3 rounded-lg hover:bg-white hover:bg-opacity-10 transition-colors group">
+        <i class="fas fa-user-circle mr-3 text-lg"></i>
+        <span class="text-sm font-medium">Profile</span>
+      </a>
+
+     <a href="my_submissions.php" class="flex items-center px-4 py-3 rounded-lg hover:bg-white hover:bg-opacity-10 transition-colors group">
+        <i class="fas fa-file-alt mr-3 text-lg"></i>
+        <span class="text-sm font-medium">My Submissions</span>
+        <span class="ml-auto bg-white bg-opacity-20 text-xs px-2 py-1 rounded-full">
+          <?php 
+            if (isset($_SESSION['name'])) {
+              $user_name = $_SESSION['name'];
+              $submission_query = $conn->prepare("SELECT COUNT(*) as count FROM paper_submissions WHERE author_name = ?");
+              $submission_query->bind_param("s", $user_name);
+              $submission_query->execute();
+              $submission_result = $submission_query->get_result()->fetch_assoc();
+              echo $submission_result['count'];
+            } else {
+              echo 0;
+            }
+          ?>
+        </span>
+      </a>
+
+
+      <a href="submit_paper.php" class="flex items-center px-4 py-3 rounded-lg bg-white bg-opacity-10 hover:bg-opacity-20 transition-colors group border border-white border-opacity-20">
+        <i class="fas fa-upload mr-3 text-lg"></i>
+        <span class="text-sm font-medium">Submit Paper</span>
+      </a>
+    </div>
+
+    <div class="mb-6">
+      <p class="text-xs font-semibold text-white opacity-60 px-2 mb-3 uppercase tracking-wider">Account</p>
+      
+      <a href="edit_profile.php" class="flex items-center px-4 py-3 rounded-lg hover:bg-white hover:bg-opacity-10 transition-colors group">
+        <i class="fas fa-user-circle mr-3 text-lg"></i>
+        <span class="text-sm font-medium">Edit Profile</span>
+      </a>
+
+      <a href="user_settings.php" class="flex items-center px-4 py-3 rounded-lg hover:bg-white hover:bg-opacity-10 transition-colors group">
+        <i class="fas fa-cog mr-3 text-lg"></i>
+        <span class="text-sm font-medium">Settings</span>
+      </a>
+
+      <a href="saved_papers.php" class="flex items-center px-4 py-3 rounded-lg hover:bg-white hover:bg-opacity-10 transition-colors group">
+        <i class="fas fa-bookmark mr-3 text-lg"></i>
+        <span class="text-sm font-medium">Saved Papers</span>
+      </a>
+    </div>
+
+    <!-- Divider -->
+    <div class="border-t border-white border-opacity-20 my-4"></div>
+
+    <div class="mb-20">
+      <p class="text-xs font-semibold text-white opacity-60 px-2 mb-3 uppercase tracking-wider">Other</p>
+      
+      <a href="About.php" class="flex items-center px-4 py-3 rounded-lg hover:bg-white hover:bg-opacity-10 transition-colors group">
+        <i class="fas fa-info-circle mr-3 text-lg"></i>
+        <span class="text-sm font-medium">About Us</span>
+      </a>
+
+      <a href="OurService.php" class="flex items-center px-4 py-3 rounded-lg hover:bg-white hover:bg-opacity-10 transition-colors group">
+        <i class="fas fa-handshake mr-3 text-lg"></i>
+        <span class="text-sm font-medium">Services</span>
+      </a>
+    </div>
+  </nav>
+
+ <!-- Logout Section -->
+<div class="fixed bottom-0 left-0 right-0 w-64 px-4 py-6 bg-gradient-to-t from-[#0e4e4c] via-[#0e4e4c] to-transparent border-t border-white border-opacity-20 lg:relative">
+  <a href="logout.php" class="flex items-center justify-center px-4 py-3 rounded-lg bg-red-600 hover:bg-red-700 transition-colors w-full group font-medium">
+    <i class="fas fa-sign-out-alt mr-2"></i>
+    <span class="text-sm">Log Out</span>
+  </a>
+</div>
+</div>
+
+<!-- Sidebar Overlay (Mobile) -->
+<div id="sidebarOverlay" onclick="closeSidebar()" class="lg:hidden fixed inset-0 bg-black bg-opacity-50 hidden z-30 transition-opacity duration-300"></div>
+
+<script>
+function toggleSidebar() {
+  const sidebar = document.getElementById('mySidebar');
+  const overlay = document.getElementById('sidebarOverlay');
+  
+  sidebar.classList.toggle('active');
+  overlay.classList.toggle('hidden');
+}
+
+function closeSidebar() {
+  const sidebar = document.getElementById('mySidebar');
+  const overlay = document.getElementById('sidebarOverlay');
+  
+  sidebar.classList.remove('active');
+  overlay.classList.add('hidden');
+}
+
+function logout() {
+  // Add logout logic here if needed
+  console.log('Logging out...');
+}
+
+// Initialize on page load
+document.addEventListener('DOMContentLoaded', function() {
+  const sidebarOverlay = document.getElementById('sidebarOverlay');
+  const sidebarLinks = document.querySelectorAll('#mySidebar a');
+  
+  if (sidebarOverlay) {
+    sidebarOverlay.addEventListener('click', closeSidebar);
+  }
+  
+  sidebarLinks.forEach(link => {
+    link.addEventListener('click', function() {
+      if (!this.classList.contains('closebtn') && this.href.indexOf('logout.php') === -1) {
+        closeSidebar();
+      }
+    });
+  });
+  
+  document.addEventListener('keydown', function(e) {
+    if (e.key === 'Escape') {
+      closeSidebar();
+    }
+  });
+});
+</script>
+
+<style>
+.sidebar {
+  left: -256px;
+}
+
+.sidebar.active {
+  left: 0;
+}
+
+@media (min-width: 1024px) {
+  .sidebar {
+    left: 0 !important;
+  }
+}
+
+#mySidebar {
+  padding-bottom: 120px;
+  scrollbar-width: thin;
+  scrollbar-color: rgba(255, 255, 255, 0.2) transparent;
+}
+
+#mySidebar::-webkit-scrollbar {
+  width: 6px;
+}
+
+#mySidebar::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+#mySidebar::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.2);
+  border-radius: 3px;
+}
+
+#mySidebar::-webkit-scrollbar-thumb:hover {
+  background: rgba(255, 255, 255, 0.3);
+}
+
+.closebtn {
+  display: block;
+  font-size: 28px;
+  font-weight: bold;
+  cursor: pointer;
+}
+
+.closebtn:hover {
+  color: #f1f1f1;
+}
+
+@media (max-width: 1023px) {
+  #mySidebar {
+    padding-bottom: 140px;
+  }
+}
+</style>
 
   <!-- Content Based on View -->
   <?php if ($view === 'home'): ?>
@@ -289,11 +495,7 @@ $is_searching = !empty($search_keyword) || !empty($category_filter) || !empty($y
         <h2 class="text-4xl md:text-5xl font-bold text-[#103635] text-outline-white leading-tight">
           Welcome to CNLRRS Research Library
         </h2>
-<<<<<<< HEAD
-         <p class="font-bold mt-4 text-lg md:text-xl max-w-2xl text-[#103635]" 
-=======
         <p class="font-bold mt-4 text-lg md:text-xl max-w-2xl text-[#103635]" 
->>>>>>> f45e10da8af2b1313eda66040e71a60f38f3366c
    style="text-shadow:
       -1px -1px 0 white,
        1px -1px 0 white,
@@ -372,11 +574,7 @@ $is_searching = !empty($search_keyword) || !empty($category_filter) || !empty($y
       <h2 class="inline-block bg-[#103635] text-3xl md:text-4xl font-extrabold text-white px-8 py-3 rounded-full shadow-lg">
         Recommended Research By CNLRRS
       </h2>
-<<<<<<< HEAD
-    </div>
-=======
       
->>>>>>> f45e10da8af2b1313eda66040e71a60f38f3366c
         <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
           
          <!-- Card 1 -->
