@@ -287,11 +287,6 @@ $is_searching = !empty($search_keyword) || !empty($category_filter) || !empty($y
         <span class="text-sm font-medium">Home</span>
       </a>
 
-      <a href="#" class="flex items-center px-4 py-3 rounded-lg hover:bg-white hover:bg-opacity-10 transition-colors group">
-        <i class="fas fa-cog mr-3 text-lg"></i>
-        <span class="text-sm font-medium">Settings</span>
-      </a>
-
       <a href="edit_profile.php" class="flex items-center px-4 py-3 rounded-lg hover:bg-white hover:bg-opacity-10 transition-colors group">
         <i class="fas fa-user-circle mr-3 text-lg"></i>
         <span class="text-sm font-medium">Profile</span>
@@ -316,7 +311,6 @@ $is_searching = !empty($search_keyword) || !empty($category_filter) || !empty($y
         </span>
       </a>
 
-
       <a href="submit_paper.php" class="flex items-center px-4 py-3 rounded-lg bg-white bg-opacity-10 hover:bg-opacity-20 transition-colors group border border-white border-opacity-20">
         <i class="fas fa-upload mr-3 text-lg"></i>
         <span class="text-sm font-medium">Submit Paper</span>
@@ -331,11 +325,6 @@ $is_searching = !empty($search_keyword) || !empty($category_filter) || !empty($y
         <span class="text-sm font-medium">Edit Profile</span>
       </a>
 
-      <a href="user_settings.php" class="flex items-center px-4 py-3 rounded-lg hover:bg-white hover:bg-opacity-10 transition-colors group">
-        <i class="fas fa-cog mr-3 text-lg"></i>
-        <span class="text-sm font-medium">Settings</span>
-      </a>
-
       <a href="saved_papers.php" class="flex items-center px-4 py-3 rounded-lg hover:bg-white hover:bg-opacity-10 transition-colors group">
         <i class="fas fa-bookmark mr-3 text-lg"></i>
         <span class="text-sm font-medium">Saved Papers</span>
@@ -346,20 +335,17 @@ $is_searching = !empty($search_keyword) || !empty($category_filter) || !empty($y
     <div class="border-t border-white border-opacity-20 my-4"></div>
 
     <div class="mb-20">
-      <p class="text-xs font-semibold text-white opacity-60 px-2 mb-3 uppercase tracking-wider">Other</p>
-      
+      <p class="text-xs font-semibold text-white opacity-60 px-2 mb-3 uppercase tracking-wider">Other</p> 
       <a href="About.php" class="flex items-center px-4 py-3 rounded-lg hover:bg-white hover:bg-opacity-10 transition-colors group">
         <i class="fas fa-info-circle mr-3 text-lg"></i>
         <span class="text-sm font-medium">About Us</span>
       </a>
-
       <a href="OurService.php" class="flex items-center px-4 py-3 rounded-lg hover:bg-white hover:bg-opacity-10 transition-colors group">
         <i class="fas fa-handshake mr-3 text-lg"></i>
         <span class="text-sm font-medium">Services</span>
       </a>
     </div>
   </nav>
-
  <!-- Logout Section -->
 <div class="fixed bottom-0 left-0 right-0 w-64 px-4 py-6 bg-gradient-to-t from-[#0e4e4c] via-[#0e4e4c] to-transparent border-t border-white border-opacity-20 lg:relative">
   <a href="logout.php" class="flex items-center justify-center px-4 py-3 rounded-lg bg-red-600 hover:bg-red-700 transition-colors w-full group font-medium">
