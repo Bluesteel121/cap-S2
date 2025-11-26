@@ -268,11 +268,7 @@ function getStatusBadge($status) {
             <!-- Desktop View -->
             <div class="hidden md:flex items-center justify-between">
                 <div class="flex items-center space-x-4">
-<<<<<<< HEAD
-                    <img src="Images/Logo.jpg" alt="CNLRRS Logo" class="h-12 w-auto object-contain">
-=======
                     <img src="Images/Logo.png" alt="CNLRRS Logo" class="h-12 w-auto object-contain">
->>>>>>> f45e10da8af2b1313eda66040e71a60f38f3366c
                     <div>
                         <h1 class="text-2xl font-bold">Paper Review System</h1>
                         <p class="text-sm opacity-75">Review and manage submitted research papers</p>
