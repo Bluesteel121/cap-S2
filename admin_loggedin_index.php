@@ -448,10 +448,10 @@ function formatNumber($number) {
       <h3 class="text-lg font-bold">Admin Panel</h3>
       <p class="text-sm opacity-75"><?php echo htmlspecialchars($_SESSION['username']); ?></p>
     </div>
-    <a href="#"><i class="fas fa-tachometer-alt mr-3"></i>Dashboard</a>
+    <a href="admin_loggedin_index.php"><i class="fas fa-tachometer-alt mr-3"></i>Dashboard</a>
     <a href="admin_review_papers.php"><i class="fas fa-eye mr-3"></i>Review Submissions</a>
     <a href="admin_user_management.php"><i class="fas fa-users mr-3"></i>Manage Users</a>
-    <a href="#"><i class="fas fa-book mr-3"></i>Publications</a>
+    <a href="admin_review_papers.php"><i class="fas fa-book mr-3"></i>Publications</a>
     <a href="admin_analytics.php"><i class="fas fa-chart-bar mr-3"></i>Analytics</a>
     <a href="edit_profile.php"><i class="fas fa-user-edit mr-3"></i>Edit Profile</a>
     <a href="admin_reports.php"><i class="fas fa-chart-pie mr-3"></i>Comprehensive Reports</a>

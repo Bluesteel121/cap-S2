@@ -410,14 +410,20 @@ $conn->close();
                     <h2 class="text-xl font-bold text-gray-800 mb-3">Submission Requirements</h2>
                     <div class="grid md:grid-cols-2 gap-4 text-sm text-gray-700">
                         <div>
-                            <h3 class="font-semibold mb-2">Required Information:</h3>
-                            <ul class="list-disc list-inside space-y-1">
-                                <li>Complete research paper in PDF format (max 25MB)</li>
-                                <li>Detailed abstract (100-2000 characters)</li>
-                                <li>Author information and affiliation</li>
-                                <li>Research keywords and methodology</li>
-                            </ul>
-                        </div>
+  <h3 class="font-semibold mb-2">Required Information:</h3>
+  <ul class="list-disc list-inside space-y-1">
+    <li>
+      Complete research paper in PDF format (max 25MB)</li>
+    <li>Detailed abstract (100-2000 characters)</li>
+    <li>Author information and affiliation</li>
+    <li>Research keywords and methodology</li>
+    <a href="uploads\papers\research-guide.pdf" download
+         class="text-blue-600 underline mt-2 inline-block">
+         📄 Download Research Format Guide
+      </a>
+  </ul>
+</div>
+
                         
                     </div>
                 </div>
