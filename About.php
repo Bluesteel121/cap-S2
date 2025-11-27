@@ -46,31 +46,31 @@ $is_logged_in = isset($_SESSION['name']);
     </div>
 
     <!-- Contact Info Section -->
-    <div class="flex items-center space-x-1 sm:space-x-2 md:space-x-4 flex-shrink-0 min-w-0">
+    <div class="flex items-center space-x-2 sm:space-x-3 md:space-x-4 flex-shrink-0">
       <!-- Text Info -->
-      <div class="text-[8px] sm:text-xs md:text-sm font-semibold text-center leading-tight">
-        <p class="md:hidden">DA</p>
+      <div class="text-[9px] sm:text-[10px] md:text-xs lg:text-sm font-semibold text-left leading-tight">
         <p class="hidden md:block">DEPARTMENT OF AGRICULTURE</p>
+        <p class="md:hidden">DA</p>
         
-        <p class="sm:hidden">Daet, PH</p>
-        <p class="hidden sm:block">Calasgasan, Daet, Philippines</p>
+        <p class="hidden md:block">Calasgasan, Daet, Philippines</p>
+        <p class="md:hidden">Daet, PH</p>
         
-        <p class="md:hidden">
-          <a href="mailto:dacnlrrs@gmail.com" class="underline">Email</a>
-        </p>
         <p class="hidden md:block">
           Email: 
           <a href="https://mail.google.com/mail/?view=cm&fs=1&to=dacnlrrs@gmail.com" 
              target="_blank" 
-             class="underline">
+             class="underline hover:text-[#115D5B]">
             dacnlrrs@gmail.com
           </a>
         </p>
-
+        <p class="md:hidden">
+          <a href="mailto:dacnlrrs@gmail.com" class="underline">Email</a>
+        </p>
+        
         <p>0951 609 9599</p>
       </div>
       <!-- Logo -->
-      <img src="Images/Bago.png" alt="Bagong Pilipinas Logo" class="h-8 sm:h-12 md:h-16 lg:h-20 xl:h-24 object-contain" />
+      <img src="Images/Bago.png" alt="Bagong Pilipinas Logo" class="h-10 sm:h-14 md:h-16 lg:h-20 xl:h-24 object-contain" />
     </div>
   </div>
 </header>
