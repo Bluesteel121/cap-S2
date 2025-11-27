@@ -171,7 +171,42 @@ closeConnection();
             padding: 24px;
             box-shadow: 0 2px 4px rgba(0,0,0,0.1);
             margin-bottom: 24px;
-        }
+    }
+
+
+    @layer utilities {
+      .text-outline-white {
+        -webkit-text-stroke: 1px white;
+      }
+    }
+    
+    /* Search dropdown styles */
+    #search-results {
+      max-height: 500px;
+      overflow-y: auto;
+      box-shadow: 0 10px 25px rgba(0,0,0,0.1);
+    }
+    
+    #search-results::-webkit-scrollbar {
+      width: 8px;
+    }
+    
+    #search-results::-webkit-scrollbar-track {
+      background: #f1f1f1;
+    }
+    
+    #search-results::-webkit-scrollbar-thumb {
+      background: #888;
+      border-radius: 4px;
+    }
+    
+    #search-results::-webkit-scrollbar-thumb:hover {
+      background: #555;
+    }
+    
+    .search-container {
+      position: relative;
+    }
     </style>
 </head>
 <body class="bg-gray-100 pt-20">
@@ -230,12 +265,35 @@ closeConnection();
 
 <nav class="bg-white border-b py-10 px-10">
     <div class="max-w-7xl mx-auto px-4 flex flex-wrap justify-between items-center gap-4">
-        <!-- Search with Advance -->
-        <div class="flex flex-grow max-w-xl border border-green-900 rounded-full overflow-hidden">
-            <input type="text" placeholder="Search publications, articles, keywords, etc." class="flex-grow px-4 py-2 text-sm text-gray-700 placeholder-gray-500 focus:outline-none" />
-            <button class="px-0.1 text-green-900 text-xl hover:underline">🔍</button>
-            <button class="bg-transparent px-6 font-semibold text-green-900 hover:underline">Search</button>
+         <!-- Search Bar with Dropdown -->
+      <div class="flex flex-grow max-w-xl search-container">
+        <div class="relative flex-grow border border-[#103635] rounded-full overflow-hidden">
+          <input 
+            type="text" 
+            id="main-search-input"
+            placeholder="Search publications, articles, keywords, etc." 
+            class="w-full px-4 py-2 text-sm text-gray-700 placeholder-gray-500 focus:outline-none"
+            autocomplete="off"
+          />
+          <button 
+            id="search-button"
+            class="absolute right-20 top-1/2 transform -translate-y-1/2 px-4 hover:opacity-75">
+            <img src="Images/Search magni.png" alt="Search" class="h-5" />
+          </button>
+          <button 
+            id="advance-search-button"
+            class="absolute right-2 top-1/2 transform -translate-y-1/2 px-4 text-sm font-semibold text-[#103635] hover:underline">
+            Advance
+          </button>
         </div>
+        
+        <!-- Search Results Dropdown -->
+        <div 
+          id="search-results" 
+          class="hidden absolute top-full left-0 right-0 bg-white border border-gray-300 rounded-lg mt-2 z-50 shadow-lg">
+          <!-- Results will be inserted here -->
+        </div>
+      </div>
 
         
         <!-- Links -->
@@ -468,18 +526,44 @@ closeConnection();
 <script>
     // Sidebar toggle functionality
     function toggleSidebar() {
-        const sidebar = document.getElementById('mySidebar');
-        if (sidebar.style.width === '250px') {
-            sidebar.style.width = '0';
-        } else {
-            sidebar.style.width = '250px';
-        }
-    }
+  const sidebar = document.getElementById('mySidebar');
+  const overlay = document.getElementById('sidebarOverlay');
+  
+  sidebar.classList.toggle('active');
+  overlay.classList.toggle('hidden');
+}
 
-    function closeSidebar() {
-        document.getElementById('mySidebar').style.width = '0';
-    }
+function closeSidebar() {
+  const sidebar = document.getElementById('mySidebar');
+  const overlay = document.getElementById('sidebarOverlay');
+  
+  sidebar.classList.remove('active');
+  overlay.classList.add('hidden');
+}
 
+// Initialize on page load
+document.addEventListener('DOMContentLoaded', function() {
+  const sidebarOverlay = document.getElementById('sidebarOverlay');
+  const sidebarLinks = document.querySelectorAll('#mySidebar a');
+  
+  if (sidebarOverlay) {
+    sidebarOverlay.addEventListener('click', closeSidebar);
+  }
+  
+  sidebarLinks.forEach(link => {
+    link.addEventListener('click', function() {
+      if (!this.classList.contains('closebtn') && this.href.indexOf('logout.php') === -1) {
+        closeSidebar();
+      }
+    });
+  });
+  
+  document.addEventListener('keydown', function(e) {
+    if (e.key === 'Escape') {
+      closeSidebar();
+    }
+  });
+});
     // Address toggle functionality
     const outsidePhilippinesCheckbox = document.getElementById('is_outside_philippines');
     const philippinesAddress = document.getElementById('philippines_address');
@@ -527,6 +611,125 @@ closeConnection();
         }
         lastScrollTop = scrollTop <= 0 ? 0 : scrollTop;
     });
+
+    // ==================== SEARCH FUNCTIONALITY ====================
+  
+  const searchInput = document.getElementById('main-search-input');
+  const searchButton = document.getElementById('search-button');
+  const advanceButton = document.getElementById('advance-search-button');
+  const searchResults = document.getElementById('search-results');
+  
+  let searchTimeout;
+  let isSearching = false;
+
+  // Check if user is logged in (from PHP session)
+  const isLoggedIn = <?php echo isset($_SESSION['name']) ? '1' : '0'; ?>;
+
+  // Debounced search function
+  function performSearch(query) {
+    // Clear previous timeout
+    clearTimeout(searchTimeout);
+    
+    // Don't search if query is too short
+    if (query.trim().length < 2) {
+      searchResults.classList.add('hidden');
+      return;
+    }
+
+    // Set timeout for debouncing (wait 300ms after user stops typing)
+    searchTimeout = setTimeout(async () => {
+      if (isSearching) return; // Prevent multiple simultaneous searches
+      
+      isSearching = true;
+      searchResults.classList.remove('hidden');
+      searchResults.innerHTML = '<div class="p-4 text-center text-gray-600"><i class="fas fa-spinner fa-spin mr-2"></i>Searching...</div>';
+
+      try {
+        const response = await fetch('search_handler.php', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/x-www-form-urlencoded',
+          },
+          body: `query=${encodeURIComponent(query)}&is_logged_in=${isLoggedIn}`
+        });
+
+        if (!response.ok) {
+          throw new Error(`HTTP error! Status: ${response.status}`);
+        }
+
+        const html = await response.text();
+        searchResults.innerHTML = html;
+
+      } catch (error) {
+        console.error('Search error:', error);
+        searchResults.innerHTML = '<div class="p-4 text-center text-red-600"><i class="fas fa-exclamation-circle mr-2"></i>Search failed. Please try again.</div>';
+      } finally {
+        isSearching = false;
+      }
+    }, 300); // 300ms delay
+  }
+
+  // Event listener for input
+  searchInput.addEventListener('input', (e) => {
+    const query = e.target.value;
+    performSearch(query);
+  });
+
+  // Event listener for search button
+  searchButton.addEventListener('click', () => {
+    const query = searchInput.value;
+    if (query.trim().length >= 2) {
+      performSearch(query);
+    } else {
+      searchResults.classList.remove('hidden');
+      searchResults.innerHTML = '<div class="p-4 text-center text-gray-600">Please enter at least 2 characters</div>';
+    }
+  });
+
+  // Event listener for Enter key
+  searchInput.addEventListener('keypress', (e) => {
+    if (e.key === 'Enter') {
+      e.preventDefault();
+      const query = searchInput.value;
+      if (query.trim().length >= 2) {
+        clearTimeout(searchTimeout); // Clear debounce timeout
+        performSearch(query);
+      }
+    }
+  });
+
+  // Close search results when clicking outside
+  document.addEventListener('click', (e) => {
+    const searchContainer = document.querySelector('.search-container');
+    if (searchContainer && !searchContainer.contains(e.target)) {
+      searchResults.classList.add('hidden');
+    }
+  });
+
+  // Prevent closing when clicking inside search results
+  searchResults.addEventListener('click', (e) => {
+    e.stopPropagation();
+  });
+
+  // Advanced search button functionality
+  advanceButton.addEventListener('click', (e) => {
+    e.preventDefault();
+    // You can implement advanced search functionality here
+    // For now, redirect to elibrary with search parameter
+    const query = searchInput.value;
+    if (query.trim().length > 0) {
+      window.location.href = `elibrary.php?search=${encodeURIComponent(query)}`;
+    } else {
+      window.location.href = 'elibrary.php';
+    }
+  });
+
+  // Clear search when input is emptied
+  searchInput.addEventListener('input', (e) => {
+    if (e.target.value.trim().length === 0) {
+      searchResults.classList.add('hidden');
+    }
+  });
 </script>
 </body>
 </html>
