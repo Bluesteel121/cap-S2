@@ -349,19 +349,22 @@ $is_searching = !empty($search_keyword) || !empty($category_filter) || !empty($y
                         </div>
                         
                         <div class="flex flex-wrap items-center gap-2 lg:gap-4 text-xs lg:text-sm text-gray-600 mb-3">
-                            <span class="flex items-center">
-                                <i class="fas fa-user mr-1"></i>
-                                <span class="truncate max-w-[150px] lg:max-w-none"><?php echo htmlspecialchars($paper['author_name']); ?>
+                            <span class="flex items-center min-w-0">
+                                <i class="fas fa-user mr-1 flex-shrink-0"></i>
+                                <span class="truncate"><?php echo htmlspecialchars($paper['author_name']); ?>
                                 <?php if ($paper['co_authors']): ?>, <?php echo htmlspecialchars($paper['co_authors']); ?><?php endif; ?></span>
                             </span>
-                            <span><i class="fas fa-calendar mr-1"></i>Research End: <?php echo date('M d, Y', strtotime($paper['research_end_date'])); ?></span>
-                            <span><i class="fas fa-tag mr-1"></i><?php echo ucfirst(htmlspecialchars($paper['research_type'])); ?></span>
+                            <span class="hidden lg:inline flex-shrink-0">•</span>
+                            <span class="flex items-center flex-shrink-0"><i class="fas fa-calendar mr-1"></i><?php echo date('M d, Y', strtotime($paper['research_end_date'])); ?></span>
+                            <span class="hidden lg:inline flex-shrink-0">•</span>
+                            <span class="flex items-center flex-shrink-0"><i class="fas fa-tag mr-1"></i><?php echo ucfirst(htmlspecialchars($paper['research_type'])); ?></span>
                             <?php if (!empty($paper['affiliation'])): ?>
-                            <span class="hidden lg:inline"><i class="fas fa-university mr-1"></i><?php echo htmlspecialchars($paper['affiliation']); ?></span>
+                            <span class="hidden lg:inline flex-shrink-0">•</span>
+                            <span class="hidden lg:flex items-center flex-shrink-0"><i class="fas fa-university mr-1"></i><?php echo htmlspecialchars($paper['affiliation']); ?></span>
                             <?php endif; ?>
                         </div>
                         
-                        <p class="text-sm lg:text-base text-gray-700 mb-4 leading-relaxed">
+                        <p class="text-sm lg:text-base text-gray-700 mb-4 leading-relaxed break-words">
                             <?php echo htmlspecialchars(substr($paper['abstract'], 0, 200)) . '...'; ?>
                         </p>
                         
