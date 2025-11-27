@@ -333,7 +333,7 @@ $is_searching = !empty($search_keyword) || !empty($category_filter) || !empty($y
     <div class="mb-6">
       <p class="text-xs font-semibold text-white opacity-60 px-2 mb-3 uppercase tracking-wider">Main Menu</p>
       
-      <a href="index.php" class="flex items-center px-4 py-3 rounded-lg hover:bg-white hover:bg-opacity-10 transition-colors group">
+      <a href="loggedin_index.php" class="flex items-center px-4 py-3 rounded-lg hover:bg-white hover:bg-opacity-10 transition-colors group">
         <i class="fas fa-home mr-3 text-lg"></i>
         <span class="text-sm font-medium">Home</span>
       </a>
