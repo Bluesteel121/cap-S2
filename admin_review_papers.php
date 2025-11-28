@@ -318,7 +318,7 @@ function getStatusBadge($status) {
                     <i class="fas fa-bars text-xl"></i>
                 </button>
                 <div class="flex items-center space-x-2">
-                    <img src="Images/CNLRRS_icon.png" alt="Logo" class="h-8 w-auto">
+                   <img src="Images/CNLRRS_icon.png" alt="CNLRRS Logo" class="h-8 w-8 sm:h-10 sm:w-10 mr-2 flex-shrink-0">
                     <span class="text-sm font-bold">CNLRRS</span>
                 </div>
                 <div class="w-8"></div>
@@ -327,7 +327,7 @@ function getStatusBadge($status) {
             <!-- Desktop View -->
             <div class="hidden md:flex items-center justify-between">
                 <div class="flex items-center space-x-4">
-                    <img src="Images/Logo.png" alt="CNLRRS Logo" class="h-12 w-auto object-contain">
+                    <img src="Images/CNLRRS_icon.png" alt="CNLRRS Logo" class="h-8 w-8 sm:h-10 sm:w-10 mr-2 flex-shrink-0">
                     <div>
                         <h1 class="text-2xl font-bold">Paper Review System</h1>
                         <p class="text-sm opacity-75">Review and manage submitted research papers</p>

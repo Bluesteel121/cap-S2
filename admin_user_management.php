@@ -345,8 +345,8 @@ $accounts_result = $conn->query($accounts_query);
             <a href="admin_user_management.php" class="bg-green-900 text-white px-4 py-2 rounded-lg transition-colors">
               <i class="fas fa-users mr-1"></i>Users
             </a>
-            <a href="#" class="hover:text-green-700 transition-colors">Publications</a>
-            <a href="#" class="hover:text-green-700 transition-colors">Reports</a>
+            <a href="admin_review_papers.php" class="hover:text-green-700 transition-colors">Publications</a>
+            <a href="admin_reports.php" class="hover:text-green-700 transition-colors">Reports</a>
 
             <!-- Profile Picture with Admin Badge -->
             <div class="relative">
