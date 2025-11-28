@@ -12,7 +12,8 @@ require_once 'connect.php';
 
 $error_message = '';
 $success_message = '';
-
+// Set logged in flag
+$is_logged_in = true;
 // Get current user data
 $username = $_SESSION['username'] ?? '';
 $current_user_sql = "SELECT * FROM accounts WHERE username = ?";
@@ -104,7 +105,7 @@ $current_municipality = $is_philippines_address ? ($address_parts[1] ?? '') : ''
 $current_province = $is_philippines_address ? ($address_parts[2] ?? '') : '';
 $current_general_address = !$is_philippines_address ? $user_data['address'] : '';
 
-closeConnection();
+
 ?>
 <!DOCTYPE html>
 <html lang="en">
@@ -129,41 +130,76 @@ closeConnection();
             text-transform: uppercase;
         }
         
-        .sidebar {
-            height: 100%;
-            width: 0;
-            position: fixed;
-            z-index: 1;
-            top: 0;
-            left: 0;
-            background-color: #115D5B;
-            overflow-x: hidden;
-            transition: 0.5s;
-            padding-top: 60px;
-            color: white;
-        }
+        .closebtn {
+  display: block;
+  font-size: 28px;
+  font-weight: bold;
+  cursor: pointer;
+  line-height: 1;
+}
 
-        .sidebar a {
-            padding: 8px 8px 8px 32px;
-            text-decoration: none;
-            font-size: 25px;
-            color: white;
-            display: block;
-            transition: 0.3s;
-        }
+.closebtn:hover {
+  color: #f1f1f1;
+}
+.sidebar {
+  left: -256px;
+  transition: left 0.3s ease-in-out;
+}
 
-        .sidebar a:hover {
-            background-color: #103625;
-        }
+.sidebar.active {
+  left: 0;
+}
 
-        .sidebar .closebtn {
-            position: absolute;
-            top: 0;
-            right: 25px;
-            font-size: 36px;
-            margin-left: 50px;
-            color: white;
-        }
+@media (min-width: 1024px) {
+  .sidebar {
+    left: -256px !important;
+  }
+  
+  .sidebar.active {
+    left: 0 !important;
+  }
+}
+
+#mySidebar {
+  padding-bottom: 120px;
+  scrollbar-width: thin;
+  scrollbar-color: rgba(255, 255, 255, 0.2) transparent;
+}
+
+#mySidebar::-webkit-scrollbar {
+  width: 6px;
+}
+
+#mySidebar::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+#mySidebar::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.2);
+  border-radius: 3px;
+}
+
+#mySidebar::-webkit-scrollbar-thumb:hover {
+  background: rgba(255, 255, 255, 0.3);
+}
+
+.closebtn {
+  display: block;
+  font-size: 28px;
+  font-weight: bold;
+  cursor: pointer;
+}
+
+.closebtn:hover {
+  color: #f1f1f1;
+}
+
+@media (max-width: 1023px) {
+  #mySidebar {
+    padding-bottom: 140px;
+  }
+}
+
 
         .form-section {
             background: white;
@@ -321,16 +357,104 @@ closeConnection();
     </div>
 </nav>
 
-<!-- Sidebar -->
-<div id="mySidebar" class="sidebar">
-      <a href="javascript:void(0)" class="closebtn" onclick="closeSidebar()">&times;</a>
-      <a href="#">Settings</a>
-      <a href="edit_profile.php">Profile</a>
-      <a href="my_submissions.php"><i class="fas fa-file-alt mr-2"></i>My Submissions</a>
-      <a href="submit_paper.php"><i class="fas fa-plus mr-2"></i>Submit Paper</a>
-      <a href="index.php" onclick="logout()">Log Out</a>
+ <!-- Sidebar Navigation (only show when logged in) -->
+  <?php if ($is_logged_in): ?>
+  <div id="mySidebar" class="sidebar fixed left-0 top-0 h-screen w-64 bg-gradient-to-b from-[#115D5B] to-[#0e4e4c] text-white shadow-2xl transform transition-transform duration-300 z-[1000] overflow-y-auto">
+    
+    <!-- Close Button (Mobile Only) -->
+    <a href="javascript:void(0)" class="closebtn lg:hidden block absolute top-4 right-4 text-white hover:bg-white hover:bg-opacity-20 p-2 rounded-lg transition-colors text-2xl" onclick="closeSidebar()">&times;</a>
 
+    <!-- User Profile Section -->
+    <div class="px-6 py-6 border-b border-white border-opacity-20 mt-12 lg:mt-0">
+      <div class="flex items-center space-x-3 mb-4">
+        <div class="w-12 h-12 rounded-full bg-white bg-opacity-20 flex items-center justify-center">
+          <i class="fas fa-user text-lg"></i>
+        </div>
+        <div class="flex-1 min-w-0">
+          <h3 class="text-sm font-bold truncate"><?php echo isset($_SESSION['name']) ? htmlspecialchars($_SESSION['name']) : 'User'; ?></h3>
+          <p class="text-xs opacity-75 truncate"><?php echo isset($_SESSION['username']) ? htmlspecialchars($_SESSION['username']) : 'username'; ?></p>
+        </div>
+      </div>
+    </div>
+
+    <!-- Navigation Links -->
+    <nav class="px-4 py-6 space-y-2 pb-40">
+      <div class="mb-6">
+        <p class="text-xs font-semibold text-white opacity-60 px-2 mb-3 uppercase tracking-wider">Main Menu</p>
+        
+        <a href="loggedin_index.php" class="flex items-center px-4 py-3 rounded-lg hover:bg-white hover:bg-opacity-10 transition-colors group">
+          <i class="fas fa-home mr-3 text-lg"></i>
+          <span class="text-sm font-medium">Home</span>
+        </a>
+
+        <a href="edit_profile.php" class="flex items-center px-4 py-3 rounded-lg hover:bg-white hover:bg-opacity-10 transition-colors group">
+          <i class="fas fa-user-circle mr-3 text-lg"></i>
+          <span class="text-sm font-medium">Profile</span>
+        </a>
+
+        <a href="my_submissions.php" class="flex items-center px-4 py-3 rounded-lg hover:bg-white hover:bg-opacity-10 transition-colors group">
+          <i class="fas fa-file-alt mr-3 text-lg"></i>
+          <span class="text-sm font-medium">My Submissions</span>
+          <span class="ml-auto bg-white bg-opacity-20 text-xs px-2 py-1 rounded-full">
+            <?php 
+              $user_name = $_SESSION['name'];
+              $submission_query = $conn->prepare("SELECT COUNT(*) as count FROM paper_submissions WHERE author_name = ?");
+              $submission_query->bind_param("s", $user_name);
+              $submission_query->execute();
+              $submission_result = $submission_query->get_result()->fetch_assoc();
+              echo $submission_result['count'];
+            ?>
+          </span>
+        </a>
+
+        <a href="submit_paper.php" class="flex items-center px-4 py-3 rounded-lg bg-white bg-opacity-10 hover:bg-opacity-20 transition-colors group border border-white border-opacity-20">
+          <i class="fas fa-upload mr-3 text-lg"></i>
+          <span class="text-sm font-medium">Submit Paper</span>
+        </a>
+      </div>
+
+      <div class="mb-6">
+        <p class="text-xs font-semibold text-white opacity-60 px-2 mb-3 uppercase tracking-wider">Account</p>
+        
+        <a href="edit_profile.php" class="flex items-center px-4 py-3 rounded-lg hover:bg-white hover:bg-opacity-10 transition-colors group">
+          <i class="fas fa-user-circle mr-3 text-lg"></i>
+          <span class="text-sm font-medium">Edit Profile</span>
+        </a>
+
+        <a href="saved_papers.php" class="flex items-center px-4 py-3 rounded-lg hover:bg-white hover:bg-opacity-10 transition-colors group">
+          <i class="fas fa-bookmark mr-3 text-lg"></i>
+          <span class="text-sm font-medium">Saved Papers</span>
+        </a>
+      </div>
+
+      <!-- Divider -->
+      <div class="border-t border-white border-opacity-20 my-4"></div>
+
+      <div class="mb-20">
+        <p class="text-xs font-semibold text-white opacity-60 px-2 mb-3 uppercase tracking-wider">Other</p> 
+        <a href="About.php" class="flex items-center px-4 py-3 rounded-lg bg-white bg-opacity-10 hover:bg-opacity-20 transition-colors group">
+          <i class="fas fa-info-circle mr-3 text-lg"></i>
+          <span class="text-sm font-medium">About Us</span>
+        </a>
+        <a href="OurService.php" class="flex items-center px-4 py-3 rounded-lg hover:bg-white hover:bg-opacity-10 transition-colors group">
+          <i class="fas fa-handshake mr-3 text-lg"></i>
+          <span class="text-sm font-medium">Services</span>
+        </a>
+      </div>
+    </nav>
+    
+    <!-- Logout Section -->
+    <div class="fixed bottom-0 left-0 right-0 w-64 px-4 py-6 bg-gradient-to-t from-[#0e4e4c] via-[#0e4e4c] to-transparent border-t border-white border-opacity-20 lg:relative">
+      <a href="logout.php" class="flex items-center justify-center px-4 py-3 rounded-lg bg-red-600 hover:bg-red-700 transition-colors w-full group font-medium">
+        <i class="fas fa-sign-out-alt mr-2"></i>
+        <span class="text-sm">Log Out</span>
+      </a>
+    </div>
   </div>
+
+  <!-- Sidebar Overlay (Mobile) -->
+  <div id="sidebarOverlay" onclick="closeSidebar()" class="lg:hidden fixed inset-0 bg-black bg-opacity-50 hidden z-[999] transition-opacity duration-300"></div>
+  <?php endif; ?>
 
 <!-- Main Content -->
 <div class="container mx-auto px-4 py-8 max-w-4xl">
