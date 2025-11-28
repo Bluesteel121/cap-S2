@@ -244,7 +244,7 @@ session_start();
         <img src="Images/Books.png" alt="Books & Collection Services" class="h-32 w-full object-cover rounded mb-4" />
         <h3 class="font-semibold text-lg mb-2">Books & Collection Services</h3>
         <p class="text-sm text-gray-700 mb-4">Explore our library collection. Maximize both time and selection with book tools when selecting print books.</p>
-        <a href="#" class="text-[#115D5B] font-semibold hover:underline">Learn more</a>
+        <a href="elibrary.php" class="text-[#115D5B] font-semibold hover:underline">Learn more</a>
       </div>
 
       <!-- Card 2 -->
@@ -252,7 +252,7 @@ session_start();
         <img src="Images/Soil.jpg" alt="Pineapple Soil & Growth Solutions" class="h-32 w-full object-cover rounded mb-4" />
         <h3 class="font-semibold text-lg mb-2">Pineapple Soil & Growth Solutions</h3>
         <p class="text-sm text-gray-700 mb-4">Improve your farming knowledge with Pineapple Soil Amendment guides. Learn the needs of pineapple farming.</p>
-        <a href="#" class="text-[#115D5B] font-semibold hover:underline">Learn more</a>
+        <a href="elibrary.php?category=experimental" class="text-[#115D5B] font-semibold hover:underline">Learn more</a>
       </div>
 
       <!-- Card 3 -->
@@ -260,7 +260,7 @@ session_start();
         <img src="Images/Pests.jpg" alt="Pineapple Pest Resources" class="h-32 w-full object-cover rounded mb-4" />
         <h3 class="font-semibold text-lg mb-2">Pineapple Pest Resources</h3>
         <p class="text-sm text-gray-700 mb-4">Get updated on pineapple pest management. Discover solutions that protect your crops and enhance productivity.</p>
-        <a href="#" class="text-[#115D5B] font-semibold hover:underline">Browse pest solutions</a>
+        <a href="elibrary.php?category=observational" class="text-[#115D5B] font-semibold hover:underline">Browse pest solutions</a>
       </div>
 
     </div>

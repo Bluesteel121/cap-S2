@@ -1,7 +1,7 @@
 <?php
 /**
- * Universal Search System for CNLRRS
- * This file contains all search functionality for both logged-in and non-logged-in users
+ * Universal Search System for CNLRRS - Enhanced Version
+ * This file contains all search functionality with improved keyword matching
  */
 
 /**
@@ -205,6 +205,7 @@ function searchFeatures($query) {
 
 /**
  * Search for papers (logged-in users only)
+ * Enhanced to better match keywords and only show approved papers
  */
 function searchPapers($query, $conn) {
     $papers = [];
@@ -216,48 +217,72 @@ function searchPapers($query, $conn) {
     }
     
     try {
-        // Build search query
+        // Prepare search term for LIKE query
         $search_term = "%$query%";
         
-        $sql = "SELECT ps.*, 
-                       COALESCE(AVG(pr.rating), 0) as avg_rating,
-                       COUNT(pr.id) as review_count,
-                       COALESCE(SUM(CASE WHEN pm.metric_type = 'view' THEN 1 ELSE 0 END), 0) as total_views,
-                       COALESCE(SUM(CASE WHEN pm.metric_type = 'download' THEN 1 ELSE 0 END), 0) as total_downloads
+        // Simplified query without LEFT JOINs that might not exist
+        $sql = "SELECT 
+                    ps.*,
+                    0 as avg_rating,
+                    0 as review_count,
+                    0 as total_views,
+                    0 as total_downloads,
+                    (
+                        CASE WHEN ps.paper_title LIKE ? THEN 20 ELSE 0 END +
+                        CASE WHEN ps.keywords LIKE ? THEN 15 ELSE 0 END +
+                        CASE WHEN ps.abstract LIKE ? THEN 5 ELSE 0 END +
+                        CASE WHEN ps.author_name LIKE ? THEN 3 ELSE 0 END +
+                        CASE WHEN ps.co_authors LIKE ? THEN 2 ELSE 0 END +
+                        CASE WHEN ps.research_type LIKE ? THEN 1 ELSE 0 END
+                    ) as relevance_score
                 FROM paper_submissions ps 
-                LEFT JOIN paper_reviews pr ON ps.id = pr.paper_id
-                LEFT JOIN paper_metrics pm ON ps.id = pm.paper_id
-                WHERE ps.status IN ('approved', 'published')
-                AND (ps.paper_title LIKE ? 
-                     OR ps.keywords LIKE ? 
-                     OR ps.abstract LIKE ? 
-                     OR ps.author_name LIKE ? 
-                     OR ps.co_authors LIKE ?
-                     OR ps.research_type LIKE ?)
-                GROUP BY ps.id 
-                ORDER BY ps.submission_date DESC 
-                LIMIT 10";
+                WHERE ps.status = 'approved'
+                AND (
+                    ps.paper_title LIKE ? 
+                    OR ps.keywords LIKE ? 
+                    OR ps.abstract LIKE ? 
+                    OR ps.author_name LIKE ? 
+                    OR ps.co_authors LIKE ?
+                    OR ps.research_type LIKE ?
+                )
+                ORDER BY relevance_score DESC, ps.submission_date DESC 
+                LIMIT 20";
         
         $stmt = $conn->prepare($sql);
         
         if (!$stmt) {
             error_log("Prepare statement failed in searchPapers: " . $conn->error);
+            error_log("SQL: " . $sql);
             return $papers;
         }
         
-        $stmt->bind_param('ssssss', $search_term, $search_term, $search_term, $search_term, $search_term, $search_term);
+        // Bind all 12 parameters (6 for relevance score + 6 for WHERE clause)
+        $stmt->bind_param(
+            'ssssssssssss', 
+            $search_term, $search_term, $search_term, $search_term, $search_term, $search_term,  // relevance score
+            $search_term, $search_term, $search_term, $search_term, $search_term, $search_term   // WHERE clause
+        );
         
         if (!$stmt->execute()) {
             error_log("Execute failed in searchPapers: " . $stmt->error);
+            error_log("Search term: " . $search_term);
             return $papers;
         }
         
         $result = $stmt->get_result();
-        $papers = $result->fetch_all(MYSQLI_ASSOC);
+        
+        if ($result) {
+            $papers = $result->fetch_all(MYSQLI_ASSOC);
+            error_log("Search for '$query' found " . count($papers) . " papers");
+        } else {
+            error_log("No result set returned for query: " . $query);
+        }
+        
         $stmt->close();
         
     } catch (Exception $e) {
         error_log("Exception in searchPapers: " . $e->getMessage());
+        error_log("Stack trace: " . $e->getTraceAsString());
     }
     
     return $papers;
@@ -275,7 +300,48 @@ function renderSearchResults($results, $is_logged_in = false) {
         $html .= '<i class="fas fa-search text-4xl mb-2 text-gray-400"></i>';
         $html .= '<p>No results found. Try different keywords.</p>';
         $html .= '</div>';
-        return $html;
+        return $html . '</div>';
+    }
+    
+    // Papers section (logged-in only) - Show first for better visibility
+    if ($is_logged_in && !empty($results['papers'])) {
+        $html .= '<div class="results-section mb-4">';
+        $html .= '<h3 class="text-sm font-bold text-gray-700 mb-2 px-4 py-2 bg-gray-100">';
+        $html .= '<i class="fas fa-file-alt mr-2"></i>Research Papers (' . count($results['papers']) . ' results)';
+        $html .= '</h3>';
+        
+        foreach ($results['papers'] as $paper) {
+            $paper_url = 'research_details.php?id=' . $paper['id'];
+            
+            // Highlight matching keywords
+            $keywords_array = array_filter(array_map('trim', explode(',', $paper['keywords'])));
+            $keywords_display = implode(', ', array_slice($keywords_array, 0, 5));
+            if (count($keywords_array) > 5) {
+                $keywords_display .= '...';
+            }
+            
+            $html .= '<a href="' . htmlspecialchars($paper_url) . '" class="result-item block px-4 py-3 hover:bg-gray-50 border-b border-gray-100 transition-colors">';
+            $html .= '<div class="font-semibold text-[#115D5B] mb-1">' . htmlspecialchars($paper['paper_title']) . '</div>';
+            $html .= '<div class="text-xs text-gray-500 mb-1 flex items-center gap-2 flex-wrap">';
+            $html .= '<span class="flex items-center"><i class="fas fa-user text-xs mr-1"></i>' . htmlspecialchars($paper['author_name']) . '</span>';
+            $html .= '<span>•</span>';
+            $html .= '<span class="flex items-center"><i class="fas fa-calendar text-xs mr-1"></i>' . date('Y', strtotime($paper['submission_date'])) . '</span>';
+            $html .= '<span>•</span>';
+            $html .= '<span class="flex items-center"><i class="fas fa-flask text-xs mr-1"></i>' . htmlspecialchars($paper['research_type']) . '</span>';
+            $html .= '</div>';
+            
+            // Show keywords
+            if (!empty($keywords_display)) {
+                $html .= '<div class="text-xs text-blue-600 mb-1 flex items-start">';
+                $html .= '<i class="fas fa-tags text-xs mr-1 mt-0.5"></i>';
+                $html .= '<span>' . htmlspecialchars($keywords_display) . '</span>';
+                $html .= '</div>';
+            }
+            
+            $html .= '<div class="text-sm text-gray-600">' . htmlspecialchars(substr($paper['abstract'], 0, 180)) . '...</div>';
+            $html .= '</a>';
+        }
+        $html .= '</div>';
     }
     
     // Pages section
@@ -299,25 +365,6 @@ function renderSearchResults($results, $is_logged_in = false) {
             $html .= '<a href="' . htmlspecialchars($feature['url']) . '" class="result-item block px-4 py-3 hover:bg-gray-50 border-b border-gray-100">';
             $html .= '<div class="font-semibold text-[#115D5B]">' . htmlspecialchars($feature['title']) . '</div>';
             $html .= '<div class="text-sm text-gray-600">' . htmlspecialchars($feature['description']) . '</div>';
-            $html .= '</a>';
-        }
-        $html .= '</div>';
-    }
-    
-    // Papers section (logged-in only)
-    if ($is_logged_in && !empty($results['papers'])) {
-        $html .= '<div class="results-section mb-4">';
-        $html .= '<h3 class="text-sm font-bold text-gray-700 mb-2 px-4 py-2 bg-gray-100"><i class="fas fa-file-alt mr-2"></i>Research Papers</h3>';
-        foreach ($results['papers'] as $paper) {
-            $paper_url = $is_logged_in ? 'paper_details_loggedin.php?id=' : 'paper_details.php?id=';
-            $html .= '<a href="' . $paper_url . $paper['id'] . '" class="result-item block px-4 py-3 hover:bg-gray-50 border-b border-gray-100">';
-            $html .= '<div class="font-semibold text-[#115D5B]">' . htmlspecialchars($paper['paper_title']) . '</div>';
-            $html .= '<div class="text-xs text-gray-500 mb-1">';
-            $html .= '<span>' . htmlspecialchars($paper['author_name']) . '</span> • ';
-            $html .= '<span>' . date('Y', strtotime($paper['submission_date'])) . '</span> • ';
-            $html .= '<span>' . htmlspecialchars($paper['research_type']) . '</span>';
-            $html .= '</div>';
-            $html .= '<div class="text-sm text-gray-600">' . htmlspecialchars(substr($paper['abstract'], 0, 150)) . '...</div>';
             $html .= '</a>';
         }
         $html .= '</div>';
