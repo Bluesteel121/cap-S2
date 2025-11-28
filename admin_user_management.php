@@ -322,18 +322,15 @@ $accounts_result = $conn->query($accounts_query);
       <div class="nav-container">
         <div class="max-w-7xl mx-auto px-4 flex flex-wrap justify-between items-center gap-4">
           <!-- Search Bar -->
-          <div class="search-container">
-            <div class="flex border border-green-900 rounded-full overflow-hidden bg-white">
-              <input
-                type="text"
-                id="searchUsers"
-                placeholder="Search users by name, username, or email..."
-                class="flex-grow px-4 py-2 text-sm text-gray-700 placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-green-500 focus:ring-inset"
-              />
-              <button class="px-4 text-green-900 hover:bg-green-50 transition-colors">
-                <i class="fas fa-search"></i>
-              </button>
-            </div>
+          <div>
+
+
+
+
+
+
+          
+           
           </div>
 
           <!-- Navigation Links -->

@@ -1407,3 +1407,4 @@
 [2025-11-28 08:33:14] USER: glaz nemz | IP: ::1 | PAGE: /cap-s2/loggedin_index.php | ACTION: PAGE_VIEW | DETAILS: Page: Dashboard - Home View | USER_AGENT: Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/142.0.0.0 Safari/537.36
 [2025-11-28 08:33:42] USER: glaz nemz | IP: ::1 | PAGE: /cap-s2/loggedin_index.php | ACTION: PAGE_VIEW | DETAILS: Page: Dashboard - Home View | USER_AGENT: Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/142.0.0.0 Safari/537.36
 >>>>>>> 42716cf380d67e26628a7b3bbd305dd843b6cb8f
+[2025-11-28 08:45:39] USER: Guest | IP: ::1 | PAGE: /cap-s2/admin_login_handler.php | ACTION: LOGIN_SUCCESS | DETAILS: User logged in with role: admin | USER_AGENT: Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/142.0.0.0 Safari/537.36
