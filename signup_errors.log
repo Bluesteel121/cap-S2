@@ -149,3 +149,24 @@
 
 2025-11-03 07:02:04 - Determined address: San Agustin, Pili (Capital), Camarines Sur
 2025-11-03 07:02:04 - Address validation passed.
+2025-11-30 07:34:48 - Script started.
+2025-11-30 07:34:48 - $_POST data: Array
+(
+    [username] => mark
+    [fullname] => mark allen raynes
+    [contact_number] => 09234565536
+    [email] => raynesmarkallen@gmail.com
+    [password] => pass
+    [confirm_password] => pass
+    [birth_month] => 01
+    [birth_day] => 19
+    [birth_year] => 2004
+    [birth_date] => 2004-01-19
+    [province] => Camarines Norte
+    [municipality] => Daet (Capital)
+    [barangay] => Gahonon
+    [general_address] => 
+)
+
+2025-11-30 07:34:48 - Determined address: Gahonon, Daet (Capital), Camarines Norte
+2025-11-30 07:34:48 - Address validation passed.

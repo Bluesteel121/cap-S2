@@ -167,7 +167,7 @@ if (!isset($_SESSION['username']) || $_SESSION['role'] !== 'admin') {
                     <div class="h-6 w-px bg-white opacity-30"></div>
                     <h1 class="text-2xl font-bold flex items-center">
                         <i class="fas fa-chart-line mr-3"></i>
-                        Enhanced Analytics Dashboard
+                        Analytics Dashboard
                     </h1>
                 </div>
                 <div class="flex items-center space-x-4">
