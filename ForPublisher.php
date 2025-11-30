@@ -276,8 +276,7 @@ $is_logged_in = isset($_SESSION['name']);
   <?php endif; ?>
   
   <div class="w-full flex justify-center my-1">
-    <img src="Images/PublishersCn.png" alt="Section Divider" class="w-full h-26 object-cover" />
-  </div>
+    
 </main>
 
 <!-- Full-width line -->
