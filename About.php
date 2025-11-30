@@ -178,10 +178,12 @@ $is_logged_in = isset($_SESSION['name']);
   
   <!-- Sidebar Navigation (only show when logged in) -->
   <?php if ($is_logged_in): ?>
-  <div id="mySidebar" class="sidebar fixed left-0 top-0 h-screen w-64 bg-gradient-to-b from-[#115D5B] to-[#0e4e4c] text-white shadow-2xl transform transition-transform duration-300 z-[1000] overflow-y-auto">
+  <div id="mySidebar" class="sidebar fixed left-0 top-0 h-screen w-64 bg-gradient-to-b from-[#115D5B] to-[#0e4e4c] 
+  text-white shadow-2xl transform transition-transform duration-300 z-[1000] overflow-y-auto">
     
     <!-- Close Button (Mobile Only) -->
-    <a href="javascript:void(0)" class="closebtn lg:hidden block absolute top-4 right-4 text-white hover:bg-white hover:bg-opacity-20 p-2 rounded-lg transition-colors text-2xl" onclick="closeSidebar()">&times;</a>
+    <a href="javascript:void(0)" class="closebtn lg:hidden block absolute top-4 right-4 text-white
+     hover:bg-white hover:bg-opacity-20 p-2 rounded-lg transition-colors text-2xl" onclick="closeSidebar()">&times;</a>
 
     <!-- User Profile Section -->
     <div class="px-6 py-6 border-b border-white border-opacity-20 mt-12 lg:mt-0">
@@ -276,8 +278,7 @@ $is_logged_in = isset($_SESSION['name']);
   <?php endif; ?>
   
   <div class="w-full flex justify-center my-1">
-    <img src="Images/AboutCn.png" alt="Section Divider" class="w-full h-26 object-cover" />
-  </div>
+    
 </main>
 
 <!-- Full-width line -->
