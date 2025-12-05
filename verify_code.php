@@ -52,16 +52,16 @@ $email = $_SESSION['reset_email'];
         }
         
         // LOCALHOST ONLY: Display the verification code for easy testing
-        if (isset($_SESSION['reset_code_for_testing'])) {
-            echo "<div class='bg-blue-100 border border-blue-400 text-blue-700 px-4 py-3 rounded relative mb-4' role='alert'>";
-            echo "<strong>🔧 Localhost Testing - Verification Code:</strong><br>";
-            echo "<div class='mt-2 p-4 bg-white rounded border border-blue-300 text-center' style='font-size: 24px; font-weight: bold; letter-spacing: 3px;'>";
-            echo htmlspecialchars($_SESSION['reset_code_for_testing']);
-            echo "</div>";
-            echo "</div>";
-            unset($_SESSION['reset_code_for_testing']);
-        }
-        ?>
+        // if (isset($_SESSION['reset_code_for_testing'])) {
+        //     echo "<div class='bg-blue-100 border border-blue-400 text-blue-700 px-4 py-3 rounded relative mb-4' role='alert'>";
+        //     echo "<strong>🔧 Localhost Testing - Verification Code:</strong><br>";
+        //     echo "<div class='mt-2 p-4 bg-white rounded border border-blue-300 text-center' style='font-size: 24px; font-weight: bold; letter-spacing: 3px;'>";
+        //     echo htmlspecialchars($_SESSION['reset_code_for_testing']);
+        //     echo "</div>";
+        //     echo "</div>";
+        //     unset($_SESSION['reset_code_for_testing']);
+        // }
+         ?>
 
         <form action="verify_code_handler.php" method="POST" id="verifyForm">
             <h2 class="text-2xl font-bold text-center mb-6">Verify Code</h2>
