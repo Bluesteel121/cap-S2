@@ -1,182 +1,138 @@
 <?php
-session_start();
+// Enable error display for localhost debugging
+error_reporting(E_ALL);
+ini_set('display_errors', 1);
 
+session_start();
+require_once 'user_activity_logger.php';
 require_once 'connect.php';
 require_once 'email_config.php';
-require_once 'includes/debug.php';
+require_once 'send_email.php';
 
-// Function to validate password strength
-function validatePasswordStrength($password) {
-    $errors = [];
+if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+    $email = trim($_POST['email'] ?? '');
     
-    if (strlen($password) < 8) {
-        $errors[] = "Password must be at least 8 characters long.";
+    logActivity('FORGOT_PASSWORD_HANDLER_CALLED', 'Email: ' . $email);
+    
+    // Basic validation
+    if (empty($email)) {
+        $_SESSION['forgot_error'] = 'Please provide an email address.';
+        header('Location: forgot_password.php');
+        exit();
     }
     
-    if (!preg_match('/[A-Z]/', $password)) {
-        $errors[] = "Password must contain at least one uppercase letter.";
+    if (!filter_var($email, FILTER_VALIDATE_EMAIL)) {
+        $_SESSION['forgot_error'] = 'Please provide a valid email address.';
+        header('Location: forgot_password.php');
+        exit();
     }
     
-    if (!preg_match('/[a-z]/', $password)) {
-        $errors[] = "Password must contain at least one lowercase letter.";
-    }
-    
-    if (!preg_match('/[0-9]/', $password)) {
-        $errors[] = "Password must contain at least one number.";
-    }
-    
-    return $errors;
-}
-
-// Function to send password change confirmation email
-function sendPasswordChangeConfirmation($userEmail, $userName) {
-    $subject = "Password Changed Successfully - CNLRRS";
-    
-    $body = "
-    <div style='font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;'>
-        <div style='background-color: #f8f9fa; padding: 20px; text-align: center; border-radius: 8px 8px 0 0;'>
-            <h2 style='color: #28a745; margin: 0;'>Password Changed Successfully</h2>
-        </div>
+    try {
+        // Find the correct table name
+        $tableToUse = 'accounts';
+        $checkAccounts = $conn->query("SHOW TABLES LIKE 'accounts'");
+        if ($checkAccounts->num_rows === 0) {
+            $checkUsers = $conn->query("SHOW TABLES LIKE 'users'");
+            if ($checkUsers->num_rows > 0) {
+                $tableToUse = 'users';
+            } else {
+                throw new Exception("No 'accounts' or 'users' table found in database.");
+            }
+        }
         
-        <div style='padding: 30px; background-color: white; border: 1px solid #dee2e6;'>
-            <p>Hello <strong>" . htmlspecialchars($userName) . "</strong>,</p>
-            
-            <p>Your password for your CNLRRS E-Library account has been successfully changed.</p>
-            
-            <div style='background-color: #d4edda; padding: 15px; border-radius: 5px; border-left: 4px solid #28a745; margin: 20px 0;'>
-                <p style='margin: 0; color: #155724;'><strong>Security Details:</strong></p>
-                <ul style='margin: 5px 0 0 20px; color: #155724;'>
-                    <li>Date: " . date('F j, Y \a\t g:i A') . "</li>
-                    <li>IP Address: " . ($_SERVER['REMOTE_ADDR'] ?? 'Unknown') . "</li>
-                    <li>Browser: " . (isset($_SERVER['HTTP_USER_AGENT']) ? substr($_SERVER['HTTP_USER_AGENT'], 0, 100) : 'Unknown') . "</li>
-                </ul>
-            </div>
-            
-            <div style='background-color: #fff3cd; padding: 15px; border-radius: 5px; border-left: 4px solid #ffc107; margin: 20px 0;'>
-                <p style='margin: 0; color: #856404;'><strong>Important:</strong></p>
-                <p style='margin: 5px 0 0 0; color: #856404;'>If you did not make this change, please contact us immediately at <strong>dacnlrrs@gmail.com</strong> or log into your account and change your password again.</p>
-            </div>
-            
-            <p>You can now log in to your account using your new password.</p>
-            
-            <div style='text-align: center; margin: 30px 0;'>
-                <a href='http://" . $_SERVER['HTTP_HOST'] . dirname($_SERVER['PHP_SELF']) . "/userlogin.php' 
-                   style='background-color: #28a745; color: white; padding: 12px 25px; text-decoration: none; border-radius: 5px; display: inline-block; font-weight: bold;'>
-                    Login to Your Account
-                </a>
-            </div>
-        </div>
+        // Check and add missing columns if needed
+        $columnsCheck = $conn->query("SHOW COLUMNS FROM $tableToUse LIKE 'reset_code'");
+        if ($columnsCheck->num_rows === 0) {
+            $conn->query("ALTER TABLE $tableToUse ADD COLUMN reset_code VARCHAR(10) NULL");
+            $conn->query("ALTER TABLE $tableToUse ADD COLUMN reset_code_expiry DATETIME NULL");
+        }
         
-        <div style='background-color: #f8f9fa; padding: 20px; text-align: center; border-radius: 0 0 8px 8px; color: #6c757d; font-size: 14px;'>
-            <p style='margin: 0;'>This email was sent from CNLRRS E-Library System</p>
-            <p style='margin: 5px 0 0 0;'>If you need help, contact us at: <strong>dacnlrrs@gmail.com</strong></p>
-        </div>
-    </div>";
-    
-    return EmailService::sendEmail($userEmail, $subject, $body);
-}
-
-// Check if form is submitted
-if ($_SERVER["REQUEST_METHOD"] == "POST") {
-    $token = $_POST['token'] ?? '';
-    $newPassword = $_POST['new_password'] ?? '';
-    $confirmPassword = $_POST['confirm_password'] ?? '';
-    
-    // Validate inputs
-    if (empty($token) || empty($newPassword) || empty($confirmPassword)) {
-        $_SESSION['password_reset_error'] = "All fields are required.";
-        header("Location: reset_password.php?token=" . urlencode($token));
-        exit();
-    }
-    
-    if ($newPassword !== $confirmPassword) {
-        $_SESSION['password_reset_error'] = "Passwords do not match.";
-        header("Location: reset_password.php?token=" . urlencode($token));
-        exit();
-    }
-    
-    // Validate password strength
-    $passwordErrors = validatePasswordStrength($newPassword);
-    if (!empty($passwordErrors)) {
-        $_SESSION['password_reset_error'] = implode(" ", $passwordErrors);
-        header("Location: reset_password.php?token=" . urlencode($token));
-        exit();
-    }
-    
-    // Verify token is valid and not expired
-    $sql = "SELECT prt.id, prt.user_id, prt.email, prt.used, a.name, a.username 
-            FROM password_reset_tokens prt 
-            JOIN accounts a ON prt.user_id = a.id 
-            WHERE prt.token = ? AND prt.expires_at > NOW() AND prt.used = FALSE";
-    
-    if ($stmt = $conn->prepare($sql)) {
-        $stmt->bind_param("s", $token);
+        // Get table structure to find username field
+        $columns = [];
+        $result = $conn->query("SHOW COLUMNS FROM $tableToUse");
+        while ($row = $result->fetch_assoc()) {
+            $columns[] = $row['Field'];
+        }
+        
+        $usernameField = 'email'; // default fallback
+        if (in_array('username', $columns)) {
+            $usernameField = 'username';
+        } elseif (in_array('name', $columns)) {
+            $usernameField = 'name';
+        }
+        
+        // Check if user exists
+        $stmt = $conn->prepare("SELECT id, $usernameField as username, email FROM $tableToUse WHERE email = ?");
+        if (!$stmt) {
+            throw new Exception("Database error: " . $conn->error);
+        }
+        
+        $stmt->bind_param("s", $email);
         $stmt->execute();
         $result = $stmt->get_result();
         
-        if ($tokenData = $result->fetch_assoc()) {
-            $userId = $tokenData['user_id'];
-            $userEmail = $tokenData['email'];
-            $userName = $tokenData['name'];
-            $tokenId = $tokenData['id'];
-            
-            // Update user password (storing as plain text as per your current system)
-            // Note: In production, you should hash passwords
-            $updateSql = "UPDATE accounts SET password = ?, updated_at = NOW() WHERE id = ?";
-            
-            if ($updateStmt = $conn->prepare($updateSql)) {
-                $updateStmt->bind_param("si", $newPassword, $userId);
-                
-                if ($updateStmt->execute()) {
-                    // Mark token as used
-                    $markUsedSql = "UPDATE password_reset_tokens SET used = TRUE WHERE id = ?";
-                    $markUsedStmt = $conn->prepare($markUsedSql);
-                    $markUsedStmt->bind_param("i", $tokenId);
-                    $markUsedStmt->execute();
-                    $markUsedStmt->close();
-                    
-                    // Send confirmation email
-                    $emailSent = sendPasswordChangeConfirmation($userEmail, $userName);
-                    
-                    // Log successful password reset
-                    logActivity('PASSWORD_RESET_SUCCESS', "User ID: $userId, Email: $userEmail");
-                    
-                    // Set success message and redirect to login
-                    $_SESSION['login_success'] = "Your password has been reset successfully! " . 
-                                                ($emailSent ? "A confirmation email has been sent to your email address." : "");
-                    
-                    header("Location: userlogin.php");
-                    exit();
-                    
-                } else {
-                    $_SESSION['password_reset_error'] = "Failed to update password. Please try again.";
-                    logError("Failed to update password for user ID: $userId");
-                }
-                
-                $updateStmt->close();
-            } else {
-                $_SESSION['password_reset_error'] = "Database error occurred. Please try again.";
-                logError("Failed to prepare password update query");
-            }
-            
-        } else {
-            $_SESSION['password_reset_error'] = "This password reset link is invalid or has expired. Please request a new password reset.";
-            logActivity('PASSWORD_RESET_INVALID_TOKEN_USED', "Invalid token: $token");
+        if ($result->num_rows === 0) {
+            // For security, show success message even if user doesn't exist
+            $_SESSION['forgot_success'] = 'If an account exists with this email, a verification code has been sent.';
+            logActivity('FORGOT_PASSWORD_NO_USER', 'Email not found: ' . $email);
+            header('Location: forgot_password.php');
+            exit();
         }
         
-        $stmt->close();
-    } else {
-        $_SESSION['password_reset_error'] = "Database error occurred. Please try again.";
-        logError("Failed to prepare token verification query");
+        $user = $result->fetch_assoc();
+        $userId = $user['id'];
+        $username = $user['username'] ?? 'User';
+        
+        // Generate 6-digit verification code (no hashing)
+        $resetCode = sprintf("%06d", mt_rand(0, 999999));
+        
+        // Extended expiry for testing (15 minutes)
+        $expiryTime = date('Y-m-d H:i:s', strtotime('+15 minutes'));
+        
+        // Save code to database (plain text, no hash)
+        $updateStmt = $conn->prepare("UPDATE $tableToUse SET reset_code = ?, reset_code_expiry = ? WHERE id = ?");
+        if (!$updateStmt) {
+            throw new Exception("Database error: " . $conn->error);
+        }
+        
+        $updateStmt->bind_param("ssi", $resetCode, $expiryTime, $userId);
+        
+        if (!$updateStmt->execute()) {
+            throw new Exception("Failed to save reset code: " . $updateStmt->error);
+        }
+        
+        // For localhost testing, ALWAYS show the code
+        $_SESSION['reset_code_for_testing'] = $resetCode;
+        $_SESSION['reset_email'] = $email;
+        
+        // Send verification code via email
+        $emailSent = sendPasswordResetCodeEmail($email, $username, $resetCode);
+        
+        if ($emailSent) {
+            $_SESSION['forgot_success'] = 'A 6-digit verification code has been sent to your email. Please check your inbox (or see code below for localhost testing).';
+            logActivity('FORGOT_PASSWORD_SUCCESS', 'Verification code sent to: ' . $email);
+        } else {
+            // For localhost testing, show the code
+            $_SESSION['forgot_success'] = 'Verification code generated. (Email sending may have failed - check code below)';
+        }
+        
+        // Always log for localhost testing
+        error_log("==============================================");
+        error_log("VERIFICATION CODE FOR: $email");
+        error_log("CODE: $resetCode");
+        error_log("=======================================================================================");
+        
+    } catch (Exception $e) {
+        $_SESSION['forgot_error'] = 'Error: ' . $e->getMessage();
+        logActivity('FORGOT_PASSWORD_EXCEPTION', $e->getMessage());
+        error_log('Forgot Password Error: ' . $e->getMessage());
     }
     
-    closeConnection();
-    header("Location: reset_password.php?token=" . urlencode($token));
-    exit();
-    
-} else {
-    // Not a POST request
-    header("Location: forgot_password.php");
+    header('Location: verify_code.php');
     exit();
 }
+
+// If not POST, redirect
+header('Location: forgot_password.php');
+exit();
 ?>

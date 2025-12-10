@@ -141,6 +141,7 @@
 [2025-11-28 08:45:39] Successful login for admin user: 'john'
 [2025-11-30 07:28:08] Successful login for admin user: 'john'
 [2025-11-30 08:01:21] Successful login for admin user: 'john'
+<<<<<<< HEAD
 [2025-12-03 00:33:51] Successful login for admin user: 'john'
 [2025-12-04 00:15:02] Successful login for admin user: 'john'
 [2025-12-04 00:16:34] Successful login for admin user: 'john'
@@ -150,3 +151,6 @@
 [2025-12-10 06:18:31] Successful login for admin user: 'john'
 [2025-12-10 06:30:29] Successful login for admin user: 'john'
 [2025-12-10 06:49:09] Successful login for admin user: 'john'
+=======
+[2025-12-02 15:57:11] Successful login for admin user: 'john'
+>>>>>>> 5260d73246da8eb7aaf74a15189d69aa55a7938c

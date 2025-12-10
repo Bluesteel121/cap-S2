@@ -69,10 +69,21 @@ logPageView('User Signup Page');
                 <label for="fullname" class="block text-sm font-medium text-gray-700 mb-1">Full Name</label>
                 <input type="text" id="fullname" name="fullname" placeholder="Enter full name" class="border w-full px-4 py-2 rounded-lg focus:ring-green-500 focus:border-green-500" required>
             </div>
+        
             <div class="mb-4">
-                <label for="contact_number" class="block text-sm font-medium text-gray-700 mb-1">Contact Number</label>
-                <input type="tel" id="contact_number" name="contact_number" placeholder="Enter contact number" class="border w-full px-4 py-2 rounded-lg focus:ring-green-500 focus:border-green-500" required>
-            </div>
+        <label for="contact_number" class="block text-sm font-medium text-gray-700 mb-1">Contact Number</label>
+        <input 
+         type="tel" 
+         id="contact_number" 
+            name="contact_number" 
+            placeholder="+63 9XX XXX XXXX" 
+            class="border w-full px-4 py-2 rounded-lg focus:ring-green-500 focus:border-green-500" 
+            pattern="^\+63\d{10}$"
+            maxlength="13"
+            required>
+     <small class="text-gray-500 mt-1 block">Format: +63 followed by 10 digits (e.g., +639123456789)</small>
+    </div>
+
             <div class="mb-4">
                 <label for="email" class="block text-sm font-medium text-gray-700 mb-1">Email address</label>
                 <input type="email" id="email" name="email" placeholder="Enter email address" class="border w-full px-4 py-2 rounded-lg focus:ring-green-500 focus:border-green-500" required>
@@ -161,6 +172,8 @@ logPageView('User Signup Page');
                     <textarea id="general_address" name="general_address" rows="3" placeholder="Enter your general address" class="border w-full px-4 py-2 rounded-lg focus:ring-green-500 focus:border-green-500"></textarea>
                 </div>
             </div>
+
+            
 
             <button type="submit" class="bg-green-500 text-white w-full py-2 mt-4 rounded-lg hover:bg-green-700 transition-colors duration-200">
                 Sign Up
@@ -405,6 +418,42 @@ logPageView('User Signup Page');
                 body: 'action=' + encodeURIComponent(action) + '&details=' + encodeURIComponent(details)
             }).catch(error => console.error('Logging error:', error));
         }
+
+
+        const phoneInput = document.getElementById('contact_number');
+    
+    phoneInput.addEventListener('input', function(e) {
+        let value = e.target.value.replace(/\D/g, ''); // Remove non-digits
+        
+        // If user enters 9 followed by 9 digits, or just 10 digits starting with 9, format it
+        if (value.length > 0) {
+            if (!value.startsWith('63')) {
+                if (value.startsWith('0')) {
+                    value = '63' + value.substring(1);
+                } else if (value.startsWith('9')) {
+                    value = '63' + value;
+                }
+            }
+            
+            // Ensure it doesn't exceed +63 + 10 digits
+            if (value.length > 12) {
+                value = value.substring(0, 12);
+            }
+            
+            // Format with +63
+            e.target.value = '+' + value;
+        }
+    });
+    
+    phoneInput.addEventListener('blur', function(e) {
+        const value = e.target.value.replace(/\D/g, '');
+        
+        if (value.length > 0 && value.length < 12) {
+            e.target.classList.add('border-red-500');
+        } else {
+            e.target.classList.remove('border-red-500');
+        }
+    });
     </script>
 </body>
 </html>

@@ -82,6 +82,12 @@ logPageView('User Login Page');
             <a href="usersignup.php" class="text-sm text-green-600 hover:underline">Don't have an account? Sign Up</a>
         </div>
         
+        <div class="mt-4 text-center border-t pt-4">
+    <p class="text-sm text-gray-600 mb-2">Trouble logging in?</p>
+    <a href="forgot_password.php" class="text-green-600 hover:underline font-semibold">
+        Reset your password
+    </a>
+</div>
         <!-- Fixed Back to Account Selection Button -->
         <div class="mt-6 text-center">
             <a href="account.php" class="inline-block bg-gray-200 text-gray-800 px-4 py-2 rounded-lg hover:bg-gray-300 transition-colors duration-200">
