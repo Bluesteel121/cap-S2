@@ -1,62 +1,154 @@
 <?php
 session_start();
 
-// Check if user is logged in - NOW USING 'username' instead of 'name'
 if (!isset($_SESSION['username']) || empty($_SESSION['username'])) {
     header('Location: account.php');
     exit();
 }
 
-// Store session variables for easier access
 $current_username = $_SESSION['username'];
-$display_name = $_SESSION['name'] ?? $_SESSION['username']; // Use 'name' if available, otherwise 'username'
+$display_name = $_SESSION['name'] ?? $_SESSION['username'];
 
-// Include database connection
 require_once 'connect.php';
+require_once 'email_config.php';
 
-
-try {
-    // First, let's check what columns actually exist in the table
-    $columns_sql = "DESCRIBE paper_submissions";
-    $columns_result = $conn->query($columns_sql);
-    $available_columns = [];
-    while ($row = $columns_result->fetch_assoc()) {
-        $available_columns[] = $row['Field'];
-    }
-
-    // Build the SELECT query based on available columns
-    $select_fields = [
-        'ps.id',
-        'ps.paper_title',
-        'ps.research_type',
-        'ps.keywords',
-        'ps.author_name',
-        'ps.abstract',
-        'ps.file_path',
-        'ps.status',
-        'ps.submission_date',
-        'ps.reviewer_comments',
-        'ps.user_name'
-    ];
-
-    // Add optional enhanced fields if they exist
-    $optional_fields = [
-        'author_email', 'affiliation', 'co_authors', 'methodology',
-        'funding_source', 'research_start_date', 'research_end_date',
-        'ethics_approval', 'additional_comments', 'reviewed_by',
-        'review_date', 'terms_agreement', 'email_consent', 'data_consent'
-    ];
-
-    foreach ($optional_fields as $field) {
-        if (in_array($field, $available_columns)) {
-            $select_fields[] = "ps.$field";
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['submit_revision'])) {
+    header('Content-Type: application/json');
+    
+    try {
+        $paper_id = (int)$_POST['paper_id'];
+        $author_response = trim($_POST['author_response'] ?? '');
+        
+        // Verify paper belongs to user
+        $verify_sql = "SELECT ps.*, a.name as author_full_name, a.email as user_email 
+                       FROM paper_submissions ps 
+                       LEFT JOIN accounts a ON ps.user_name = a.username 
+                       WHERE ps.id = ? AND LOWER(ps.user_name) = LOWER(?)";
+        $stmt = $conn->prepare($verify_sql);
+        $stmt->bind_param('is', $paper_id, $current_username);
+        $stmt->execute();
+        $paper = $stmt->get_result()->fetch_assoc();
+        
+        if (!$paper || $paper['status'] !== 'revision_requested') {
+            throw new Exception('Invalid paper or paper not awaiting revision');
         }
+        
+        // Handle file upload
+        $new_file_path = null;
+        if (isset($_FILES['revised_file']) && $_FILES['revised_file']['error'] === UPLOAD_ERR_OK) {
+            $upload_dir = 'uploads/papers/revisions/';
+            if (!file_exists($upload_dir)) {
+                mkdir($upload_dir, 0777, true);
+            }
+            
+            $file_extension = pathinfo($_FILES['revised_file']['name'], PATHINFO_EXTENSION);
+            $new_filename = 'revised_' . $paper_id . '_' . time() . '.' . $file_extension;
+            $new_file_path = $upload_dir . $new_filename;
+            
+            if (!move_uploaded_file($_FILES['revised_file']['tmp_name'], $new_file_path)) {
+                throw new Exception('Failed to upload revised file');
+            }
+        } else {
+            throw new Exception('Revised file is required');
+        }
+        
+        $conn->begin_transaction();
+        
+        // Update paper submission
+        $update_sql = "UPDATE paper_submissions 
+                       SET is_revised = TRUE,
+                           revision_submitted_date = NOW(),
+                           previous_file_path = file_path,
+                           file_path = ?,
+                           updated_at = NOW()
+                       WHERE id = ?";
+        $stmt = $conn->prepare($update_sql);
+        $stmt->bind_param('si', $new_file_path, $paper_id);
+        $stmt->execute();
+        
+        // Update revision record
+        $rev_update_sql = "UPDATE paper_revisions 
+                           SET status = 'submitted',
+                               submitted_date = NOW(),
+                               new_file_path = ?,
+                               author_response = ?
+                           WHERE paper_id = ? AND status = 'pending'
+                           ORDER BY revision_number DESC LIMIT 1";
+        $stmt = $conn->prepare($rev_update_sql);
+        $stmt->bind_param('ssi', $new_file_path, $author_response, $paper_id);
+        $stmt->execute();
+        
+        // Create notification for admin
+        $notif_sql = "INSERT INTO submission_notifications 
+                      (paper_id, user_name, notification_type, message, created_at) 
+                      VALUES (?, 'admin', 'revision_submitted', 'Author has submitted revised version of paper', NOW())";
+        $stmt = $conn->prepare($notif_sql);
+        $stmt->bind_param('i', $paper_id);
+        $stmt->execute();
+        
+        $conn->commit();
+        
+        // Send admin notification email
+        $paperData = [
+            'paper_title' => $paper['paper_title'],
+            'author_name' => $paper['author_name'] ?? $paper['author_full_name'],
+            'research_type' => $paper['research_type'],
+            'revision_count' => $paper['revision_count'] ?? 1,
+            'reviewed_by' => $paper['reviewed_by'] ?? 'N/A',
+            'revision_notes' => $author_response,
+            'submitted_by' => $current_username
+        ];
+        
+        $email_sent = false;
+        $email_error = null;
+        
+        try {
+            $email_sent = EmailService::sendAdminNotification($paperData, 'revision', $conn);
+            
+            if (!$email_sent) {
+                $email_error = "Admin notification email failed to send";
+                error_log("Failed to send admin notification for revision of paper ID: $paper_id");
+            }
+        } catch (Exception $e) {
+            $email_error = $e->getMessage();
+            error_log("Exception sending admin notification for revision: " . $email_error);
+        }
+        
+        // Log activity
+        if (function_exists('logActivity')) {
+            $activity_msg = "Paper ID: $paper_id, Revision submitted by: $current_username";
+            if ($email_sent) {
+                $activity_msg .= ", Admin notification: Sent";
+            } else {
+                $activity_msg .= ", Admin notification: FAILED - $email_error";
+            }
+            logActivity('REVISION_SUBMITTED', $activity_msg);
+        }
+        
+        echo json_encode([
+            'success' => true, 
+            'message' => 'Revision submitted successfully!' . ($email_sent ? '' : ' (Admin notification email may not have been sent)'),
+            'email_sent' => $email_sent
+        ]);
+        
+    } catch (Exception $e) {
+        if ($conn) $conn->rollback();
+        error_log("Revision submission error: " . $e->getMessage());
+        echo json_encode(['success' => false, 'error' => $e->getMessage()]);
     }
-
-    // Build the main query
-    $sql = "SELECT " . implode(', ', $select_fields) . ",
-                   COALESCE(view_count.views, 0) as total_views,
-                   COALESCE(download_count.downloads, 0) as total_downloads
+    exit();
+}
+// Fetch submissions with revision info
+try {
+    $sql = "SELECT ps.*, 
+            COALESCE(view_count.views, 0) as total_views,
+            COALESCE(download_count.downloads, 0) as total_downloads,
+            CASE 
+                WHEN ps.revision_requested_date IS NOT NULL THEN 
+                    DATEDIFF(NOW(), ps.revision_requested_date)
+                ELSE 0
+            END as days_since_revision_request,
+            (SELECT COUNT(*) FROM paper_revisions WHERE paper_id = ps.id) as total_revisions
             FROM paper_submissions ps
             LEFT JOIN (
                 SELECT paper_id, COUNT(*) as views 
@@ -74,11 +166,6 @@ try {
             ORDER BY ps.submission_date DESC";
     
     $stmt = $conn->prepare($sql);
-    if (!$stmt) {
-        throw new Exception("Prepare failed: " . $conn->error);
-    }
-    
-    // FIX: Use $current_username instead of $_SESSION['name']
     $stmt->bind_param("s", $current_username);
     $stmt->execute();
     $result = $stmt->get_result();
@@ -89,7 +176,6 @@ try {
     $error_message = "Database error: " . $e->getMessage();
 }
 
-// Status badge colors
 function getStatusBadge($status) {
     switch($status) {
         case 'pending':
@@ -98,8 +184,8 @@ function getStatusBadge($status) {
             return 'bg-blue-100 text-blue-800 border border-blue-200';
         case 'approved':
             return 'bg-green-100 text-green-800 border border-green-200';
-        case 'rejected':
-            return 'bg-red-100 text-red-800 border border-red-200';
+        case 'revision_requested':
+            return 'bg-orange-100 text-orange-800 border border-orange-200';
         case 'published':
             return 'bg-purple-100 text-purple-800 border border-purple-200';
         default:
@@ -107,7 +193,6 @@ function getStatusBadge($status) {
     }
 }
 
-// Research type display mapping
 function getResearchTypeDisplay($type) {
     $types = [
         'experimental' => 'Experimental Research',
@@ -119,13 +204,11 @@ function getResearchTypeDisplay($type) {
     return $types[$type] ?? ucfirst($type);
 }
 
-// Check if submission is enhanced (has new fields)
 function isEnhancedSubmission($submission) {
     return !empty($submission['author_email']) || !empty($submission['affiliation']) || 
            !empty($submission['methodology']) || !empty($submission['funding_source']);
 }
 
-// Function to render submission row
 function renderSubmissionRow($submission) {
     ?>
     <div class="submission-row p-6 transition-all duration-200">
@@ -140,10 +223,21 @@ function renderSubmissionRow($submission) {
                                     <i class="fas fa-star mr-1"></i>Enhanced
                                 </span>
                             <?php endif; ?>
+                            <?php if ($submission['status'] === 'revision_requested' && $submission['is_revised']): ?>
+                                <span class="revision-badge inline-flex items-center px-2 py-1 text-xs font-semibold rounded-full bg-green-100 text-green-800 ml-2">
+                                    <i class="fas fa-check-circle mr-1"></i>Revised & Submitted
+                                </span>
+                            <?php endif; ?>
                         </h4>
                         <div class="flex flex-wrap items-center gap-4 text-sm text-gray-600 mb-2">
                             <span><strong>Type:</strong> <?php echo getResearchTypeDisplay($submission['research_type']); ?></span>
                             <span><strong>Submitted:</strong> <?php echo date('M j, Y g:i A', strtotime($submission['submission_date'])); ?></span>
+                            <?php if ($submission['status'] === 'revision_requested' && $submission['days_since_revision_request'] > 0): ?>
+                                <span class="inline-flex items-center px-2 py-1 rounded-full bg-orange-100 text-orange-800">
+                                    <i class="fas fa-clock mr-1"></i>
+                                    <?php echo $submission['days_since_revision_request']; ?> day<?php echo $submission['days_since_revision_request'] != 1 ? 's' : ''; ?> since revision requested
+                                </span>
+                            <?php endif; ?>
                             <?php if ((isset($submission['total_views']) && $submission['total_views'] > 0) || (isset($submission['total_downloads']) && $submission['total_downloads'] > 0)): ?>
                                 <span class="flex items-center space-x-3">
                                     <span class="flex items-center"><i class="fas fa-eye text-blue-500 mr-1"></i><?php echo $submission['total_views'] ?? 0; ?></span>
@@ -157,40 +251,18 @@ function renderSubmissionRow($submission) {
                     </span>
                 </div>
                 
-                <div class="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm text-gray-600">
-                    <div>
-                        <p><strong>Primary Author:</strong> <?php echo htmlspecialchars($submission['author_name']); ?></p>
-                        <?php if (!empty($submission['author_email'])): ?>
-                            <p><strong>Email:</strong> <?php echo htmlspecialchars($submission['author_email']); ?></p>
-                        <?php endif; ?>
-                        <?php if (!empty($submission['affiliation'])): ?>
-                            <p><strong>Affiliation:</strong> <?php echo htmlspecialchars($submission['affiliation']); ?></p>
-                        <?php endif; ?>
-                    </div>
-                    <div>
-                        <?php if (!empty($submission['co_authors'])): ?>
-                            <p><strong>Co-authors:</strong> <?php echo htmlspecialchars($submission['co_authors']); ?></p>
-                        <?php endif; ?>
-                        <?php if (!empty($submission['funding_source'])): ?>
-                            <p><strong>Funding:</strong> <?php echo htmlspecialchars($submission['funding_source']); ?></p>
-                        <?php endif; ?>
-                        <?php if (!empty($submission['research_start_date']) && !empty($submission['research_end_date'])): ?>
-                            <p><strong>Research Period:</strong> 
-                               <?php echo date('M Y', strtotime($submission['research_start_date'])); ?> - 
-                               <?php echo date('M Y', strtotime($submission['research_end_date'])); ?>
-                            </p>
-                        <?php endif; ?>
-                    </div>
-                </div>
-                
                 <div class="mt-3">
                     <p class="text-sm"><strong>Keywords:</strong> <?php echo htmlspecialchars($submission['keywords']); ?></p>
                 </div>
                 
                 <?php if (!empty($submission['reviewer_comments'])): ?>
-                    <div class="mt-4 p-4 bg-gray-50 rounded-lg border-l-4 border-blue-400">
-                        <p class="text-sm font-semibold text-gray-700 mb-1">Reviewer Comments:</p>
-                        <p class="text-sm text-gray-700"><?php echo nl2br(htmlspecialchars($submission['reviewer_comments'])); ?></p>
+                    <div class="mt-4 p-4 <?php echo $submission['status'] === 'revision_requested' ? 'bg-orange-50 border-l-4 border-orange-400' : 'bg-gray-50 border-l-4 border-blue-400'; ?>">
+                        <p class="text-sm font-semibold <?php echo $submission['status'] === 'revision_requested' ? 'text-orange-700' : 'text-gray-700'; ?> mb-1">
+                            <?php echo $submission['status'] === 'revision_requested' ? 'Revision Required:' : 'Reviewer Comments:'; ?>
+                        </p>
+                        <p class="text-sm <?php echo $submission['status'] === 'revision_requested' ? 'text-orange-700' : 'text-gray-700'; ?>">
+                            <?php echo nl2br(htmlspecialchars($submission['reviewer_comments'])); ?>
+                        </p>
                         <?php if (!empty($submission['reviewed_by'])): ?>
                             <p class="text-xs text-gray-500 mt-2">
                                 Reviewed by: <?php echo htmlspecialchars($submission['reviewed_by']); ?>
@@ -216,7 +288,12 @@ function renderSubmissionRow($submission) {
                     </a>
                 <?php endif; ?>
                 
-                <?php if ($submission['status'] === 'pending'): ?>
+                <?php if ($submission['status'] === 'revision_requested' && !$submission['is_revised']): ?>
+                    <button onclick="openRevisionModal(<?php echo $submission['id']; ?>)" 
+                        class="bg-orange-500 hover:bg-orange-600 text-white px-4 py-2 rounded-lg text-sm font-medium transition-all duration-200 flex items-center justify-center animate-pulse">
+                        <i class="fas fa-edit mr-2"></i>Submit Revision
+                    </button>
+                <?php elseif ($submission['status'] === 'pending'): ?>
                     <button onclick="editPaper(<?php echo $submission['id']; ?>)" 
                         class="bg-yellow-500 hover:bg-yellow-600 text-white px-4 py-2 rounded-lg text-sm font-medium transition-all duration-200 flex items-center justify-center">
                         <i class="fas fa-edit mr-2"></i>Edit
@@ -229,6 +306,13 @@ function renderSubmissionRow($submission) {
                         <i class="fas fa-external-link-alt mr-2"></i>View Published
                     </a>
                 <?php endif; ?>
+                
+                <?php if ($submission['total_revisions'] > 0): ?>
+                    <button onclick="viewRevisionHistory(<?php echo $submission['id']; ?>)" 
+                        class="bg-gray-500 hover:bg-gray-600 text-white px-4 py-2 rounded-lg text-sm font-medium transition-all duration-200 flex items-center justify-center">
+                        <i class="fas fa-history mr-2"></i>History (<?php echo $submission['total_revisions']; ?>)
+                    </button>
+                <?php endif; ?>
             </div>
         </div>
     </div>
@@ -240,7 +324,7 @@ $submissionsByStatus = [
     'pending' => [],
     'under_review' => [],
     'approved_published' => [],
-    'rejected' => []
+    'revision_requested' => []
 ];
 
 foreach ($submissions as $submission) {
@@ -257,7 +341,7 @@ foreach ($submissions as $submission) {
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>My Submissions - CNLRRS</title>
-     <link rel="icon" href="Images/Favicon.ico">
+    <link rel="icon" href="Images/Favicon.ico">
     <script src="https://cdn.tailwindcss.com"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
     <style>
@@ -266,14 +350,12 @@ foreach ($submissions as $submission) {
             transform: translateY(-1px);
             box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
         }
-        .enhanced-badge {
+        .enhanced-badge, .revision-badge {
             animation: pulse 2s infinite;
         }
-        .metric-card {
-            transition: all 0.3s ease;
-        }
-        .metric-card:hover {
-            transform: scale(1.05);
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.8; }
         }
         .tab-button {
             transition: all 0.3s ease;
@@ -284,26 +366,12 @@ foreach ($submissions as $submission) {
             background-color: #f0fdfa;
             color: #115D5B;
         }
-        .tab-button:hover:not(.active) {
-            background-color: #f9fafb;
-        }
         .tab-content {
             display: none;
         }
         .tab-content.active {
             display: block;
         }
-        .status-icon {
-            width: 12px;
-            height: 12px;
-            border-radius: 50%;
-            display: inline-block;
-            margin-right: 8px;
-        }
-        .status-pending { background-color: #f59e0b; }
-        .status-under_review { background-color: #3b82f6; }
-        .status-approved_published { background-color: #10b981; }
-        .status-rejected { background-color: #ef4444; }
     </style>
 </head>
 <body class="bg-gradient-to-br from-gray-50 to-blue-50 min-h-screen">
@@ -342,7 +410,7 @@ foreach ($submissions as $submission) {
                     <h2 class="text-3xl font-bold text-[#115D5B] mb-2">
                         Welcome, <?php echo htmlspecialchars($display_name); ?>!
                     </h2>
-                    <p class="text-gray-600 text-lg">Here you can view and manage all your proposal submissions</p>
+                    <p class="text-gray-600 text-lg">Here you can view and manage all your proposal submissions and revisions</p>
                 </div>
             </div>
         </div>
@@ -359,7 +427,7 @@ foreach ($submissions as $submission) {
                 <div class="p-12 text-center">
                     <i class="fas fa-file-alt text-8xl text-gray-300 mb-6"></i>
                     <h3 class="text-2xl font-semibold text-gray-500 mb-4">No submissions yet</h3>
-                    <p class="text-gray-400 mb-8 max-w-md mx-auto">You haven't submitted any papers yet. Start by submitting your first research paper using our enhanced DOST-compliant form!</p>
+                    <p class="text-gray-400 mb-8 max-w-md mx-auto">You haven't submitted any papers yet. Start by submitting your first research paper!</p>
                     <a href="submit_paper.php" class="bg-gradient-to-r from-[#115D5B] to-green-600 hover:from-[#0d4a47] hover:to-green-700 text-white px-8 py-4 rounded-lg font-semibold text-lg shadow-lg transition-all duration-300 transform hover:scale-105">
                         <i class="fas fa-plus mr-3"></i>Submit Your First Paper
                     </a>
@@ -369,28 +437,24 @@ foreach ($submissions as $submission) {
                     <nav class="flex space-x-8 px-6">
                         <button class="tab-button flex items-center py-4 px-2 text-sm font-medium text-gray-500 hover:text-gray-700 active" 
                                 onclick="showTab('all')">
-                            <span class="status-icon bg-gray-400"></span>
                             All Submissions (<?php echo count($submissions); ?>)
                         </button>
                         <button class="tab-button flex items-center py-4 px-2 text-sm font-medium text-gray-500 hover:text-gray-700" 
                                 onclick="showTab('pending')">
-                            <span class="status-icon status-pending"></span>
                             Pending (<?php echo count($submissionsByStatus['pending']); ?>)
                         </button>
                         <button class="tab-button flex items-center py-4 px-2 text-sm font-medium text-gray-500 hover:text-gray-700" 
                                 onclick="showTab('under_review')">
-                            <span class="status-icon status-under_review"></span>
                             Under Review (<?php echo count($submissionsByStatus['under_review']); ?>)
                         </button>
                         <button class="tab-button flex items-center py-4 px-2 text-sm font-medium text-gray-500 hover:text-gray-700" 
-                                onclick="showTab('approved_published')">
-                            <span class="status-icon status-approved_published"></span>
-                            Published (<?php echo count($submissionsByStatus['approved_published']); ?>)
+                                onclick="showTab('revision_requested')">
+                            <i class="fas fa-exclamation-circle text-orange-500 mr-1"></i>
+                            Needs Revision (<?php echo count($submissionsByStatus['revision_requested']); ?>)
                         </button>
                         <button class="tab-button flex items-center py-4 px-2 text-sm font-medium text-gray-500 hover:text-gray-700" 
-                                onclick="showTab('rejected')">
-                            <span class="status-icon status-rejected"></span>
-                            Rejected (<?php echo count($submissionsByStatus['rejected']); ?>)
+                                onclick="showTab('approved_published')">
+                            Published (<?php echo count($submissionsByStatus['approved_published']); ?>)
                         </button>
                     </nav>
                 </div>
@@ -406,7 +470,7 @@ foreach ($submissions as $submission) {
                         <div class="p-12 text-center">
                             <i class="fas fa-clock text-6xl text-yellow-300 mb-4"></i>
                             <h3 class="text-xl font-semibold text-gray-500 mb-2">No Pending Submissions</h3>
-                            <p class="text-gray-400">All your submissions have been reviewed or are currently under review.</p>
+                            <p class="text-gray-400">All your submissions have been reviewed.</p>
                         </div>
                     <?php else: ?>
                         <?php foreach ($submissionsByStatus['pending'] as $submission): ?>
@@ -420,10 +484,33 @@ foreach ($submissions as $submission) {
                         <div class="p-12 text-center">
                             <i class="fas fa-search text-6xl text-blue-300 mb-4"></i>
                             <h3 class="text-xl font-semibold text-gray-500 mb-2">No Submissions Under Review</h3>
-                            <p class="text-gray-400">You don't have any papers currently being reviewed by our team.</p>
+                            <p class="text-gray-400">You don't have any papers currently being reviewed.</p>
                         </div>
                     <?php else: ?>
                         <?php foreach ($submissionsByStatus['under_review'] as $submission): ?>
+                            <?php renderSubmissionRow($submission); ?>
+                        <?php endforeach; ?>
+                    <?php endif; ?>
+                </div>
+
+                <div id="tab-revision_requested" class="tab-content divide-y divide-gray-200">
+                    <?php if (empty($submissionsByStatus['revision_requested'])): ?>
+                        <div class="p-12 text-center">
+                            <i class="fas fa-edit text-6xl text-orange-300 mb-4"></i>
+                            <h3 class="text-xl font-semibold text-gray-500 mb-2">No Revisions Needed</h3>
+                            <p class="text-gray-400">Great! None of your submissions currently need revision.</p>
+                        </div>
+                    <?php else: ?>
+                        <div class="bg-orange-50 border-l-4 border-orange-400 p-4 m-6">
+                            <div class="flex">
+                                <i class="fas fa-info-circle text-orange-500 mr-2 mt-1"></i>
+                                <div>
+                                    <h4 class="font-semibold text-orange-800">Action Required</h4>
+                                    <p class="text-sm text-orange-700 mt-1">The papers below require revisions. Please review the feedback and submit your revised versions.</p>
+                                </div>
+                            </div>
+                        </div>
+                        <?php foreach ($submissionsByStatus['revision_requested'] as $submission): ?>
                             <?php renderSubmissionRow($submission); ?>
                         <?php endforeach; ?>
                     <?php endif; ?>
@@ -434,24 +521,10 @@ foreach ($submissions as $submission) {
                         <div class="p-12 text-center">
                             <i class="fas fa-check-circle text-6xl text-green-300 mb-4"></i>
                             <h3 class="text-xl font-semibold text-gray-500 mb-2">No Published Papers</h3>
-                            <p class="text-gray-400">You don't have any published papers yet. Keep working on your research!</p>
+                            <p class="text-gray-400">You don't have any published papers yet.</p>
                         </div>
                     <?php else: ?>
                         <?php foreach ($submissionsByStatus['approved_published'] as $submission): ?>
-                            <?php renderSubmissionRow($submission); ?>
-                        <?php endforeach; ?>
-                    <?php endif; ?>
-                </div>
-
-                <div id="tab-rejected" class="tab-content divide-y divide-gray-200">
-                    <?php if (empty($submissionsByStatus['rejected'])): ?>
-                        <div class="p-12 text-center">
-                            <i class="fas fa-times-circle text-6xl text-red-300 mb-4"></i>
-                            <h3 class="text-xl font-semibold text-gray-500 mb-2">No Rejected Submissions</h3>
-                            <p class="text-gray-400">Great! None of your submissions have been rejected.</p>
-                        </div>
-                    <?php else: ?>
-                        <?php foreach ($submissionsByStatus['rejected'] as $submission): ?>
                             <?php renderSubmissionRow($submission); ?>
                         <?php endforeach; ?>
                     <?php endif; ?>
@@ -460,6 +533,63 @@ foreach ($submissions as $submission) {
         </div>
     </div>
 
+    <!-- Revision Modal -->
+    <div id="revisionModal" class="fixed inset-0 bg-gray-600 bg-opacity-50 hidden items-center justify-center z-50 p-4">
+        <div class="bg-white rounded-xl shadow-2xl max-w-3xl w-full max-h-[90vh] overflow-y-auto">
+            <div class="bg-gradient-to-r from-orange-600 to-orange-500 text-white p-6 rounded-t-xl sticky top-0">
+                <div class="flex justify-between items-center">
+                    <h3 class="text-xl font-semibold flex items-center">
+                        <i class="fas fa-edit mr-3"></i>Submit Revised Paper
+                    </h3>
+                    <button onclick="closeRevisionModal()" class="text-white hover:text-gray-200 transition">
+                        <i class="fas fa-times text-xl"></i>
+                    </button>
+                </div>
+            </div>
+            <form id="revisionForm" class="p-6" enctype="multipart/form-data">
+                <input type="hidden" id="revision_paper_id" name="paper_id">
+                <input type="hidden" name="submit_revision" value="1">
+                
+                <div id="revision_feedback" class="mb-6 p-4 bg-orange-50 border-l-4 border-orange-400 rounded">
+                    <!-- Will be populated dynamically -->
+                </div>
+
+                <div class="mb-6">
+                    <label class="block text-sm font-semibold text-gray-700 mb-2">
+                        <i class="fas fa-upload mr-2"></i>Upload Revised Paper (PDF) *
+                    </label>
+                    <input type="file" id="revised_file" name="revised_file" accept=".pdf" required
+                           class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500">
+                    <p class="text-xs text-gray-500 mt-2">
+                        <i class="fas fa-info-circle mr-1"></i>
+                        Please upload your revised paper addressing all the reviewer comments.
+                    </p>
+                </div>
+
+                <div class="mb-6">
+                    <label class="block text-sm font-semibold text-gray-700 mb-2">
+                        Your Response to Reviewer (Optional)
+                    </label>
+                    <textarea id="author_response" name="author_response" rows="5"
+                              class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500"
+                              placeholder="Explain the changes you made in response to the reviewer's feedback..."></textarea>
+                </div>
+
+                <div class="flex gap-3">
+                    <button type="submit" 
+                            class="flex-1 bg-orange-600 hover:bg-orange-700 text-white px-6 py-3 rounded-lg transition font-semibold">
+                        <i class="fas fa-paper-plane mr-2"></i>Submit Revision
+                    </button>
+                    <button type="button" onclick="closeRevisionModal()" 
+                            class="flex-1 bg-gray-500 hover:bg-gray-600 text-white px-6 py-3 rounded-lg transition font-semibold">
+                        Cancel
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Paper Details Modal -->
     <div id="paperModal" class="fixed inset-0 bg-gray-600 bg-opacity-50 hidden items-center justify-center z-50">
         <div class="bg-white rounded-xl shadow-2xl max-w-5xl w-full mx-4 max-h-[90vh] overflow-y-auto">
             <div class="bg-gradient-to-r from-[#115D5B] to-[#0d4a47] text-white p-6 rounded-t-xl">
@@ -472,8 +602,24 @@ foreach ($submissions as $submission) {
                     </button>
                 </div>
             </div>
-            <div id="paperContent" class="p-6">
+            <div id="paperContent" class="p-6"></div>
+        </div>
+    </div>
+
+    <!-- Revision History Modal -->
+    <div id="revisionHistoryModal" class="fixed inset-0 bg-gray-600 bg-opacity-50 hidden items-center justify-center z-50">
+        <div class="bg-white rounded-xl shadow-2xl max-w-4xl w-full mx-4 max-h-[90vh] overflow-y-auto">
+            <div class="bg-gradient-to-r from-gray-700 to-gray-600 text-white p-6 rounded-t-xl">
+                <div class="flex justify-between items-center">
+                    <h3 class="text-xl font-semibold flex items-center">
+                        <i class="fas fa-history mr-3"></i>Revision History
+                    </h3>
+                    <button onclick="closeRevisionHistoryModal()" class="text-white hover:text-gray-200 transition">
+                        <i class="fas fa-times text-xl"></i>
+                    </button>
+                </div>
             </div>
+            <div id="revisionHistoryContent" class="p-6"></div>
         </div>
     </div>
 
@@ -488,24 +634,87 @@ foreach ($submissions as $submission) {
     <script>
         const submissions = <?php echo json_encode($submissions); ?>;
 
-        // Tab functionality
         function showTab(tabName) {
-            // Hide all tab contents
             document.querySelectorAll('.tab-content').forEach(content => {
                 content.classList.remove('active');
             });
             
-            // Remove active class from all tab buttons
             document.querySelectorAll('.tab-button').forEach(button => {
                 button.classList.remove('active');
             });
             
-            // Show selected tab content
             document.getElementById(`tab-${tabName}`).classList.add('active');
-            
-            // Add active class to clicked tab button
             event.currentTarget.classList.add('active');
         }
+
+        function openRevisionModal(paperId) {
+            const paper = submissions.find(p => p.id == paperId);
+            
+            if (paper && paper.status === 'revision_requested') {
+                document.getElementById('revision_paper_id').value = paperId;
+                
+                document.getElementById('revision_feedback').innerHTML = `
+                    <h4 class="font-semibold text-orange-800 mb-2">Reviewer Feedback:</h4>
+                    <p class="text-sm text-orange-700 whitespace-pre-wrap">${escapeHtml(paper.reviewer_comments)}</p>
+                    ${paper.reviewed_by ? `
+                        <p class="text-xs text-orange-600 mt-2">
+                            Reviewed by: ${escapeHtml(paper.reviewed_by)} on ${new Date(paper.review_date).toLocaleDateString()}
+                        </p>
+                    ` : ''}
+                    ${paper.days_since_revision_request > 0 ? `
+                        <div class="mt-3 flex items-center text-orange-700">
+                            <i class="fas fa-clock mr-2"></i>
+                            <span class="text-sm font-semibold">
+                                ${paper.days_since_revision_request} day${paper.days_since_revision_request != 1 ? 's' : ''} since revision was requested
+                            </span>
+                        </div>
+                    ` : ''}
+                `;
+                
+                document.getElementById('revised_file').value = '';
+                document.getElementById('author_response').value = '';
+                
+                document.getElementById('revisionModal').classList.remove('hidden');
+                document.getElementById('revisionModal').classList.add('flex');
+            }
+        }
+
+        function closeRevisionModal() {
+            document.getElementById('revisionModal').classList.add('hidden');
+            document.getElementById('revisionModal').classList.remove('flex');
+        }
+
+        document.getElementById('revisionForm').addEventListener('submit', async function(e) {
+            e.preventDefault();
+            
+            const formData = new FormData(this);
+            const submitBtn = this.querySelector('button[type="submit"]');
+            const originalText = submitBtn.innerHTML;
+            
+            submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin mr-2"></i>Submitting...';
+            submitBtn.disabled = true;
+            
+            try {
+                const response = await fetch(window.location.href, {
+                    method: 'POST',
+                    body: formData
+                });
+                
+                const data = await response.json();
+                
+                if (data.success) {
+                    showNotification('Revision submitted successfully! Your paper will be reviewed again.', 'success');
+                    closeRevisionModal();
+                    setTimeout(() => window.location.reload(), 2000);
+                } else {
+                    throw new Error(data.error || 'Failed to submit revision');
+                }
+            } catch (error) {
+                showNotification('Error: ' + error.message, 'error');
+                submitBtn.innerHTML = originalText;
+                submitBtn.disabled = false;
+            }
+        });
 
         function viewPaper(paperId) {
             const paper = submissions.find(p => p.id == paperId);
@@ -521,7 +730,26 @@ foreach ($submissions as $submission) {
                                 <i class="fas fa-star text-blue-600 mr-2"></i>
                                 <span class="font-semibold text-blue-800">DOST-Compliant Enhanced Submission</span>
                             </div>
-                            <p class="text-sm text-blue-700 mt-1">This submission includes comprehensive research information following DOST standards.</p>
+                        </div>
+                        ` : ''}
+                        
+                        ${paper.status === 'revision_requested' ? `
+                        <div class="bg-orange-50 border border-orange-200 p-4 rounded-lg">
+                            <div class="flex items-center mb-2">
+                                <i class="fas fa-exclamation-circle text-orange-600 mr-2"></i>
+                                <span class="font-semibold text-orange-800">Revision Required</span>
+                                ${paper.is_revised ? `
+                                    <span class="ml-auto inline-flex items-center px-3 py-1 rounded-full bg-green-100 text-green-800 text-sm">
+                                        <i class="fas fa-check-circle mr-1"></i>Revised & Submitted
+                                    </span>
+                                ` : ''}
+                            </div>
+                            ${paper.days_since_revision_request > 0 ? `
+                                <p class="text-sm text-orange-700">
+                                    <i class="fas fa-clock mr-1"></i>
+                                    ${paper.days_since_revision_request} day${paper.days_since_revision_request != 1 ? 's' : ''} since revision was requested
+                                </p>
+                            ` : ''}
                         </div>
                         ` : ''}
                         
@@ -536,32 +764,6 @@ foreach ($submissions as $submission) {
                             </div>
                         </div>
                         
-                        <div class="grid grid-cols-1 ${isEnhanced ? 'md:grid-cols-3' : 'md:grid-cols-2'} gap-6">
-                            <div>
-                                <h4 class="font-semibold text-gray-800 mb-2">Primary Author:</h4>
-                                <p class="text-gray-700 bg-gray-50 p-3 rounded-lg">${escapeHtml(paper.author_name)}</p>
-                            </div>
-                            ${paper.author_email ? `
-                            <div>
-                                <h4 class="font-semibold text-gray-800 mb-2">Author Email:</h4>
-                                <p class="text-gray-700 bg-gray-50 p-3 rounded-lg">${escapeHtml(paper.author_email)}</p>
-                            </div>
-                            ` : ''}
-                            ${paper.affiliation ? `
-                            <div>
-                                <h4 class="font-semibold text-gray-800 mb-2">Affiliation:</h4>
-                                <p class="text-gray-700 bg-gray-50 p-3 rounded-lg">${escapeHtml(paper.affiliation)}</p>
-                            </div>
-                            ` : ''}
-                        </div>
-
-                        ${paper.co_authors ? `
-                        <div>
-                            <h4 class="font-semibold text-gray-800 mb-2">Co-Authors:</h4>
-                            <p class="text-gray-700 bg-gray-50 p-3 rounded-lg">${escapeHtml(paper.co_authors)}</p>
-                        </div>
-                        ` : ''}
-                        
                         <div>
                             <h4 class="font-semibold text-gray-800 mb-2">Keywords:</h4>
                             <p class="text-gray-700 bg-gray-50 p-3 rounded-lg">${escapeHtml(paper.keywords)}</p>
@@ -572,44 +774,16 @@ foreach ($submissions as $submission) {
                             <div class="text-gray-700 bg-gray-50 p-4 rounded-lg whitespace-pre-wrap max-h-40 overflow-y-auto">${escapeHtml(paper.abstract)}</div>
                         </div>
                         
-                        ${paper.methodology ? `
+                        ${paper.reviewer_comments ? `
                         <div>
-                            <h4 class="font-semibold text-gray-800 mb-2">Research Methodology:</h4>
-                            <div class="text-gray-700 bg-gray-50 p-4 rounded-lg whitespace-pre-wrap">${escapeHtml(paper.methodology)}</div>
-                        </div>
-                        ` : ''}
-                        
-                        ${paper.funding_source || (paper.research_start_date && paper.research_end_date) ? `
-                        <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
-                            ${paper.funding_source ? `
-                            <div>
-                                <h4 class="font-semibold text-gray-800 mb-2">Funding Source:</h4>
-                                <p class="text-gray-700 bg-gray-50 p-3 rounded-lg">${escapeHtml(paper.funding_source)}</p>
-                            </div>
-                            ` : ''}
-                            ${paper.research_start_date && paper.research_end_date ? `
-                            <div>
-                                <h4 class="font-semibold text-gray-800 mb-2">Research Period:</h4>
-                                <p class="text-gray-700 bg-gray-50 p-3 rounded-lg">
-                                    ${new Date(paper.research_start_date).toLocaleDateString()} - 
-                                    ${new Date(paper.research_end_date).toLocaleDateString()}
+                            <h4 class="font-semibold text-gray-800 mb-2">Review Comments:</h4>
+                            <div class="text-gray-700 ${paper.status === 'revision_requested' ? 'bg-orange-50 border-l-4 border-orange-400' : 'bg-yellow-50 border-l-4 border-yellow-400'} p-4 rounded-lg whitespace-pre-wrap">${escapeHtml(paper.reviewer_comments)}</div>
+                            ${paper.reviewed_by ? `
+                                <p class="text-sm text-gray-500 mt-2">
+                                    Reviewed by: ${escapeHtml(paper.reviewed_by)}
+                                    ${paper.review_date ? ` on ${new Date(paper.review_date).toLocaleDateString()}` : ''}
                                 </p>
-                            </div>
                             ` : ''}
-                        </div>
-                        ` : ''}
-                        
-                        ${paper.ethics_approval ? `
-                        <div>
-                            <h4 class="font-semibold text-gray-800 mb-2">Ethics Approval/Permits:</h4>
-                            <div class="text-gray-700 bg-gray-50 p-4 rounded-lg whitespace-pre-wrap">${escapeHtml(paper.ethics_approval)}</div>
-                        </div>
-                        ` : ''}
-                        
-                        ${paper.additional_comments ? `
-                        <div>
-                            <h4 class="font-semibold text-gray-800 mb-2">Additional Comments:</h4>
-                            <div class="text-gray-700 bg-gray-50 p-4 rounded-lg whitespace-pre-wrap">${escapeHtml(paper.additional_comments)}</div>
                         </div>
                         ` : ''}
                         
@@ -643,41 +817,6 @@ foreach ($submissions as $submission) {
                             </div>
                         </div>
                         ` : ''}
-                        
-                        ${paper.reviewer_comments ? `
-                        <div>
-                            <h4 class="font-semibold text-gray-800 mb-2">Review Comments:</h4>
-                            <div class="text-gray-700 bg-yellow-50 p-4 rounded-lg border-l-4 border-yellow-400 whitespace-pre-wrap">${escapeHtml(paper.reviewer_comments)}</div>
-                            ${paper.reviewed_by ? `
-                                <p class="text-sm text-gray-500 mt-2">
-                                    Reviewed by: ${escapeHtml(paper.reviewed_by)}
-                                    ${paper.review_date ? ` on ${new Date(paper.review_date).toLocaleDateString()}` : ''}
-                                </p>
-                            ` : ''}
-                        </div>
-                        ` : ''}
-                        
-                        ${isEnhanced ? `
-                        <div class="bg-gray-50 border border-gray-200 p-4 rounded-lg">
-                            <h4 class="font-semibold text-gray-800 mb-2">
-                                <i class="fas fa-check-circle text-green-600 mr-2"></i>Submission Compliance
-                            </h4>
-                            <div class="grid grid-cols-3 gap-4 text-sm">
-                                <div class="flex items-center">
-                                    <i class="fas fa-${paper.terms_agreement ? 'check text-green-600' : 'times text-red-600'} mr-2"></i>
-                                    Terms Agreement
-                                </div>
-                                <div class="flex items-center">
-                                    <i class="fas fa-${paper.email_consent ? 'check text-green-600' : 'times text-red-600'} mr-2"></i>
-                                    Email Consent
-                                </div>
-                                <div class="flex items-center">
-                                    <i class="fas fa-${paper.data_consent ? 'check text-green-600' : 'times text-red-600'} mr-2"></i>
-                                    Data Consent
-                                </div>
-                            </div>
-                        </div>
-                        ` : ''}
                     </div>
                 `;
                 document.getElementById('paperModal').classList.remove('hidden');
@@ -690,6 +829,58 @@ foreach ($submissions as $submission) {
             document.getElementById('paperModal').classList.remove('flex');
         }
 
+        async function viewRevisionHistory(paperId) {
+            try {
+                const response = await fetch(`get_revision_history.php?paper_id=${paperId}`);
+                const data = await response.json();
+                
+                if (data.success && data.revisions) {
+                    const historyHTML = data.revisions.map((rev, index) => `
+                        <div class="border-l-4 ${rev.status === 'submitted' ? 'border-green-400 bg-green-50' : 'border-orange-400 bg-orange-50'} p-4 rounded mb-4">
+                            <div class="flex justify-between items-start mb-2">
+                                <h4 class="font-semibold text-gray-800">
+                                    Revision #${rev.revision_number}
+                                    ${rev.status === 'submitted' ? '<span class="ml-2 text-green-600"><i class="fas fa-check-circle"></i> Submitted</span>' : '<span class="ml-2 text-orange-600"><i class="fas fa-clock"></i> Pending</span>'}
+                                </h4>
+                                <span class="text-sm text-gray-500">${new Date(rev.requested_date).toLocaleDateString()}</span>
+                            </div>
+                            <div class="text-sm text-gray-700 mb-2">
+                                <strong>Requested by:</strong> ${escapeHtml(rev.requested_by)}
+                            </div>
+                            <div class="text-sm text-gray-700 mb-2">
+                                <strong>Reviewer Comments:</strong>
+                                <p class="mt-1 whitespace-pre-wrap">${escapeHtml(rev.reviewer_comments)}</p>
+                            </div>
+                            ${rev.submitted_date ? `
+                                <div class="text-sm text-gray-700 mb-2">
+                                    <strong>Submitted on:</strong> ${new Date(rev.submitted_date).toLocaleDateString()}
+                                </div>
+                            ` : ''}
+                            ${rev.author_response ? `
+                                <div class="text-sm text-gray-700 bg-white p-3 rounded mt-2">
+                                    <strong>Your Response:</strong>
+                                    <p class="mt-1 whitespace-pre-wrap">${escapeHtml(rev.author_response)}</p>
+                                </div>
+                            ` : ''}
+                        </div>
+                    `).join('');
+                    
+                    document.getElementById('revisionHistoryContent').innerHTML = historyHTML || '<p class="text-gray-500 text-center py-8">No revision history available.</p>';
+                    document.getElementById('revisionHistoryModal').classList.remove('hidden');
+                    document.getElementById('revisionHistoryModal').classList.add('flex');
+                } else {
+                    showNotification('Failed to load revision history', 'error');
+                }
+            } catch (error) {
+                showNotification('Error loading revision history: ' + error.message, 'error');
+            }
+        }
+
+        function closeRevisionHistoryModal() {
+            document.getElementById('revisionHistoryModal').classList.add('hidden');
+            document.getElementById('revisionHistoryModal').classList.remove('flex');
+        }
+
         function editPaper(paperId) {
             window.location.href = `edit_paper.php?id=${paperId}`;
         }
@@ -699,7 +890,7 @@ foreach ($submissions as $submission) {
                 case 'pending': return 'bg-yellow-100 text-yellow-800 border border-yellow-200';
                 case 'under_review': return 'bg-blue-100 text-blue-800 border border-blue-200';
                 case 'approved': return 'bg-green-100 text-green-800 border border-green-200';
-                case 'rejected': return 'bg-red-100 text-red-800 border border-red-200';
+                case 'revision_requested': return 'bg-orange-100 text-orange-800 border border-orange-200';
                 case 'published': return 'bg-purple-100 text-purple-800 border border-purple-200';
                 default: return 'bg-gray-100 text-gray-800 border border-gray-200';
             }
@@ -728,29 +919,67 @@ foreach ($submissions as $submission) {
             return text.toString().replace(/[&<>"']/g, function(m) { return map[m]; });
         }
 
-        // Close modal when clicking outside
+        function showNotification(message, type = 'info') {
+            const notification = document.createElement('div');
+            
+            const colors = {
+                success: 'bg-green-500 text-white',
+                error: 'bg-red-500 text-white',
+                warning: 'bg-yellow-500 text-white',
+                info: 'bg-blue-500 text-white'
+            };
+            
+            const icons = {
+                success: 'fa-check-circle',
+                error: 'fa-exclamation-triangle',
+                warning: 'fa-exclamation-circle',
+                info: 'fa-info-circle'
+            };
+            
+            notification.className = `fixed top-4 right-4 max-w-md p-4 rounded-lg shadow-lg z-50 transition-all duration-300 ${colors[type]}`;
+            
+            notification.innerHTML = `
+                <div class="flex items-start space-x-3">
+                    <i class="fas ${icons[type]} text-lg mt-1"></i>
+                    <div class="flex-1">
+                        <p class="font-semibold capitalize">${type}</p>
+                        <p class="text-sm mt-1">${message}</p>
+                    </div>
+                    <button onclick="this.parentNode.parentNode.remove()" class="hover:opacity-75">
+                        <i class="fas fa-times"></i>
+                    </button>
+                </div>
+            `;
+            
+            document.body.appendChild(notification);
+            
+            setTimeout(() => {
+                if (notification.parentNode) {
+                    notification.remove();
+                }
+            }, 5000);
+        }
+
+        // Close modals when clicking outside
         document.getElementById('paperModal').addEventListener('click', function(e) {
-            if (e.target === this) {
-                closePaperModal();
-            }
+            if (e.target === this) closePaperModal();
+        });
+
+        document.getElementById('revisionModal').addEventListener('click', function(e) {
+            if (e.target === this) closeRevisionModal();
+        });
+
+        document.getElementById('revisionHistoryModal').addEventListener('click', function(e) {
+            if (e.target === this) closeRevisionHistoryModal();
         });
 
         // Keyboard shortcuts
         document.addEventListener('keydown', function(e) {
             if (e.key === 'Escape') {
                 closePaperModal();
+                closeRevisionModal();
+                closeRevisionHistoryModal();
             }
-        });
-
-        // Add smooth animations on page load
-        document.addEventListener('DOMContentLoaded', function() {
-            const cards = document.querySelectorAll('.metric-card, .submission-row');
-            cards.forEach((card, index) => {
-                setTimeout(() => {
-                    card.style.opacity = '1';
-                    card.style.transform = 'translateY(0)';
-                }, index * 100);
-            });
         });
     </script>
 </body>

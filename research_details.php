@@ -1,5 +1,5 @@
 <?php
-// Enable detailed error reporting
+
 error_reporting(E_ALL);
 ini_set('display_errors', 1);
 ini_set('log_errors', 1);
@@ -14,7 +14,7 @@ session_start();
 error_log("Session data: " . print_r($_SESSION, true));
 error_log("GET parameters: " . print_r($_GET, true));
 
-// If not logged in, redirect to public version
+// Check if user is logged in
 if (!isset($_SESSION['id']) || !isset($_SESSION['username']) || !isset($_SESSION['role'])) {
     error_log("User not logged in - redirecting to elibrary.php");
     header("Location: elibrary.php");
@@ -29,25 +29,48 @@ $user_role = $_SESSION['role'];
 
 error_log("User logged in: ID=$user_id, Username=$username, Name=$user_name, Role=$user_role");
 
+// Determine back URL based on user role and referer
+$back_url = 'elibrary_loggedin.php';
+if ($user_role === 'admin') {
+    // Check if coming from admin reports
+    if (isset($_SERVER['HTTP_REFERER']) && strpos($_SERVER['HTTP_REFERER'], 'admin_reports.php') !== false) {
+        $back_url = 'admin_reports.php';
+    } else {
+        $back_url = 'elibrary_loggedin.php';
+    }
+}
+
 // Get paper ID
 $paper_id = isset($_GET['id']) ? (int)$_GET['id'] : 0;
 
 error_log("Paper ID requested: $paper_id");
 
 if (!$paper_id) {
-    error_log("No paper ID provided - redirecting to elibrary_loggedin.php");
-    header("Location: elibrary_loggedin.php");
+    error_log("No paper ID provided - redirecting");
+    header("Location: " . $back_url);
     exit();
 }
 
-// Get paper details with metrics
-$sql = "SELECT ps.*, 
-               COALESCE(SUM(CASE WHEN pm.metric_type = 'view' THEN 1 ELSE 0 END), 0) as total_views,
-               COALESCE(SUM(CASE WHEN pm.metric_type = 'download' THEN 1 ELSE 0 END), 0) as total_downloads
-        FROM paper_submissions ps 
-        LEFT JOIN paper_metrics pm ON ps.id = pm.paper_id
-        WHERE ps.id = ? AND ps.status IN ('approved', 'published')
-        GROUP BY ps.id";
+// Modified SQL query to show ALL papers for admins, only approved/published for regular users
+if ($user_role === 'admin') {
+    // Admin can see any paper regardless of status
+    $sql = "SELECT ps.*, 
+                   COALESCE(SUM(CASE WHEN pm.metric_type = 'view' THEN 1 ELSE 0 END), 0) as total_views,
+                   COALESCE(SUM(CASE WHEN pm.metric_type = 'download' THEN 1 ELSE 0 END), 0) as total_downloads
+            FROM paper_submissions ps 
+            LEFT JOIN paper_metrics pm ON ps.id = pm.paper_id
+            WHERE ps.id = ?
+            GROUP BY ps.id";
+} else {
+    // Regular users can only see approved/published papers
+    $sql = "SELECT ps.*, 
+                   COALESCE(SUM(CASE WHEN pm.metric_type = 'view' THEN 1 ELSE 0 END), 0) as total_views,
+                   COALESCE(SUM(CASE WHEN pm.metric_type = 'download' THEN 1 ELSE 0 END), 0) as total_downloads
+            FROM paper_submissions ps 
+            LEFT JOIN paper_metrics pm ON ps.id = pm.paper_id
+            WHERE ps.id = ? AND ps.status IN ('approved', 'published')
+            GROUP BY ps.id";
+}
 
 if (!$stmt = $conn->prepare($sql)) {
     error_log("SQL prepare error: " . $conn->error);
@@ -80,8 +103,8 @@ if ($result->num_rows === 0) {
             <i class="fas fa-exclamation-circle text-red-500 text-6xl mb-4"></i>
             <h1 class="text-2xl font-bold text-gray-800 mb-4">Paper Not Found</h1>
             <p class="text-gray-600 mb-6">The requested research paper could not be found or is not available.</p>
-            <a href="elibrary_loggedin.php" class="bg-[#115D5B] hover:bg-[#0e4e4c] text-white px-6 py-3 rounded-lg inline-block">
-                <i class="fas fa-arrow-left mr-2"></i>Return to Library
+            <a href="<?php echo $back_url; ?>" class="bg-[#115D5B] hover:bg-[#0e4e4c] text-white px-6 py-3 rounded-lg inline-block">
+                <i class="fas fa-arrow-left mr-2"></i>Go Back
             </a>
         </div>
     </body>
@@ -302,133 +325,225 @@ error_log("Page rendering starting...");
             <!-- Main Paper Content -->
             <div class="lg:col-span-2 space-y-6">
                 <!-- Paper Header -->
-                <div class="bg-white rounded-lg shadow-lg p-4 md:p-6">
-                    <?php if (!$file_exists): ?>
-                    <div class="bg-yellow-50 border-l-4 border-yellow-400 p-4 mb-4">
-                        <div class="flex">
-                            <i class="fas fa-exclamation-triangle text-yellow-400 mr-2 mt-1"></i>
-                            <div>
-                                <p class="text-sm text-yellow-700">
-                                    <strong>Note:</strong> The PDF file for this paper is currently unavailable. You can still view the details below.
-                                </p>
-                            </div>
-                        </div>
-                    </div>
-                    <?php endif; ?>
+<!-- Paper Header -->
+<div class="bg-white rounded-lg shadow-lg p-4 md:p-6">
+    <?php if (!$file_exists): ?>
+    <div class="bg-yellow-50 border-l-4 border-yellow-400 p-4 mb-4">
+        <div class="flex">
+            <i class="fas fa-exclamation-triangle text-yellow-400 mr-2 mt-1"></i>
+            <div>
+                <p class="text-sm text-yellow-700">
+                    <strong>Note:</strong> The PDF file for this paper is currently unavailable. You can still view the details below.
+                </p>
+            </div>
+        </div>
+    </div>
+    <?php endif; ?>
 
-                    <div class="flex flex-col md:flex-row justify-between items-start mb-4 gap-4">
-                        <div class="flex-1 w-full">
-                            <span class="inline-block px-3 py-1 text-xs rounded-full mb-3 <?php echo $paper['status'] === 'published' ? 'bg-green-100 text-green-800' : 'bg-blue-100 text-blue-800'; ?>">
-                                <i class="fas fa-check-circle mr-1"></i><?php echo ucfirst($paper['status']); ?>
-                            </span>
-                            <h1 class="text-2xl md:text-3xl font-bold text-gray-800 mb-4"><?php echo htmlspecialchars($paper['paper_title']); ?></h1>
-                        </div>
-                    </div>
+    <?php if ($user_role === 'admin'): ?>
+    <!-- Admin Status Badge -->
+    <div class="mb-4 p-4 bg-purple-50 border-l-4 border-purple-500 rounded">
+        <div class="flex items-center justify-between flex-wrap gap-3">
+            <div class="flex items-center gap-3 flex-wrap">
+                <span class="inline-block px-3 py-1 text-sm rounded-full bg-purple-600 text-white">
+                    <i class="fas fa-user-shield mr-1"></i>Admin View
+                </span>
+                <?php if ($paper['status'] !== 'approved' && $paper['status'] !== 'published'): ?>
+                <span class="inline-block px-3 py-1 text-sm rounded-full bg-yellow-500 text-white">
+                    <i class="fas fa-exclamation-triangle mr-1"></i>Not Publicly Visible
+                </span>
+                <?php endif; ?>
+                <span class="inline-block px-3 py-1 text-sm rounded-full bg-gray-200 text-gray-700">
+                    Paper ID: #<?php echo $paper_id; ?>
+                </span>
+            </div>
+            <a href="admin_paper_management.php?id=<?php echo $paper_id; ?>" 
+               class="inline-block bg-[#115D5B] hover:bg-[#0e4e4c] text-white px-4 py-2 rounded-lg transition-colors text-sm">
+                <i class="fas fa-cog mr-2"></i>Manage This Paper
+            </a>
+        </div>
+    </div>
 
-                    <!-- Authors -->
-                    <div class="mb-4 pb-4 border-b">
-                        <h3 class="text-sm font-semibold text-gray-600 mb-2">
-                            <i class="fas fa-users mr-2"></i>Authors
-                        </h3>
-                        <p class="text-base md:text-lg text-gray-800">
-                            <?php echo htmlspecialchars($paper['author_name']); ?>
-                            <?php if (!empty($paper['co_authors'])): ?>
-                                <span class="text-gray-600">, <?php echo htmlspecialchars($paper['co_authors']); ?></span>
-                            <?php endif; ?>
-                        </p>
-                        <?php if (!empty($paper['author_email'])): ?>
-                        <p class="text-sm text-gray-600 mt-1">
-                            <i class="fas fa-envelope mr-1"></i><?php echo htmlspecialchars($paper['author_email']); ?>
-                        </p>
-                        <?php endif; ?>
-                    </div>
+    <!-- Admin-Only Information Panel -->
+    <div class="mb-4 p-4 bg-blue-50 border border-blue-200 rounded-lg">
+        <h4 class="text-sm font-bold text-blue-900 mb-3">
+            <i class="fas fa-info-circle mr-2"></i>Administrative Information
+        </h4>
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-4 text-sm">
+            <div>
+                <span class="text-blue-700 font-semibold">Status:</span>
+                <span class="ml-2 px-2 py-1 rounded text-xs <?php 
+                    echo $paper['status'] === 'approved' ? 'bg-green-100 text-green-800' : 
+                        ($paper['status'] === 'rejected' ? 'bg-red-100 text-red-800' : 
+                        ($paper['status'] === 'under_review' ? 'bg-blue-100 text-blue-800' : 'bg-gray-100 text-gray-800'));
+                ?>">
+                    <?php echo ucfirst($paper['status']); ?>
+                </span>
+            </div>
+            <?php if (!empty($paper['reviewer_status'])): ?>
+            <div>
+                <span class="text-blue-700 font-semibold">Reviewer Status:</span>
+                <span class="ml-2 text-gray-700"><?php echo ucfirst(str_replace('_', ' ', $paper['reviewer_status'])); ?></span>
+            </div>
+            <?php endif; ?>
+            <?php if (!empty($paper['reviewed_by'])): ?>
+            <div>
+                <span class="text-blue-700 font-semibold">Reviewed By:</span>
+                <span class="ml-2 text-gray-700"><?php echo htmlspecialchars($paper['reviewed_by']); ?></span>
+            </div>
+            <?php endif; ?>
+            <?php if (!empty($paper['review_date'])): ?>
+            <div>
+                <span class="text-blue-700 font-semibold">Review Date:</span>
+                <span class="ml-2 text-gray-700"><?php echo date('M d, Y', strtotime($paper['review_date'])); ?></span>
+            </div>
+            <?php endif; ?>
+            <div>
+                <span class="text-blue-700 font-semibold">Submission IP:</span>
+                <span class="ml-2 text-gray-700"><?php echo htmlspecialchars($paper['submission_ip'] ?? 'N/A'); ?></span>
+            </div>
+            <div>
+                <span class="text-blue-700 font-semibold">User ID:</span>
+                <span class="ml-2 text-gray-700"><?php echo htmlspecialchars($paper['user_id'] ?? 'N/A'); ?></span>
+            </div>
+        </div>
+        
+        <?php if (!empty($paper['admin_notes'])): ?>
+        <div class="mt-3 pt-3 border-t border-blue-200">
+            <span class="text-blue-700 font-semibold text-sm">Admin Notes:</span>
+            <p class="text-gray-700 text-sm mt-1 bg-white p-2 rounded"><?php echo nl2br(htmlspecialchars($paper['admin_notes'])); ?></p>
+        </div>
+        <?php endif; ?>
+        
+        <?php if (!empty($paper['reviewer_comments'])): ?>
+        <div class="mt-3 pt-3 border-t border-blue-200">
+            <span class="text-blue-700 font-semibold text-sm">Reviewer Comments:</span>
+            <p class="text-gray-700 text-sm mt-1 bg-white p-2 rounded"><?php echo nl2br(htmlspecialchars($paper['reviewer_comments'])); ?></p>
+        </div>
+        <?php endif; ?>
+    </div>
+    <?php endif; ?>
 
-                    <!-- Metadata Grid -->
-                    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 mb-6">
-                        <div>
-                            <h4 class="text-xs font-semibold text-gray-500 uppercase mb-1">Affiliation</h4>
-                            <p class="text-sm text-gray-800"><?php echo htmlspecialchars($paper['affiliation']); ?></p>
-                        </div>
-                        <div>
-                            <h4 class="text-xs font-semibold text-gray-500 uppercase mb-1">Research Type</h4>
-                            <p class="text-sm text-gray-800">
-                                <span class="bg-purple-100 text-purple-800 px-2 py-1 rounded text-xs">
-                                    <?php echo ucfirst(str_replace('_', ' ', $paper['research_type'])); ?>
-                                </span>
-                            </p>
-                        </div>
-                        <div>
-                            <h4 class="text-xs font-semibold text-gray-500 uppercase mb-1">Submission Date</h4>
-                            <p class="text-sm text-gray-800"><?php echo $submission_date; ?></p>
-                        </div>
-                        <?php if (!empty($paper['funding_source'])): ?>
-                        <div>
-                            <h4 class="text-xs font-semibold text-gray-500 uppercase mb-1">Funding Source</h4>
-                            <p class="text-sm text-gray-800"><?php echo htmlspecialchars($paper['funding_source']); ?></p>
-                        </div>
-                        <?php endif; ?>
-                        <?php if ($research_period): ?>
-                        <div>
-                            <h4 class="text-xs font-semibold text-gray-500 uppercase mb-1">Research Period</h4>
-                            <p class="text-sm text-gray-800"><?php echo $research_period; ?></p>
-                        </div>
-                        <?php endif; ?>
-                        <div>
-                            <h4 class="text-xs font-semibold text-gray-500 uppercase mb-1">Statistics</h4>
-                            <p class="text-sm text-gray-800">
-                                <i class="fas fa-eye text-blue-500"></i> <?php echo $paper['total_views']; ?> 
-                                <i class="fas fa-download text-green-500 ml-2"></i> <?php echo $paper['total_downloads']; ?>
-                            </p>
-                        </div>
-                    </div>
+    <div class="flex flex-col md:flex-row justify-between items-start mb-4 gap-4">
+        <div class="flex-1 w-full">
+            <span class="inline-block px-3 py-1 text-xs rounded-full mb-3 <?php echo $paper['status'] === 'published' || $paper['status'] === 'approved' ? 'bg-green-100 text-green-800' : 'bg-blue-100 text-blue-800'; ?>">
+                <i class="fas fa-check-circle mr-1"></i><?php echo ucfirst($paper['status']); ?>
+            </span>
+            <h1 class="text-2xl md:text-3xl font-bold text-gray-800 mb-4"><?php echo htmlspecialchars($paper['paper_title']); ?></h1>
+        </div>
+    </div>
 
-                    <!-- Keywords -->
-                    <?php if (!empty($paper['keywords'])): ?>
-                    <div class="mb-6">
-                        <h3 class="text-sm font-semibold text-gray-600 mb-2">
-                            <i class="fas fa-tags mr-2"></i>Keywords
-                        </h3>
-                        <div class="flex flex-wrap gap-2">
-                            <?php 
-                            $keywords = explode(',', $paper['keywords']);
-                            foreach ($keywords as $keyword): 
-                            ?>
-                            <span class="bg-blue-50 text-blue-700 text-xs md:text-sm px-3 py-1 rounded-full border border-blue-200">
-                                <?php echo htmlspecialchars(trim($keyword)); ?>
-                            </span>
-                            <?php endforeach; ?>
-                        </div>
-                    </div>
-                    <?php endif; ?>
+    <!-- Authors -->
+    <div class="mb-4 pb-4 border-b">
+        <h3 class="text-sm font-semibold text-gray-600 mb-2">
+            <i class="fas fa-users mr-2"></i>Authors
+        </h3>
+        <p class="text-base md:text-lg text-gray-800">
+            <?php echo htmlspecialchars($paper['author_name']); ?>
+            <?php if (!empty($paper['co_authors'])): ?>
+                <span class="text-gray-600">, <?php echo htmlspecialchars($paper['co_authors']); ?></span>
+            <?php endif; ?>
+        </p>
+        <?php if (!empty($paper['author_email'])): ?>
+        <p class="text-sm text-gray-600 mt-1">
+            <i class="fas fa-envelope mr-1"></i>
+            <?php if ($user_role === 'admin'): ?>
+                <a href="mailto:<?php echo htmlspecialchars($paper['author_email']); ?>" class="text-blue-600 hover:underline">
+                    <?php echo htmlspecialchars($paper['author_email']); ?>
+                </a>
+            <?php else: ?>
+                <?php echo htmlspecialchars($paper['author_email']); ?>
+            <?php endif; ?>
+        </p>
+        <?php endif; ?>
+    </div>
 
-                    <!-- Action Buttons -->
-                    <div class="flex flex-wrap gap-3 pt-4 border-t">
-                        <?php if ($file_exists): ?>
-                        <a href="paper_viewer.php?id=<?php echo $paper_id; ?>" 
-                           target="_blank"
-                           class="flex-1 md:flex-none bg-[#115D5B] hover:bg-[#0e4e4c] text-white px-4 md:px-6 py-2 md:py-3 rounded-lg text-center transition-colors text-sm md:text-base">
-                            <i class="fas fa-eye mr-2"></i>View Paper
-                        </a>
-                        <a href="download_paper.php?id=<?php echo $paper_id; ?>" 
-                           class="flex-1 md:flex-none bg-green-600 hover:bg-green-700 text-white px-4 md:px-6 py-2 md:py-3 rounded-lg text-center transition-colors text-sm md:text-base">
-                            <i class="fas fa-download mr-2"></i>Download
-                        </a>
-                        <?php else: ?>
-                        <button disabled 
-                                class="flex-1 md:flex-none bg-gray-400 text-white px-4 md:px-6 py-2 md:py-3 rounded-lg text-center cursor-not-allowed text-sm md:text-base">
-                            <i class="fas fa-eye mr-2"></i>File Unavailable
-                        </button>
-                        <?php endif; ?>
-                        <button onclick="showCitation()" 
-                                class="flex-1 md:flex-none bg-gray-600 hover:bg-gray-700 text-white px-4 md:px-6 py-2 md:py-3 rounded-lg transition-colors text-sm md:text-base">
-                            <i class="fas fa-quote-right mr-2"></i>Cite
-                        </button>
-                        <button onclick="sharePaper()" 
-                                class="flex-1 md:flex-none bg-blue-600 hover:bg-blue-700 text-white px-4 md:px-6 py-2 md:py-3 rounded-lg transition-colors text-sm md:text-base">
-                            <i class="fas fa-share-alt mr-2"></i>Share
-                        </button>
-                    </div>
-                </div>
+    <!-- Metadata Grid -->
+    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 mb-6">
+        <div>
+            <h4 class="text-xs font-semibold text-gray-500 uppercase mb-1">Affiliation</h4>
+            <p class="text-sm text-gray-800"><?php echo htmlspecialchars($paper['affiliation']); ?></p>
+        </div>
+        <div>
+            <h4 class="text-xs font-semibold text-gray-500 uppercase mb-1">Research Type</h4>
+            <p class="text-sm text-gray-800">
+                <span class="bg-purple-100 text-purple-800 px-2 py-1 rounded text-xs">
+                    <?php echo ucfirst(str_replace('_', ' ', $paper['research_type'])); ?>
+                </span>
+            </p>
+        </div>
+        <div>
+            <h4 class="text-xs font-semibold text-gray-500 uppercase mb-1">Submission Date</h4>
+            <p class="text-sm text-gray-800"><?php echo $submission_date; ?></p>
+        </div>
+        <?php if (!empty($paper['funding_source'])): ?>
+        <div>
+            <h4 class="text-xs font-semibold text-gray-500 uppercase mb-1">Funding Source</h4>
+            <p class="text-sm text-gray-800"><?php echo htmlspecialchars($paper['funding_source']); ?></p>
+        </div>
+        <?php endif; ?>
+        <?php if ($research_period): ?>
+        <div>
+            <h4 class="text-xs font-semibold text-gray-500 uppercase mb-1">Research Period</h4>
+            <p class="text-sm text-gray-800"><?php echo $research_period; ?></p>
+        </div>
+        <?php endif; ?>
+        <div>
+            <h4 class="text-xs font-semibold text-gray-500 uppercase mb-1">Statistics</h4>
+            <p class="text-sm text-gray-800">
+                <i class="fas fa-eye text-blue-500"></i> <?php echo $paper['total_views']; ?> 
+                <i class="fas fa-download text-green-500 ml-2"></i> <?php echo $paper['total_downloads']; ?>
+            </p>
+        </div>
+    </div>
+
+    <!-- Keywords -->
+    <?php if (!empty($paper['keywords'])): ?>
+    <div class="mb-6">
+        <h3 class="text-sm font-semibold text-gray-600 mb-2">
+            <i class="fas fa-tags mr-2"></i>Keywords
+        </h3>
+        <div class="flex flex-wrap gap-2">
+            <?php 
+            $keywords = explode(',', $paper['keywords']);
+            foreach ($keywords as $keyword): 
+            ?>
+            <span class="bg-blue-50 text-blue-700 text-xs md:text-sm px-3 py-1 rounded-full border border-blue-200">
+                <?php echo htmlspecialchars(trim($keyword)); ?>
+            </span>
+            <?php endforeach; ?>
+        </div>
+    </div>
+    <?php endif; ?>
+
+    <!-- Action Buttons -->
+    <div class="flex flex-wrap gap-3 pt-4 border-t">
+        <?php if ($file_exists): ?>
+        <a href="paper_viewer.php?id=<?php echo $paper_id; ?>" 
+           target="_blank"
+           class="flex-1 md:flex-none bg-[#115D5B] hover:bg-[#0e4e4c] text-white px-4 md:px-6 py-2 md:py-3 rounded-lg text-center transition-colors text-sm md:text-base">
+            <i class="fas fa-eye mr-2"></i>View Paper
+        </a>
+        <a href="download_paper.php?id=<?php echo $paper_id; ?>" 
+           class="flex-1 md:flex-none bg-green-600 hover:bg-green-700 text-white px-4 md:px-6 py-2 md:py-3 rounded-lg text-center transition-colors text-sm md:text-base">
+            <i class="fas fa-download mr-2"></i>Download
+        </a>
+        <?php else: ?>
+        <button disabled 
+                class="flex-1 md:flex-none bg-gray-400 text-white px-4 md:px-6 py-2 md:py-3 rounded-lg text-center cursor-not-allowed text-sm md:text-base">
+            <i class="fas fa-eye mr-2"></i>File Unavailable
+        </button>
+        <?php endif; ?>
+        <button onclick="showCitation()" 
+                class="flex-1 md:flex-none bg-gray-600 hover:bg-gray-700 text-white px-4 md:px-6 py-2 md:py-3 rounded-lg transition-colors text-sm md:text-base">
+            <i class="fas fa-quote-right mr-2"></i>Cite
+        </button>
+        <button onclick="sharePaper()" 
+                class="flex-1 md:flex-none bg-blue-600 hover:bg-blue-700 text-white px-4 md:px-6 py-2 md:py-3 rounded-lg transition-colors text-sm md:text-base">
+            <i class="fas fa-share-alt mr-2"></i>Share
+        </button>
+    </div>
+</div>
 
                 <!-- Abstract -->
                 <div class="bg-white rounded-lg shadow-lg p-4 md:p-6">
@@ -478,20 +593,35 @@ error_log("Page rendering starting...");
             <!-- Sidebar -->
             <div class="lg:col-span-1 space-y-6">
                 <!-- Quick Actions Card -->
-                <div class="bg-white rounded-lg shadow-lg p-4 md:p-6">
-                    <h3 class="text-base md:text-lg font-bold text-gray-800 mb-4">Quick Actions</h3>
-                    <div class="space-y-3">
-                        <a href="elibrary_loggedin.php" 
-                           class="block w-full bg-gray-100 hover:bg-gray-200 text-gray-800 px-4 py-2 md:py-3 rounded-lg text-center transition-colors text-sm md:text-base">
-                            <i class="fas fa-arrow-left mr-2"></i>Back to Library
-                        </a>
-                        <button onclick="window.print()" 
-                                class="block w-full bg-gray-100 hover:bg-gray-200 text-gray-800 px-4 py-2 md:py-3 rounded-lg transition-colors text-sm md:text-base">
-                            <i class="fas fa-print mr-2"></i>Print Page
-                        </button>
-                    </div>
-                </div>
-
+           <div class="bg-white rounded-lg shadow-lg p-4 md:p-6">
+    <h3 class="text-base md:text-lg font-bold text-gray-800 mb-4">Quick Actions</h3>
+    <div class="space-y-3">
+        <a href="<?php echo $back_url; ?>" 
+           class="block w-full bg-gray-100 hover:bg-gray-200 text-gray-800 px-4 py-2 md:py-3 rounded-lg text-center transition-colors text-sm md:text-base">
+            <i class="fas fa-arrow-left mr-2"></i>
+            <?php 
+            if ($user_role === 'admin' && strpos($_SERVER['HTTP_REFERER'] ?? '', 'admin_reports.php') !== false) {
+                echo 'Back to Reports';
+            } else {
+                echo 'Back to Library';
+            }
+            ?>
+        </a>
+        
+        <?php if ($user_role === 'admin'): ?>
+        <!-- Admin-only actions -->
+        <a href="admin_paper_management.php?id=<?php echo $paper_id; ?>" 
+           class="block w-full bg-[#115D5B] hover:bg-[#0e4e4c] text-white px-4 py-2 md:py-3 rounded-lg text-center transition-colors text-sm md:text-base">
+            <i class="fas fa-cog mr-2"></i>Manage Paper
+        </a>
+        <?php endif; ?>
+        
+        <button onclick="window.print()" 
+                class="block w-full bg-gray-100 hover:bg-gray-200 text-gray-800 px-4 py-2 md:py-3 rounded-lg transition-colors text-sm md:text-base">
+            <i class="fas fa-print mr-2"></i>Print Page
+        </button>
+    </div>
+</div>
                 <!-- Paper Statistics -->
                 <div class="bg-white rounded-lg shadow-lg p-4 md:p-6">
                     <h3 class="text-base md:text-lg font-bold text-gray-800 mb-4">Paper Statistics</h3>

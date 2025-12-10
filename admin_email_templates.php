@@ -12,8 +12,9 @@ require_once 'connect.php';
 require_once 'email_config.php';
 require_once 'user_activity_logger.php';
 
-// Initialize email templates
+// Initialize email templates and notification settings
 initializeDefaultEmailTemplates($conn);
+createNotificationSettingsTable($conn);
 
 // Handle form submissions
 if ($_POST) {
@@ -34,6 +35,39 @@ if ($_POST) {
                     $success_message = "Email template updated successfully!";
                 } else {
                     $error_message = "Failed to update template: " . $conn->error;
+                }
+                break;
+                
+            case 'update_notification_settings':
+                $notification_emails = $_POST['notification_emails'] ?? '';
+                $notify_on_submission = isset($_POST['notify_on_submission']) ? 1 : 0;
+                $notify_on_revision = isset($_POST['notify_on_revision']) ? 1 : 0;
+                
+                // Validate and clean email addresses
+                $emails_array = array_map('trim', explode(',', $notification_emails));
+                $valid_emails = array_filter($emails_array, function($email) {
+                    return filter_var($email, FILTER_VALIDATE_EMAIL);
+                });
+                $cleaned_emails = implode(',', $valid_emails);
+                
+                // Update or insert notification settings
+                $sql = "INSERT INTO notification_settings (id, notification_emails, notify_on_submission, notify_on_revision, updated_by) 
+                        VALUES (1, ?, ?, ?, ?) 
+                        ON DUPLICATE KEY UPDATE 
+                        notification_emails = VALUES(notification_emails),
+                        notify_on_submission = VALUES(notify_on_submission),
+                        notify_on_revision = VALUES(notify_on_revision),
+                        updated_by = VALUES(updated_by),
+                        updated_at = CURRENT_TIMESTAMP";
+                
+                $stmt = $conn->prepare($sql);
+                $stmt->bind_param("siis", $cleaned_emails, $notify_on_submission, $notify_on_revision, $_SESSION['username']);
+                
+                if ($stmt->execute()) {
+                    logActivity('NOTIFICATION_SETTINGS_UPDATED', "Updated by: {$_SESSION['username']}, Emails: $cleaned_emails");
+                    $success_message = "Notification settings updated successfully!";
+                } else {
+                    $error_message = "Failed to update notification settings: " . $conn->error;
                 }
                 break;
                 
@@ -75,6 +109,24 @@ if ($_POST) {
                 }
                 break;
                 
+            case 'test_notification':
+                $test_email = $_POST['test_notification_email'];
+                
+                $testData = [
+                    'author_name' => 'Test Author',
+                    'paper_title' => 'Test Paper for Notification',
+                    'research_type' => 'Agricultural Research',
+                    'submission_date' => date('F j, Y'),
+                    'submitted_by' => 'test_user'
+                ];
+                
+                if (EmailService::sendAdminNotification($testData, 'submission', $conn, $test_email)) {
+                    $success_message = "Test notification sent successfully to $test_email";
+                } else {
+                    $error_message = "Failed to send test notification";
+                }
+                break;
+                
             case 'reset_template':
                 $template_id = (int)$_POST['template_id'];
                 
@@ -110,12 +162,31 @@ $sql = "SELECT * FROM email_templates ORDER BY template_type";
 $result = $conn->query($sql);
 $templates = $result->fetch_all(MYSQLI_ASSOC);
 
+// Get notification settings
+$sql = "SELECT * FROM notification_settings WHERE id = 1";
+$result = $conn->query($sql);
+$notification_settings = $result->fetch_assoc();
+
+// Initialize default settings if not exists
+if (!$notification_settings) {
+    $notification_settings = [
+        'notification_emails' => '',
+        'notify_on_submission' => 1,
+        'notify_on_revision' => 1,
+        'updated_by' => null,
+        'updated_at' => null
+    ];
+}
+
 // Template type descriptions
 $templateDescriptions = [
     'paper_submitted' => 'Sent to authors when they submit a new paper',
     'paper_approved' => 'Sent to authors when their paper is approved',
     'paper_rejected' => 'Sent to authors when their paper is rejected',
-    'paper_published' => 'Sent to authors when their paper is published'
+    'paper_published' => 'Sent to authors when their paper is published',
+    'paper_revision_requested' => 'Sent to authors when revision is required',
+    'paper_revision_submitted' => 'Sent to authors when revision is received',
+    'paper_under_review' => 'Sent to authors when paper is under review'
 ];
 ?>
 <!DOCTYPE html>
@@ -134,20 +205,6 @@ $templateDescriptions = [
             transform: translateY(-2px);
             box-shadow: 0 8px 25px rgba(0,0,0,0.1);
         }
-        .variable-tag {
-            background: #e3f2fd;
-            color: #1976d2;
-            padding: 2px 8px;
-            border-radius: 12px;
-            font-size: 12px;
-            font-family: monospace;
-            display: inline-block;
-            margin: 2px;
-            cursor: pointer;
-        }
-        .variable-tag:hover {
-            background: #bbdefb;
-        }
         .preview-content {
             max-height: 300px;
             overflow-y: auto;
@@ -158,13 +215,6 @@ $templateDescriptions = [
             font-family: Arial, sans-serif;
             line-height: 1.6;
             color: #333;
-        }
-        .html-preview h1, .html-preview h2, .html-preview h3 {
-            margin-top: 0;
-            margin-bottom: 10px;
-        }
-        .html-preview p {
-            margin-bottom: 10px;
         }
     </style>
 </head>
@@ -206,6 +256,96 @@ $templateDescriptions = [
                 <?php echo htmlspecialchars($error_message); ?>
             </div>
         <?php endif; ?>
+
+        <!-- Admin Notification Settings Card -->
+        <div class="bg-white rounded-lg shadow-lg overflow-hidden mb-8">
+            <div class="bg-gradient-to-r from-[#115D5B] to-[#0d4a47] text-white p-6">
+                <div class="flex items-center justify-between">
+                    <div>
+                        <h3 class="text-xl font-semibold flex items-center">
+                            <i class="fas fa-bell mr-3"></i>
+                            Admin Notification Settings
+                        </h3>
+                        <p class="text-sm opacity-90 mt-1">
+                            Configure who receives notifications for paper submissions and revisions
+                        </p>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="p-6">
+                <form method="POST" class="space-y-6">
+                    <input type="hidden" name="action" value="update_notification_settings">
+                    
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-2">
+                            <i class="fas fa-envelope mr-2 text-[#115D5B]"></i>
+                            Notification Email Addresses
+                        </label>
+                        <p class="text-sm text-gray-600 mb-2">
+                            Enter email addresses that should receive notifications. Separate multiple emails with commas.
+                        </p>
+                        <textarea name="notification_emails" rows="3" 
+                            class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-[#115D5B]"
+                            placeholder="admin@cnlrrs.gov.ph, reviewer@cnlrrs.gov.ph"><?php echo htmlspecialchars($notification_settings['notification_emails']); ?></textarea>
+                        <p class="text-xs text-gray-500 mt-1">
+                            Example: admin@cnlrrs.gov.ph, reviewer1@cnlrrs.gov.ph, reviewer2@cnlrrs.gov.ph
+                        </p>
+                    </div>
+                    
+                    <div class="bg-gray-50 p-4 rounded-lg space-y-3">
+                        <p class="font-medium text-gray-700 mb-3">
+                            <i class="fas fa-cog mr-2"></i>Notification Triggers
+                        </p>
+                        
+                        <div class="flex items-start space-x-3">
+                            <input type="checkbox" name="notify_on_submission" id="notify_on_submission" 
+                                <?php echo $notification_settings['notify_on_submission'] ? 'checked' : ''; ?>
+                                class="mt-1 h-4 w-4 text-[#115D5B] border-gray-300 rounded">
+                            <div>
+                                <label for="notify_on_submission" class="text-sm font-medium text-gray-700 cursor-pointer">
+                                    New Paper Submissions
+                                </label>
+                                <p class="text-xs text-gray-500 mt-1">
+                                    Send notification when a user submits a new research paper
+                                </p>
+                            </div>
+                        </div>
+                        
+                        <div class="flex items-start space-x-3">
+                            <input type="checkbox" name="notify_on_revision" id="notify_on_revision" 
+                                <?php echo $notification_settings['notify_on_revision'] ? 'checked' : ''; ?>
+                                class="mt-1 h-4 w-4 text-[#115D5B] border-gray-300 rounded">
+                            <div>
+                                <label for="notify_on_revision" class="text-sm font-medium text-gray-700 cursor-pointer">
+                                    Paper Revisions
+                                </label>
+                                <p class="text-xs text-gray-500 mt-1">
+                                    Send notification when a user submits a revised paper
+                                </p>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="flex space-x-3">
+                        <button type="submit" class="bg-[#115D5B] hover:bg-[#0d4a47] text-white px-6 py-2 rounded-md transition">
+                            <i class="fas fa-save mr-2"></i>Save Notification Settings
+                        </button>
+                        <button type="button" onclick="showTestNotificationModal()" 
+                            class="bg-yellow-500 hover:bg-yellow-600 text-white px-4 py-2 rounded-md transition">
+                            <i class="fas fa-paper-plane mr-2"></i>Send Test Notification
+                        </button>
+                    </div>
+                </form>
+                
+                <?php if ($notification_settings['updated_at']): ?>
+                    <div class="mt-6 pt-4 border-t text-sm text-gray-600">
+                        <p><strong>Last Updated:</strong> <?php echo date('M j, Y g:i A', strtotime($notification_settings['updated_at'])); ?></p>
+                        <p><strong>Updated By:</strong> <?php echo htmlspecialchars($notification_settings['updated_by'] ?? 'System'); ?></p>
+                    </div>
+                <?php endif; ?>
+            </div>
+        </div>
 
         <!-- Email System Status -->
         <div class="bg-blue-50 border border-blue-200 text-blue-800 px-4 py-3 rounded mb-6">
@@ -261,16 +401,13 @@ $templateDescriptions = [
                                     <p class="text-gray-800 bg-white p-2 rounded border"><?php echo htmlspecialchars($template['subject']); ?></p>
                                 </div>
                                 <div>
-                                    <label class="text-sm font-medium text-gray-600">Email Preview (rendered HTML):</label>
+                                    <label class="text-sm font-medium text-gray-600">Email Preview:</label>
                                     <div class="preview-content html-preview p-3 rounded">
                                         <?php 
-                                        // Show rendered HTML but truncate safely for preview
                                         $preview_body = $template['body'];
                                         
-                                        // If the body is very long, truncate it intelligently
                                         if (strlen($preview_body) > 800) {
                                             $preview_body = substr($preview_body, 0, 800);
-                                            // Try to end at a complete word or tag
                                             $last_space = strrpos($preview_body, ' ');
                                             $last_tag = strrpos($preview_body, '>');
                                             $cut_point = max($last_space, $last_tag);
@@ -279,7 +416,6 @@ $templateDescriptions = [
                                             }
                                         }
                                         
-                                        // Replace template variables with sample data for preview
                                         $sample_data = [
                                             '{{author_name}}' => 'Dr. Sample Author',
                                             '{{paper_title}}' => 'Sample Research Paper Title',
@@ -287,7 +423,7 @@ $templateDescriptions = [
                                             '{{submission_date}}' => date('F j, Y'),
                                             '{{review_date}}' => date('F j, Y'),
                                             '{{reviewed_by}}' => 'Admin Reviewer',
-                                            '{{reviewer_comments}}' => 'This is a sample review comment.',
+                                            '{{reviewer_comments}}' => 'Sample review comment.',
                                             '{{submitted_by}}' => 'sample_user',
                                             '{{paper_url}}' => '#'
                                         ];
@@ -296,14 +432,8 @@ $templateDescriptions = [
                                             $preview_body = str_replace($placeholder, $value, $preview_body);
                                         }
                                         
-                                        // Output the rendered HTML
                                         echo $preview_body;
                                         ?>
-                                        <?php if (strlen($template['body']) > 800): ?>
-                                            <div class="mt-3 p-2 bg-gray-100 text-gray-600 text-sm rounded">
-                                                <em><i class="fas fa-info-circle mr-1"></i>Preview truncated - full email will be longer</em>
-                                            </div>
-                                        <?php endif; ?>
                                     </div>
                                 </div>
                             </div>
@@ -322,68 +452,13 @@ $templateDescriptions = [
                                 </div>
                                 
                                 <div>
-                                    <label class="block text-sm font-medium text-gray-700 mb-2">Email Body:</label>
-                                    
-                                    <!-- Toggle between Visual and Code view -->
-                                    <div class="flex space-x-2 mb-2">
-                                        <button type="button" onclick="showVisualEditor(<?php echo $template['id']; ?>)" 
-                                            id="visual-btn-<?php echo $template['id']; ?>"
-                                            class="px-3 py-1 text-xs bg-blue-500 text-white rounded transition">
-                                            <i class="fas fa-eye mr-1"></i>Visual
-                                        </button>
-                                        <button type="button" onclick="showCodeEditor(<?php echo $template['id']; ?>)" 
-                                            id="code-btn-<?php echo $template['id']; ?>"
-                                            class="px-3 py-1 text-xs bg-gray-300 text-gray-700 rounded transition">
-                                            <i class="fas fa-code mr-1"></i>HTML Code
-                                        </button>
-                                    </div>
-                                    
-                                    <!-- Visual Editor -->
-                                    <div id="visual-editor-<?php echo $template['id']; ?>" class="mb-3">
-                                        <div class="border border-gray-300 rounded-md p-3 min-h-64 bg-white" 
-                                             contenteditable="true" 
-                                             id="visual-content-<?php echo $template['id']; ?>"
-                                             style="max-height: 300px; overflow-y: auto;">
-                                            <?php 
-                                            // Show rendered HTML for visual editing
-                                            $visual_content = $template['body'];
-                                            // Replace template variables with sample data for visual editing
-                                            $sample_data = [
-                                                '{{author_name}}' => '<span style="background: #fef3c7; padding: 1px 4px; border-radius: 3px;">Dr. Sample Author</span>',
-                                                '{{paper_title}}' => '<span style="background: #fef3c7; padding: 1px 4px; border-radius: 3px;">Sample Research Paper Title</span>',
-                                                '{{research_type}}' => '<span style="background: #fef3c7; padding: 1px 4px; border-radius: 3px;">Agricultural Research</span>',
-                                                '{{submission_date}}' => '<span style="background: #fef3c7; padding: 1px 4px; border-radius: 3px;">' . date('F j, Y') . '</span>',
-                                                '{{review_date}}' => '<span style="background: #fef3c7; padding: 1px 4px; border-radius: 3px;">' . date('F j, Y') . '</span>',
-                                                '{{reviewed_by}}' => '<span style="background: #fef3c7; padding: 1px 4px; border-radius: 3px;">Admin Reviewer</span>',
-                                                '{{reviewer_comments}}' => '<span style="background: #fef3c7; padding: 1px 4px; border-radius: 3px;">This is a sample review comment.</span>',
-                                                '{{submitted_by}}' => '<span style="background: #fef3c7; padding: 1px 4px; border-radius: 3px;">sample_user</span>',
-                                                '{{paper_url}}' => '<span style="background: #fef3c7; padding: 1px 4px; border-radius: 3px;">#paper-link</span>'
-                                            ];
-                                            
-                                            foreach ($sample_data as $placeholder => $value) {
-                                                $visual_content = str_replace($placeholder, $value, $visual_content);
-                                            }
-                                            echo $visual_content;
-                                            ?>
-                                        </div>
-                                        <p class="text-xs text-blue-600 mt-1">
-                                            <i class="fas fa-info-circle mr-1"></i>Visual editor - highlighted areas are template variables
-                                        </p>
-                                    </div>
-                                    
-                                    <!-- Code Editor (Hidden by default) -->
-                                    <div id="code-editor-<?php echo $template['id']; ?>" class="hidden">
-                                        <textarea name="body" rows="12" 
-                                            id="code-textarea-<?php echo $template['id']; ?>"
-                                            class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-[#115D5B] text-sm font-mono" 
-                                            required><?php echo htmlspecialchars($template['body']); ?></textarea>
-                                        <p class="text-xs text-gray-500 mt-1">
-                                            <i class="fas fa-code mr-1"></i>HTML code editor - use template variables like {{author_name}}
-                                        </p>
-                                    </div>
-                                    
-                                    <!-- Hidden input to store the actual body content -->
-                                    <input type="hidden" name="body" id="body-input-<?php echo $template['id']; ?>" value="<?php echo htmlspecialchars($template['body']); ?>">
+                                    <label class="block text-sm font-medium text-gray-700 mb-2">Email Body (HTML):</label>
+                                    <textarea name="body" rows="12" 
+                                        class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-[#115D5B] text-sm font-mono" 
+                                        required><?php echo htmlspecialchars($template['body']); ?></textarea>
+                                    <p class="text-xs text-gray-500 mt-1">
+                                        Use template variables: {{author_name}}, {{paper_title}}, {{research_type}}, etc.
+                                    </p>
                                 </div>
                                 
                                 <div class="flex items-center">
@@ -391,7 +466,7 @@ $templateDescriptions = [
                                         <?php echo $template['is_active'] ? 'checked' : ''; ?>
                                         class="h-4 w-4 text-[#115D5B] border-gray-300 rounded">
                                     <label for="active-<?php echo $template['id']; ?>" class="ml-2 text-sm text-gray-700">
-                                        Template is active (emails will be sent using this template)
+                                        Template is active
                                     </label>
                                 </div>
                                 
@@ -404,26 +479,12 @@ $templateDescriptions = [
                                         Cancel
                                     </button>
                                     <button type="submit" name="action" value="reset_template" 
-                                        onclick="return confirm('Reset this template to default? All changes will be lost.')"
+                                        onclick="return confirm('Reset this template to default?')"
                                         class="bg-orange-500 hover:bg-orange-600 text-white px-4 py-2 rounded-md transition">
                                         <i class="fas fa-undo mr-2"></i>Reset Default
                                     </button>
                                 </div>
                             </form>
-                        </div>
-                        
-                        <!-- Template Info -->
-                        <div class="mt-6 text-sm text-gray-600 border-t pt-4">
-                            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                <div>
-                                    <p><strong>Last Updated:</strong> <?php echo $template['updated_at'] ? date('M j, Y g:i A', strtotime($template['updated_at'])) : 'Never'; ?></p>
-                                    <p><strong>Updated By:</strong> <?php echo htmlspecialchars($template['updated_by'] ?? 'System'); ?></p>
-                                </div>
-                                <div>
-                                    <p><strong>Created:</strong> <?php echo date('M j, Y', strtotime($template['created_at'])); ?></p>
-                                    <p><strong>Template ID:</strong> <?php echo $template['id']; ?></p>
-                                </div>
-                            </div>
                         </div>
                     </div>
                 </div>
@@ -455,13 +516,6 @@ $templateDescriptions = [
                         placeholder="Enter email address">
                 </div>
                 
-                <div class="bg-yellow-50 border border-yellow-200 p-3 rounded-lg mb-4">
-                    <p class="text-sm text-yellow-800">
-                        <i class="fas fa-info-circle mr-1"></i>
-                        Test email will use sample data for template variables and will be sent with "[TEST]" prefix.
-                    </p>
-                </div>
-                
                 <div class="flex space-x-3">
                     <button type="submit" class="bg-[#115D5B] hover:bg-[#0d4a47] text-white px-4 py-2 rounded-md transition">
                         <i class="fas fa-paper-plane mr-2"></i>Send Test
@@ -475,91 +529,54 @@ $templateDescriptions = [
         </div>
     </div>
 
-    <!-- Footer -->
+    <!-- Test Notification Modal -->
+    <div id="testNotificationModal" class="fixed inset-0 bg-gray-600 bg-opacity-50 hidden items-center justify-center z-50">
+        <div class="bg-white rounded-lg shadow-xl max-w-md w-full mx-4">
+            <div class="p-6 border-b">
+                <div class="flex justify-between items-center">
+                    <h3 class="text-lg font-semibold text-gray-800">
+                        <i class="fas fa-bell mr-2"></i>Send Test Notification
+                    </h3>
+                    <button onclick="closeTestNotificationModal()" class="text-gray-400 hover:text-gray-600">
+                        <i class="fas fa-times text-xl"></i>
+                    </button>
+                </div>
+            </div>
+            <form method="POST" class="p-6">
+                <input type="hidden" name="action" value="test_notification">
+                
+                <div class="mb-4">
+                    <label class="block text-sm font-medium text-gray-700 mb-2">Send test notification to:</label>
+                    <input type="email" name="test_notification_email" required
+                        class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-[#115D5B]"
+                        placeholder="Enter email address">
+                </div>
+                
+                <div class="bg-teal-50 border border-teal-200 p-3 rounded-lg mb-4">
+                    <p class="text-sm text-teal-800">
+                        <i class="fas fa-info-circle mr-1"></i>
+                        This will send a sample admin notification with test data.
+                    </p>
+                </div>
+                
+                <div class="flex space-x-3">
+                    <button type="submit" class="bg-[#115D5B] hover:bg-[#0d4a47] text-white px-4 py-2 rounded-md transition">
+                        <i class="fas fa-paper-plane mr-2"></i>Send Test
+                    </button>
+                    <button type="button" onclick="closeTestNotificationModal()" 
+                        class="bg-gray-500 hover:bg-gray-600 text-white px-4 py-2 rounded-md transition">
+                        Cancel
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+
     <footer class="bg-[#115D5B] text-white text-center py-4 mt-12">
         <p>&copy; 2025 Camarines Norte Lowland Rainfed Research Station. All rights reserved.</p>
     </footer>
 
     <script>
-        // Editor switching functions
-        function showVisualEditor(templateId) {
-            document.getElementById('visual-editor-' + templateId).classList.remove('hidden');
-            document.getElementById('code-editor-' + templateId).classList.add('hidden');
-            document.getElementById('visual-btn-' + templateId).className = 'px-3 py-1 text-xs bg-blue-500 text-white rounded transition';
-            document.getElementById('code-btn-' + templateId).className = 'px-3 py-1 text-xs bg-gray-300 text-gray-700 rounded transition';
-            
-            // Sync content from textarea to visual editor if code was modified
-            const textarea = document.getElementById('code-textarea-' + templateId);
-            const visualEditor = document.getElementById('visual-content-' + templateId);
-            if (textarea) {
-                let htmlContent = textarea.value;
-                // Replace template variables with highlighted versions for visual editing
-                const sampleData = {
-                    '{{author_name}}': '<span style="background: #fef3c7; padding: 1px 4px; border-radius: 3px;">Dr. Sample Author</span>',
-                    '{{paper_title}}': '<span style="background: #fef3c7; padding: 1px 4px; border-radius: 3px;">Sample Research Paper Title</span>',
-                    '{{research_type}}': '<span style="background: #fef3c7; padding: 1px 4px; border-radius: 3px;">Agricultural Research</span>',
-                    '{{submission_date}}': '<span style="background: #fef3c7; padding: 1px 4px; border-radius: 3px;">' + new Date().toLocaleDateString() + '</span>',
-                    '{{review_date}}': '<span style="background: #fef3c7; padding: 1px 4px; border-radius: 3px;">' + new Date().toLocaleDateString() + '</span>',
-                    '{{reviewed_by}}': '<span style="background: #fef3c7; padding: 1px 4px; border-radius: 3px;">Admin Reviewer</span>',
-                    '{{reviewer_comments}}': '<span style="background: #fef3c7; padding: 1px 4px; border-radius: 3px;">Sample review comment</span>',
-                    '{{submitted_by}}': '<span style="background: #fef3c7; padding: 1px 4px; border-radius: 3px;">sample_user</span>',
-                    '{{paper_url}}': '<span style="background: #fef3c7; padding: 1px 4px; border-radius: 3px;">#paper-link</span>'
-                };
-                for (const [placeholder, replacement] of Object.entries(sampleData)) {
-                    htmlContent = htmlContent.split(placeholder).join(replacement);
-                }
-                visualEditor.innerHTML = htmlContent;
-            }
-        }
-        
-        function showCodeEditor(templateId) {
-            document.getElementById('visual-editor-' + templateId).classList.add('hidden');
-            document.getElementById('code-editor-' + templateId).classList.remove('hidden');
-            document.getElementById('visual-btn-' + templateId).className = 'px-3 py-1 text-xs bg-gray-300 text-gray-700 rounded transition';
-            document.getElementById('code-btn-' + templateId).className = 'px-3 py-1 text-xs bg-blue-500 text-white rounded transition';
-            syncVisualToCode(templateId);
-        }
-        
-        function syncVisualToCode(templateId) {
-            const visualEditor = document.getElementById('visual-content-' + templateId);
-            const textarea = document.getElementById('code-textarea-' + templateId);
-            const hiddenInput = document.getElementById('body-input-' + templateId);
-            if (visualEditor && textarea) {
-                let htmlContent = visualEditor.innerHTML;
-                // Convert highlighted template variables back to placeholders
-                const variableMap = {
-                    '<span style="background: #fef3c7; padding: 1px 4px; border-radius: 3px;">Dr. Sample Author</span>': '{{author_name}}',
-                    '<span style="background: #fef3c7; padding: 1px 4px; border-radius: 3px;">Sample Research Paper Title</span>': '{{paper_title}}',
-                    '<span style="background: #fef3c7; padding: 1px 4px; border-radius: 3px;">Agricultural Research</span>': '{{research_type}}',
-                    '<span style="background: #fef3c7; padding: 1px 4px; border-radius: 3px;">Admin Reviewer</span>': '{{reviewed_by}}',
-                    '<span style="background: #fef3c7; padding: 1px 4px; border-radius: 3px;">Sample review comment</span>': '{{reviewer_comments}}',
-                    '<span style="background: #fef3c7; padding: 1px 4px; border-radius: 3px;">sample_user</span>': '{{submitted_by}}',
-                    '<span style="background: #fef3c7; padding: 1px 4px; border-radius: 3px;">#paper-link</span>': '{{paper_url}}'
-                };
-                // Handle date placeholders
-                htmlContent = htmlContent.replace(
-                    /<span style="background: #fef3c7; padding: 1px 4px; border-radius: 3px;">[^<]+<\/span>/g,
-                    function(match) {
-                        if (match.includes('Dr. Sample Author')) return '{{author_name}}';
-                        if (match.includes('Sample Research Paper Title')) return '{{paper_title}}';
-                        if (match.includes('Agricultural Research')) return '{{research_type}}';
-                        if (match.includes('Admin Reviewer')) return '{{reviewed_by}}';
-                        if (match.includes('Sample review comment')) return '{{reviewer_comments}}';
-                        if (match.includes('sample_user')) return '{{submitted_by}}';
-                        if (match.includes('#paper-link')) return '{{paper_url}}';
-                        // For dates
-                        if (/\d{1,2}\/\d{1,2}\/\d{2,4}/.test(match)) return '{{submission_date}}';
-                        return match;
-                    }
-                );
-                for (const [highlighted, placeholder] of Object.entries(variableMap)) {
-                    htmlContent = htmlContent.split(highlighted).join(placeholder);
-                }
-                textarea.value = htmlContent;
-                if (hiddenInput) hiddenInput.value = htmlContent;
-            }
-        }
-
         function toggleTemplate(templateId) {
             const editForm = document.getElementById('edit-form-' + templateId);
             if (editForm.classList.contains('hidden')) {
@@ -575,10 +592,6 @@ $templateDescriptions = [
             const modal = document.getElementById('testEmailModal');
             modal.classList.remove('hidden');
             modal.classList.add('flex');
-            if (event) {
-                event.preventDefault();
-                event.stopPropagation();
-            }
         }
 
         function closeTestModal() {
@@ -587,71 +600,19 @@ $templateDescriptions = [
             modal.classList.remove('flex');
         }
 
-        document.addEventListener('DOMContentLoaded', function() {
-            // Close modal when clicking outside
-            const modal = document.getElementById('testEmailModal');
-            if (modal) {
-                modal.addEventListener('click', function(e) {
-                    if (e.target === modal) {
-                        closeTestModal();
-                    }
-                });
-            }
-            // Form submission handler to sync visual content
-            document.querySelectorAll('form').forEach(form => {
-                form.addEventListener('submit', function(e) {
-                    const templateId = this.querySelector('input[name="template_id"]');
-                    if (templateId) {
-                        const tid = templateId.value;
-                        const visualEditor = document.getElementById('visual-editor-' + tid);
-                        const codeEditor = document.getElementById('code-editor-' + tid);
-                        const hiddenInput = document.getElementById('body-input-' + tid);
-                        if (visualEditor && !visualEditor.classList.contains('hidden')) {
-                            syncVisualToCode(tid);
-                        } else if (codeEditor && !codeEditor.classList.contains('hidden')) {
-                            const textarea = document.getElementById('code-textarea-' + tid);
-                            if (textarea && hiddenInput) {
-                                hiddenInput.value = textarea.value;
-                            }
-                        }
-                    }
-                });
-            });
-            // Variable tag click to copy
-            document.querySelectorAll('.variable-tag').forEach(tag => {
-                tag.addEventListener('click', function() {
-                    navigator.clipboard.writeText(this.textContent).then(() => {
-                        const original = this.textContent;
-                        this.textContent = 'Copied!';
-                        this.style.background = '#4caf50';
-                        this.style.color = 'white';
-                        setTimeout(() => {
-                            this.textContent = original;
-                            this.style.background = '#e3f2fd';
-                            this.style.color = '#1976d2';
-                        }, 1000);
-                    }).catch(() => {
-                        const textArea = document.createElement('textarea');
-                        textArea.value = this.textContent;
-                        document.body.appendChild(textArea);
-                        textArea.select();
-                        document.execCommand('copy');
-                        document.body.removeChild(textArea);
-                        const original = this.textContent;
-                        this.textContent = 'Copied!';
-                        this.style.background = '#4caf50';
-                        this.style.color = 'white';
-                        setTimeout(() => {
-                            this.textContent = original;
-                            this.style.background = '#e3f2fd';
-                            this.style.color = '#1976d2';
-                        }, 1000);
-                    });
-                });
-            });
-        });
+        function showTestNotificationModal() {
+            const modal = document.getElementById('testNotificationModal');
+            modal.classList.remove('hidden');
+            modal.classList.add('flex');
+        }
 
-        // Auto-hide success/error messages
+        function closeTestNotificationModal() {
+            const modal = document.getElementById('testNotificationModal');
+            modal.classList.add('hidden');
+            modal.classList.remove('flex');
+        }
+
+        // Auto-hide messages
         setTimeout(() => {
             const messages = document.querySelectorAll('.bg-green-100, .bg-red-100');
             messages.forEach(msg => {

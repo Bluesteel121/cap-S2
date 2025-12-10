@@ -10,6 +10,7 @@ if (!isset($_SESSION['username']) || $_SESSION['role'] !== 'admin') {
 // Continue with the rest of your code...
 require_once 'includes/ReviewerNotifications.php';
 include 'connect.php';
+
 // Get total users count
 $result = $conn->query("SELECT COUNT(*) as total_users FROM accounts");
 $total_users = $result->fetch_assoc()['total_users'];
@@ -18,49 +19,49 @@ $total_users = $result->fetch_assoc()['total_users'];
 $result = $conn->query("SELECT COUNT(*) as total_publications FROM paper_submissions WHERE status IN ('approved', 'published')");
 $total_publications = $result->fetch_assoc()['total_publications'];
 
-
 $result = $conn->query("SELECT COUNT(*) as pending_reviews FROM paper_submissions WHERE status IN ('pending', 'under_review')");
 $pending_reviews = $result->fetch_assoc()['pending_reviews'];
 
-
-
-
-
-$current_month = date('Y-m');
+// Get monthly views for last 30 days
 $stmt = $conn->prepare("
     SELECT COUNT(*) as monthly_views 
     FROM paper_metrics 
     WHERE metric_type = 'view' 
-    AND DATE_FORMAT(created_at, '%Y-%m') = ?
+    AND created_at >= DATE_SUB(NOW(), INTERVAL 30 DAY)
 ");
-$stmt->bind_param("s", $current_month);
 $stmt->execute();
 $monthly_views = $stmt->get_result()->fetch_assoc()['monthly_views'];
 
-// Calculate percentage changes (comparing with previous month)
-$previous_month = date('Y-m', strtotime('-1 month'));
+// Calculate percentage changes (comparing last 30 days with previous 30 days)
 
 // Users growth calculation
-$stmt = $conn->prepare("SELECT COUNT(*) as prev_users FROM accounts WHERE DATE_FORMAT(created_at, '%Y-%m') = ?");
-$stmt->bind_param("s", $previous_month);
+$stmt = $conn->prepare("
+    SELECT COUNT(*) as prev_users 
+    FROM accounts 
+    WHERE created_at >= DATE_SUB(NOW(), INTERVAL 60 DAY) 
+    AND created_at < DATE_SUB(NOW(), INTERVAL 30 DAY)
+");
 $stmt->execute();
-$prev_month_users = $stmt->get_result()->fetch_assoc()['prev_users'];
+$prev_period_users = $stmt->get_result()->fetch_assoc()['prev_users'];
 
-$stmt = $conn->prepare("SELECT COUNT(*) as curr_users FROM accounts WHERE DATE_FORMAT(created_at, '%Y-%m') = ?");
-$stmt->bind_param("s", $current_month);
+$stmt = $conn->prepare("
+    SELECT COUNT(*) as curr_users 
+    FROM accounts 
+    WHERE created_at >= DATE_SUB(NOW(), INTERVAL 30 DAY)
+");
 $stmt->execute();
-$curr_month_users = $stmt->get_result()->fetch_assoc()['curr_users'];
+$curr_period_users = $stmt->get_result()->fetch_assoc()['curr_users'];
 
-$user_growth = $prev_month_users > 0 ? round((($curr_month_users - $prev_month_users) / $prev_month_users) * 100) : 0;
+$user_growth = $prev_period_users > 0 ? round((($curr_period_users - $prev_period_users) / $prev_period_users) * 100) : 0;
 
 // Publications growth calculation
 $stmt = $conn->prepare("
     SELECT COUNT(*) as prev_publications 
     FROM paper_submissions 
     WHERE status IN ('approved', 'published') 
-    AND DATE_FORMAT(submission_date, '%Y-%m') = ?
+    AND submission_date >= DATE_SUB(NOW(), INTERVAL 60 DAY)
+    AND submission_date < DATE_SUB(NOW(), INTERVAL 30 DAY)
 ");
-$stmt->bind_param("s", $previous_month);
 $stmt->execute();
 $prev_publications = $stmt->get_result()->fetch_assoc()['prev_publications'];
 
@@ -68,9 +69,8 @@ $stmt = $conn->prepare("
     SELECT COUNT(*) as curr_publications 
     FROM paper_submissions 
     WHERE status IN ('approved', 'published') 
-    AND DATE_FORMAT(submission_date, '%Y-%m') = ?
+    AND submission_date >= DATE_SUB(NOW(), INTERVAL 30 DAY)
 ");
-$stmt->bind_param("s", $current_month);
 $stmt->execute();
 $curr_publications = $stmt->get_result()->fetch_assoc()['curr_publications'];
 
@@ -81,9 +81,9 @@ $stmt = $conn->prepare("
     SELECT COUNT(*) as prev_views 
     FROM paper_metrics 
     WHERE metric_type = 'view' 
-    AND DATE_FORMAT(created_at, '%Y-%m') = ?
+    AND created_at >= DATE_SUB(NOW(), INTERVAL 60 DAY)
+    AND created_at < DATE_SUB(NOW(), INTERVAL 30 DAY)
 ");
-$stmt->bind_param("s", $previous_month);
 $stmt->execute();
 $prev_views = $stmt->get_result()->fetch_assoc()['prev_views'];
 
@@ -97,7 +97,6 @@ function formatNumber($number) {
     return number_format($number);
 }
 ?>
-
 
 <!DOCTYPE html>
 <html lang="en">
@@ -388,17 +387,7 @@ function formatNumber($number) {
       <!-- Navigation -->
       <div class="nav-container">
         <div class="max-w-7xl mx-auto px-4 flex flex-wrap justify-between items-center gap-4">
-          <!-- Search Bar -->
-     <div>
-
-
-
-
-
-
-     
-
-     </div>
+          <div></div>
 
           <!-- Navigation Links -->
           <div class="nav-links text-green-900 font-semibold text-sm">
@@ -479,75 +468,75 @@ function formatNumber($number) {
     </section>
 
     <!-- Quick Stats -->
-<section class="max-w-6xl mx-auto px-4 mb-12">
-  <h3 class="text-2xl font-bold text-[#115D5B] mb-6">
-    <i class="fas fa-chart-line mr-2"></i>System Overview
-  </h3>
-  <div class="stats-grid grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-    
-    <!-- Total Users Card -->
-    <div class="stats-card p-6 rounded-lg shadow-md">
-      <div class="flex items-center justify-between">
-        <div>
-          <p class="text-sm text-gray-600 font-medium">Total Users</p>
-          <p class="text-3xl font-bold text-[#115D5B]"><?php echo formatNumber($total_users); ?></p>
-          <p class="text-xs <?php echo $user_growth >= 0 ? 'text-green-600' : 'text-red-600'; ?> font-medium mt-1">
-            <?php echo $user_growth >= 0 ? '↑' : '↓'; ?> <?php echo abs($user_growth); ?>% from last month
-          </p>
+    <section class="max-w-6xl mx-auto px-4 mb-12">
+      <h3 class="text-2xl font-bold text-[#115D5B] mb-6">
+        <i class="fas fa-chart-line mr-2"></i>System Overview
+      </h3>
+      <div class="stats-grid grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+        
+        <!-- Total Users Card -->
+        <div class="stats-card p-6 rounded-lg shadow-md">
+          <div class="flex items-center justify-between">
+            <div>
+              <p class="text-sm text-gray-600 font-medium">Total Users</p>
+              <p class="text-3xl font-bold text-[#115D5B]"><?php echo formatNumber($total_users); ?></p>
+              <p class="text-xs <?php echo $user_growth >= 0 ? 'text-green-600' : 'text-red-600'; ?> font-medium mt-1">
+                <?php echo $user_growth >= 0 ? '↑' : '↓'; ?> <?php echo abs($user_growth); ?>% from last 30 days
+              </p>
+            </div>
+            <div class="bg-[#115D5B] p-3 rounded-full">
+              <i class="fas fa-users text-white text-xl"></i>
+            </div>
+          </div>
         </div>
-        <div class="bg-[#115D5B] p-3 rounded-full">
-          <i class="fas fa-users text-white text-xl"></i>
-        </div>
-      </div>
-    </div>
 
-    <!-- Total Publications Card -->
-    <div class="stats-card p-6 rounded-lg shadow-md">
-      <div class="flex items-center justify-between">
-        <div>
-          <p class="text-sm text-gray-600 font-medium">Publications</p>
-          <p class="text-3xl font-bold text-[#115D5B]"><?php echo formatNumber($total_publications); ?></p>
-          <p class="text-xs <?php echo $publication_growth >= 0 ? 'text-green-600' : 'text-red-600'; ?> font-medium mt-1">
-            <?php echo $publication_growth >= 0 ? '↑' : '↓'; ?> <?php echo abs($publication_growth); ?>% from last month
-          </p>
+        <!-- Total Publications Card -->
+        <div class="stats-card p-6 rounded-lg shadow-md">
+          <div class="flex items-center justify-between">
+            <div>
+              <p class="text-sm text-gray-600 font-medium">Publications</p>
+              <p class="text-3xl font-bold text-[#115D5B]"><?php echo formatNumber($total_publications); ?></p>
+              <p class="text-xs <?php echo $publication_growth >= 0 ? 'text-green-600' : 'text-red-600'; ?> font-medium mt-1">
+                <?php echo $publication_growth >= 0 ? '↑' : '↓'; ?> <?php echo abs($publication_growth); ?>% from last 30 days
+              </p>
+            </div>
+            <div class="bg-green-600 p-3 rounded-full">
+              <i class="fas fa-book text-white text-xl"></i>
+            </div>
+          </div>
         </div>
-        <div class="bg-green-600 p-3 rounded-full">
-          <i class="fas fa-book text-white text-xl"></i>
-        </div>
-      </div>
-    </div>
 
-    <!-- Pending Reviews Card -->
-    <div class="stats-card p-6 rounded-lg shadow-md">
-      <div class="flex items-center justify-between">
-        <div>
-          <p class="text-sm text-gray-600 font-medium">Pending Reviews</p>
-          <p class="text-3xl font-bold text-orange-600"><?php echo $pending_reviews; ?></p>
-          <p class="text-xs text-orange-600 font-medium mt-1">
-            <?php echo $pending_reviews > 0 ? 'Needs attention' : 'All caught up!'; ?>
-          </p>
+        <!-- Pending Reviews Card -->
+        <div class="stats-card p-6 rounded-lg shadow-md">
+          <div class="flex items-center justify-between">
+            <div>
+              <p class="text-sm text-gray-600 font-medium">Pending Reviews</p>
+              <p class="text-3xl font-bold text-orange-600"><?php echo $pending_reviews; ?></p>
+              <p class="text-xs text-orange-600 font-medium mt-1">
+                <?php echo $pending_reviews > 0 ? 'Needs attention' : 'All caught up!'; ?>
+              </p>
+            </div>
+            <div class="bg-orange-500 p-3 rounded-full">
+              <i class="fas fa-clock text-white text-xl"></i>
+            </div>
+          </div>
         </div>
-        <div class="bg-orange-500 p-3 rounded-full">
-          <i class="fas fa-clock text-white text-xl"></i>
-        </div>
-      </div>
-    </div>
 
-    <!-- Monthly Views Card -->
-    <div class="stats-card p-6 rounded-lg shadow-md">
-      <div class="flex items-center justify-between">
-        <div>
-          <p class="text-sm text-gray-600 font-medium">Monthly Views</p>
-          <p class="text-3xl font-bold text-blue-600"><?php echo formatNumber($monthly_views); ?></p>
-          <p class="text-xs <?php echo $views_growth >= 0 ? 'text-blue-600' : 'text-red-600'; ?> font-medium mt-1">
-            <?php echo $views_growth >= 0 ? '↑' : '↓'; ?> <?php echo abs($views_growth); ?>% from last month
-          </p>
+        <!-- Monthly Views Card -->
+        <div class="stats-card p-6 rounded-lg shadow-md">
+          <div class="flex items-center justify-between">
+            <div>
+              <p class="text-sm text-gray-600 font-medium">Views (Last 30 Days)</p>
+              <p class="text-3xl font-bold text-blue-600"><?php echo formatNumber($monthly_views); ?></p>
+              <p class="text-xs <?php echo $views_growth >= 0 ? 'text-blue-600' : 'text-red-600'; ?> font-medium mt-1">
+                <?php echo $views_growth >= 0 ? '↑' : '↓'; ?> <?php echo abs($views_growth); ?>% from last 30 days
+              </p>
+            </div>
+            <div class="bg-blue-500 p-3 rounded-full">
+              <i class="fas fa-eye text-white text-xl"></i>
+            </div>
+          </div>
         </div>
-        <div class="bg-blue-500 p-3 rounded-full">
-          <i class="fas fa-eye text-white text-xl"></i>
-        </div>
-      </div>
-    </div>
 
       </div>
     </section>
@@ -609,19 +598,19 @@ function formatNumber($number) {
           </div>
         </a>
         
-<a href="admin_reports.php" class="admin-card enhanced-card p-8 shadow-lg transition-all w-full max-w-sm">
-  <div class="text-center">
-    <div class="icon-container p-6 rounded-full w-20 h-20 mx-auto flex items-center justify-center mb-6">
-      <i class="fas fa-chart-pie text-3xl"></i>
-    </div>
-    <h3 class="text-xl font-bold mb-3">Reports</h3>
-    <p class="opacity-90 leading-relaxed">Generate detailed analytics, insights, and system performance reports</p>
-  </div>
-</a>
+        <a href="admin_reports.php" class="admin-card enhanced-card p-8 shadow-lg transition-all w-full max-w-sm">
+          <div class="text-center">
+            <div class="icon-container p-6 rounded-full w-20 h-20 mx-auto flex items-center justify-center mb-6">
+              <i class="fas fa-chart-pie text-3xl"></i>
+            </div>
+            <h3 class="text-xl font-bold mb-3">Reports</h3>
+            <p class="opacity-90 leading-relaxed">Generate detailed analytics, insights, and system performance reports</p>
+          </div>
+        </a>
 
       </div>
     </section>
-
+  </main>
 
   <!-- Footer -->
   <footer class="bg-gradient-to-r from-[#115D5B] to-[#103625] text-white text-center py-8 mt-12">

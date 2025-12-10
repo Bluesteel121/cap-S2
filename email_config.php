@@ -1,5 +1,5 @@
 <?php
-// email_config.php - Enhanced Email Configuration with Reliability Features
+// email_config.php - Enhanced Email Configuration with Admin Notification Features
 
 use PHPMailer\PHPMailer\PHPMailer;
 use PHPMailer\PHPMailer\Exception;
@@ -12,24 +12,22 @@ define('SMTP_PASSWORD', 'okbl exhm tlxz mjkw');
 define('FROM_EMAIL', 'elibrarycnlrrs@gmail.com');
 define('FROM_NAME', 'CNLRRS E-Library');
 define('MAX_EMAIL_RETRIES', 3);
-define('EMAIL_RETRY_DELAY', 2); // seconds
+define('EMAIL_RETRY_DELAY', 2);
 
 /**
- * Enhanced Email utility class with reliability features
+ * Enhanced Email utility class with admin notification support
  */
 class EmailService {
     
     /**
-     * Send email with retry mechanism and comprehensive logging
+     * Send email with retry mechanism
      */
     public static function sendEmail($to, $subject, $body, $isHTML = true, $retries = MAX_EMAIL_RETRIES) {
-        // Validate email address
         if (!filter_var($to, FILTER_VALIDATE_EMAIL)) {
             self::logEmailError("Invalid email address: $to", $subject);
             return false;
         }
 
-        // Load PHPMailer
         if (!self::loadPHPMailer()) {
             self::logEmailError("PHPMailer could not be loaded", $subject);
             return false;
@@ -44,7 +42,6 @@ class EmailService {
             try {
                 $mail = new PHPMailer(true);
                 
-                // Server settings
                 $mail->isSMTP();
                 $mail->Host = SMTP_HOST;
                 $mail->SMTPAuth = true;
@@ -52,16 +49,10 @@ class EmailService {
                 $mail->Password = SMTP_PASSWORD;
                 $mail->SMTPSecure = PHPMailer::ENCRYPTION_STARTTLS;
                 $mail->Port = SMTP_PORT;
-                $mail->Timeout = 30; // Increase timeout
-                $mail->SMTPKeepAlive = true; // Keep connection alive
+                $mail->Timeout = 30;
+                $mail->SMTPKeepAlive = true;
+                $mail->SMTPDebug = 0;
                 
-                // Enable debug output for troubleshooting (set to 0 in production)
-                $mail->SMTPDebug = 0; // 0 = off, 1 = client, 2 = client and server
-                $mail->Debugoutput = function($str, $level) {
-                    error_log("SMTP Debug Level $level: $str");
-                };
-                
-                // SSL options
                 $mail->SMTPOptions = array(
                     'ssl' => array(
                         'verify_peer' => false,
@@ -70,23 +61,18 @@ class EmailService {
                     )
                 );
                 
-                // Recipients
                 $mail->setFrom(FROM_EMAIL, FROM_NAME);
                 $mail->addAddress($to);
                 $mail->addReplyTo(FROM_EMAIL, FROM_NAME);
-                
-                // Content
                 $mail->isHTML($isHTML);
                 $mail->Subject = $subject;
                 $mail->Body = $body;
                 $mail->CharSet = 'UTF-8';
                 
-                // Plain text alternative
                 if ($isHTML) {
                     $mail->AltBody = strip_tags(str_replace('<br>', "\n", $body));
                 }
                 
-                // Send email
                 $success = $mail->send();
                 
                 if ($success) {
@@ -98,20 +84,284 @@ class EmailService {
                 $lastError = $mail->ErrorInfo;
                 self::logEmailAttempt($to, $subject, $attempt, $retries, $lastError);
                 
-                // If not the last attempt, wait before retrying
                 if ($attempt < $retries) {
                     sleep(EMAIL_RETRY_DELAY);
                 }
             }
         }
         
-        // All attempts failed
         self::logEmailError("All $retries attempts failed. Last error: $lastError", $subject, $to);
-        
-        // Queue email for later retry
         self::queueFailedEmail($to, $subject, $body, $isHTML);
         
         return false;
+    }
+    
+    /**
+     * Send admin notification for paper submissions and revisions
+     */
+    public static function sendAdminNotification($paperData, $notificationType, $conn, $testEmail = null) {
+        // Get notification settings
+        $sql = "SELECT * FROM notification_settings WHERE id = 1";
+        $result = $conn->query($sql);
+        $settings = $result->fetch_assoc();
+        
+        if (!$settings) {
+            error_log("Admin notification settings not configured");
+            return false;
+        }
+        
+        // Check if notifications are enabled for this type
+        if ($notificationType === 'submission' && !$settings['notify_on_submission']) {
+            return false;
+        }
+        if ($notificationType === 'revision' && !$settings['notify_on_revision']) {
+            return false;
+        }
+        
+        // Get email addresses
+        $emails = $testEmail ? [$testEmail] : array_map('trim', explode(',', $settings['notification_emails']));
+        $emails = array_filter($emails, function($email) {
+            return filter_var($email, FILTER_VALIDATE_EMAIL);
+        });
+        
+        if (empty($emails)) {
+            error_log("No valid admin notification emails configured");
+            return false;
+        }
+        
+        // Prepare email content based on notification type
+        if ($notificationType === 'submission') {
+            $subject = "[NEW SUBMISSION] {$paperData['paper_title']}";
+            $body = self::getAdminSubmissionTemplate($paperData);
+        } else if ($notificationType === 'revision') {
+            $subject = "[REVISION SUBMITTED] {$paperData['paper_title']}";
+            $body = self::getAdminRevisionTemplate($paperData);
+        } else {
+            return false;
+        }
+        
+        // Send to all admin emails
+        $success = true;
+        foreach ($emails as $email) {
+            $result = self::sendEmail($email, $subject, $body);
+            if (!$result) {
+                $success = false;
+                error_log("Failed to send admin notification to: $email");
+            }
+        }
+        
+        // Log the notification attempt
+        if (function_exists('logActivity')) {
+            $emailList = implode(', ', $emails);
+            logActivity('ADMIN_NOTIFICATION_SENT', "Type: $notificationType, Paper: {$paperData['paper_title']}, To: $emailList");
+        }
+        
+        return $success;
+    }
+    
+    /**
+     * Get admin notification template for new submissions
+     */
+    private static function getAdminSubmissionTemplate($paperData) {
+        $paper_url = (isset($_SERVER['HTTPS']) && $_SERVER['HTTPS'] === 'on' ? "https" : "http") . 
+                     "://" . $_SERVER['HTTP_HOST'] . dirname($_SERVER['PHP_SELF']) . 
+                     "/admin_manage_papers.php";
+        
+        return '
+            <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
+                <div style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; padding: 30px; text-align: center; border-radius: 10px 10px 0 0;">
+                    <h1 style="margin: 0; font-size: 24px;">
+                        <span style="font-size: 30px;">📄</span><br>
+                        New Paper Submission
+                    </h1>
+                </div>
+                
+                <div style="background-color: #f8f9fa; padding: 30px; border-radius: 0 0 10px 10px;">
+                    <div style="background-color: white; padding: 25px; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.1);">
+                        <h2 style="color: #667eea; margin-top: 0; border-bottom: 2px solid #667eea; padding-bottom: 10px;">
+                            Submission Details
+                        </h2>
+                        
+                        <table style="width: 100%; border-collapse: collapse;">
+                            <tr>
+                                <td style="padding: 12px 0; border-bottom: 1px solid #e9ecef; font-weight: bold; color: #495057; width: 40%;">
+                                    Paper Title:
+                                </td>
+                                <td style="padding: 12px 0; border-bottom: 1px solid #e9ecef; color: #212529;">
+                                    ' . htmlspecialchars($paperData['paper_title'] ?? 'Untitled') . '
+                                </td>
+                            </tr>
+                            <tr>
+                                <td style="padding: 12px 0; border-bottom: 1px solid #e9ecef; font-weight: bold; color: #495057;">
+                                    Author:
+                                </td>
+                                <td style="padding: 12px 0; border-bottom: 1px solid #e9ecef; color: #212529;">
+                                    ' . htmlspecialchars($paperData['author_name'] ?? 'Unknown') . '
+                                </td>
+                            </tr>
+                            <tr>
+                                <td style="padding: 12px 0; border-bottom: 1px solid #e9ecef; font-weight: bold; color: #495057;">
+                                    Research Type:
+                                </td>
+                                <td style="padding: 12px 0; border-bottom: 1px solid #e9ecef; color: #212529;">
+                                    ' . htmlspecialchars($paperData['research_type'] ?? 'Not specified') . '
+                                </td>
+                            </tr>
+                            <tr>
+                                <td style="padding: 12px 0; border-bottom: 1px solid #e9ecef; font-weight: bold; color: #495057;">
+                                    Submitted By:
+                                </td>
+                                <td style="padding: 12px 0; border-bottom: 1px solid #e9ecef; color: #212529;">
+                                    ' . htmlspecialchars($paperData['submitted_by'] ?? 'Unknown') . '
+                                </td>
+                            </tr>
+                            <tr>
+                                <td style="padding: 12px 0; font-weight: bold; color: #495057;">
+                                    Submission Date:
+                                </td>
+                                <td style="padding: 12px 0; color: #212529;">
+                                    ' . date('F j, Y \a\t g:i A') . '
+                                </td>
+                            </tr>
+                        </table>
+                        
+                        <div style="margin-top: 30px; text-align: center;">
+                            <a href="' . $paper_url . '" style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; padding: 15px 40px; text-decoration: none; border-radius: 25px; display: inline-block; font-weight: bold; font-size: 16px; box-shadow: 0 4px 6px rgba(102, 126, 234, 0.4);">
+                                Review Paper →
+                            </a>
+                        </div>
+                    </div>
+                    
+                    <div style="margin-top: 20px; padding: 15px; background-color: #e7f3ff; border-left: 4px solid #2196F3; border-radius: 4px;">
+                        <p style="margin: 0; color: #0d47a1; font-size: 14px;">
+                            <strong>⏰ Action Required:</strong> This paper is awaiting your review. Please log in to the admin panel to review and approve or request revisions.
+                        </p>
+                    </div>
+                    
+                    <div style="margin-top: 20px; text-align: center; color: #6c757d; font-size: 12px;">
+                        <p>This is an automated notification from CNLRRS E-Library System</p>
+                        <p style="margin-top: 5px;">
+                            To manage notification settings, visit the 
+                            <a href="' . dirname($paper_url) . '/admin_email_templates.php" style="color: #667eea;">Email Templates</a> page
+                        </p>
+                    </div>
+                </div>
+            </div>
+        ';
+    }
+    
+    /**
+     * Get admin notification template for revisions
+     */
+    private static function getAdminRevisionTemplate($paperData) {
+        $paper_url = (isset($_SERVER['HTTPS']) && $_SERVER['HTTPS'] === 'on' ? "https" : "http") . 
+                     "://" . $_SERVER['HTTP_HOST'] . dirname($_SERVER['PHP_SELF']) . 
+                     "/admin_manage_papers.php";
+        
+        $revisionNumber = $paperData['revision_count'] ?? 1;
+        
+        return '
+            <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
+                <div style="background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%); color: white; padding: 30px; text-align: center; border-radius: 10px 10px 0 0;">
+                    <h1 style="margin: 0; font-size: 24px;">
+                        <span style="font-size: 30px;">🔄</span><br>
+                        Paper Revision Submitted
+                    </h1>
+                </div>
+                
+                <div style="background-color: #f8f9fa; padding: 30px; border-radius: 0 0 10px 10px;">
+                    <div style="background-color: white; padding: 25px; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.1);">
+                        <div style="background-color: #fff3cd; padding: 15px; border-radius: 8px; margin-bottom: 20px; border-left: 4px solid #ffc107;">
+                            <p style="margin: 0; color: #856404; font-weight: bold;">
+                                📝 Revision #' . $revisionNumber . '
+                            </p>
+                        </div>
+                        
+                        <h2 style="color: #f5576c; margin-top: 0; border-bottom: 2px solid #f5576c; padding-bottom: 10px;">
+                            Revision Details
+                        </h2>
+                        
+                        <table style="width: 100%; border-collapse: collapse;">
+                            <tr>
+                                <td style="padding: 12px 0; border-bottom: 1px solid #e9ecef; font-weight: bold; color: #495057; width: 40%;">
+                                    Paper Title:
+                                </td>
+                                <td style="padding: 12px 0; border-bottom: 1px solid #e9ecef; color: #212529;">
+                                    ' . htmlspecialchars($paperData['paper_title'] ?? 'Untitled') . '
+                                </td>
+                            </tr>
+                            <tr>
+                                <td style="padding: 12px 0; border-bottom: 1px solid #e9ecef; font-weight: bold; color: #495057;">
+                                    Author:
+                                </td>
+                                <td style="padding: 12px 0; border-bottom: 1px solid #e9ecef; color: #212529;">
+                                    ' . htmlspecialchars($paperData['author_name'] ?? 'Unknown') . '
+                                </td>
+                            </tr>
+                            <tr>
+                                <td style="padding: 12px 0; border-bottom: 1px solid #e9ecef; font-weight: bold; color: #495057;">
+                                    Research Type:
+                                </td>
+                                <td style="padding: 12px 0; border-bottom: 1px solid #e9ecef; color: #212529;">
+                                    ' . htmlspecialchars($paperData['research_type'] ?? 'Not specified') . '
+                                </td>
+                            </tr>
+                            <tr>
+                                <td style="padding: 12px 0; border-bottom: 1px solid #e9ecef; font-weight: bold; color: #495057;">
+                                    Revision Number:
+                                </td>
+                                <td style="padding: 12px 0; border-bottom: 1px solid #e9ecef; color: #212529;">
+                                    #' . $revisionNumber . '
+                                </td>
+                            </tr>
+                            <tr>
+                                <td style="padding: 12px 0; border-bottom: 1px solid #e9ecef; font-weight: bold; color: #495057;">
+                                    Previous Reviewer:
+                                </td>
+                                <td style="padding: 12px 0; border-bottom: 1px solid #e9ecef; color: #212529;">
+                                    ' . htmlspecialchars($paperData['reviewed_by'] ?? 'N/A') . '
+                                </td>
+                            </tr>
+                            <tr>
+                                <td style="padding: 12px 0; font-weight: bold; color: #495057;">
+                                    Revision Submitted:
+                                </td>
+                                <td style="padding: 12px 0; color: #212529;">
+                                    ' . date('F j, Y \a\t g:i A') . '
+                                </td>
+                            </tr>
+                        </table>
+                        
+                        ' . (isset($paperData['revision_notes']) && !empty($paperData['revision_notes']) ? '
+                        <div style="margin-top: 20px; padding: 15px; background-color: #f8f9fa; border-radius: 8px;">
+                            <h4 style="margin-top: 0; color: #495057;">Author\'s Revision Notes:</h4>
+                            <p style="color: #212529; white-space: pre-wrap;">' . htmlspecialchars($paperData['revision_notes']) . '</p>
+                        </div>
+                        ' : '') . '
+                        
+                        <div style="margin-top: 30px; text-align: center;">
+                            <a href="' . $paper_url . '" style="background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%); color: white; padding: 15px 40px; text-decoration: none; border-radius: 25px; display: inline-block; font-weight: bold; font-size: 16px; box-shadow: 0 4px 6px rgba(245, 87, 108, 0.4);">
+                                Review Revision →
+                            </a>
+                        </div>
+                    </div>
+                    
+                    <div style="margin-top: 20px; padding: 15px; background-color: #fff3cd; border-left: 4px solid #ffc107; border-radius: 4px;">
+                        <p style="margin: 0; color: #856404; font-size: 14px;">
+                            <strong>⏰ Action Required:</strong> The author has submitted a revised version based on your feedback. Please review the changes.
+                        </p>
+                    </div>
+                    
+                    <div style="margin-top: 20px; text-align: center; color: #6c757d; font-size: 12px;">
+                        <p>This is an automated notification from CNLRRS E-Library System</p>
+                        <p style="margin-top: 5px;">
+                            To manage notification settings, visit the 
+                            <a href="' . dirname($paper_url) . '/admin_email_templates.php" style="color: #f5576c;">Email Templates</a> page
+                        </p>
+                    </div>
+                </div>
+            </div>
+        ';
     }
     
     /**
@@ -137,7 +387,6 @@ class EmailService {
             }
         }
         
-        // Try loading individual files
         $individual_files = [
             __DIR__ . '/PHPMailer/src/PHPMailer.php',
             __DIR__ . '/PHPMailer/src/Exception.php',
@@ -175,7 +424,6 @@ class EmailService {
             logActivity('EMAIL_SENT_SUCCESS', $log_message);
         }
         
-        // Log to database
         if (isset($conn) && $conn) {
             self::logToDatabase($conn, 'success', $to, $subject, "Sent on attempt $attempt", null);
         }
@@ -219,7 +467,6 @@ class EmailService {
             return;
         }
         
-        // Create failed_emails table if it doesn't exist
         $create_table = "CREATE TABLE IF NOT EXISTS failed_emails (
             id INT AUTO_INCREMENT PRIMARY KEY,
             recipient_email VARCHAR(255) NOT NULL,
@@ -238,7 +485,6 @@ class EmailService {
         
         $conn->query($create_table);
         
-        // Insert failed email
         $sql = "INSERT INTO failed_emails (recipient_email, subject, body, is_html, last_error) 
                 VALUES (?, ?, ?, ?, 'Initial send failed after multiple attempts')";
         $stmt = $conn->prepare($sql);
@@ -252,7 +498,6 @@ class EmailService {
      * Log email to database
      */
     private static function logToDatabase($conn, $status, $to, $subject, $message, $error) {
-        // Create email_logs table if it doesn't exist
         $create_table = "CREATE TABLE IF NOT EXISTS email_logs (
             id INT AUTO_INCREMENT PRIMARY KEY,
             status VARCHAR(20) NOT NULL,
@@ -268,7 +513,6 @@ class EmailService {
         
         $conn->query($create_table);
         
-        // Insert log
         $sql = "INSERT INTO email_logs (status, recipient_email, subject, message, error_message) 
                 VALUES (?, ?, ?, ?, ?)";
         $stmt = $conn->prepare($sql);
@@ -277,54 +521,9 @@ class EmailService {
     }
     
     /**
-     * Process queued emails (run via cron job)
-     */
-    public static function processQueuedEmails($conn) {
-        $sql = "SELECT * FROM failed_emails 
-                WHERE status IN ('pending', 'retrying') 
-                AND retry_count < max_retries 
-                ORDER BY created_at ASC 
-                LIMIT 10";
-        
-        $result = $conn->query($sql);
-        
-        if (!$result) {
-            return;
-        }
-        
-        while ($row = $result->fetch_assoc()) {
-            $success = self::sendEmail(
-                $row['recipient_email'],
-                $row['subject'],
-                $row['body'],
-                (bool)$row['is_html'],
-                1 // Single retry per cron run
-            );
-            
-            // Update queue status
-            if ($success) {
-                $update_sql = "UPDATE failed_emails SET status = 'sent', last_retry_at = NOW() WHERE id = ?";
-            } else {
-                $retry_count = $row['retry_count'] + 1;
-                $new_status = ($retry_count >= $row['max_retries']) ? 'failed' : 'retrying';
-                $update_sql = "UPDATE failed_emails SET 
-                               retry_count = $retry_count, 
-                               status = '$new_status', 
-                               last_retry_at = NOW() 
-                               WHERE id = ?";
-            }
-            
-            $stmt = $conn->prepare($update_sql);
-            $stmt->bind_param("i", $row['id']);
-            $stmt->execute();
-        }
-    }
-    
-    /**
-     * Send paper review notification with guaranteed delivery
+     * Send paper review notification
      */
     public static function sendPaperReviewNotification($paperData, $userEmail, $status, $conn) {
-        // Validate inputs
         if (empty($userEmail)) {
             self::logEmailError("No email address provided for paper review notification", "Paper Review: " . $paperData['paper_title']);
             return false;
@@ -350,17 +549,16 @@ class EmailService {
             'review_date' => $paperData['review_date'] ?? date('F j, Y'),
             'reviewed_by' => $paperData['reviewed_by'] ?? 'Admin',
             'reviewer_comments' => $paperData['reviewer_comments'] ?? 'No comments provided',
+            'submission_date' => date('F j, Y'),
+            'revision_number' => $paperData['revision_count'] ?? 1,
             'paper_url' => (isset($_SERVER['HTTPS']) && $_SERVER['HTTPS'] === 'on' ? "https" : "http") . 
                           "://" . $_SERVER['HTTP_HOST'] . dirname($_SERVER['PHP_SELF']) . 
-                          "/view_paper.php?id=" . $paperData['id']
+                          "/my_submissions.php"
         ];
         
         $email = self::replaceTemplateVariables($template, $variables);
-        
-        // Send with retry mechanism
         $result = self::sendEmail($userEmail, $email['subject'], $email['body']);
         
-        // Log to database regardless of success
         self::logToDatabase($conn, $result ? 'sent' : 'failed', $userEmail, $email['subject'], 
                            "Paper review notification: $status", $result ? null : 'Send failed');
         
@@ -391,7 +589,6 @@ class EmailService {
         ];
         
         $email = self::replaceTemplateVariables($template, $variables);
-        
         $result = self::sendEmail($userEmail, $email['subject'], $email['body']);
         
         self::logToDatabase($conn, $result ? 'sent' : 'failed', $userEmail, $email['subject'], 
@@ -400,9 +597,7 @@ class EmailService {
         return $result;
     }
     
-    // Keep all the existing template methods (getEmailTemplate, getDefaultTemplate, replaceTemplateVariables)
-    // ... (rest of the code from original file)
-    
+    // Template methods
     public static function getEmailTemplate($template_type, $conn) {
         $sql = "SELECT * FROM email_templates WHERE template_type = ? AND is_active = 1";
         $stmt = $conn->prepare($sql);
@@ -421,108 +616,23 @@ class EmailService {
         $templates = [
             'paper_submitted' => [
                 'subject' => 'Paper Submission Received - {{paper_title}}',
-                'body' => '
-                    <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
-                        <h2 style="color: #115D5B;">Paper Submission Confirmation</h2>
-                        <p>Dear {{author_name}},</p>
-                        <p>Thank you for submitting your research paper to the Camarines Norte Lowland Rainfed Research Station.</p>
-                        
-                        <div style="background-color: #f8f9fa; padding: 20px; border-radius: 8px; margin: 20px 0;">
-                            <h3 style="color: #115D5B;">Submission Details:</h3>
-                            <p><strong>Title:</strong> {{paper_title}}</p>
-                            <p><strong>Research Type:</strong> {{research_type}}</p>
-                            <p><strong>Submission Date:</strong> {{submission_date}}</p>
-                            <p><strong>Submitted by:</strong> {{submitted_by}}</p>
-                        </div>
-                        
-                        <p>Your paper is now under review. Our review process typically takes 5-10 business days. You will receive an email notification once the review is complete.</p>
-                        
-                        <p>If you have any questions, please contact us at dacnlrrs@gmail.com</p>
-                        
-                        <p>Best regards,<br>CNLRRS Review Team</p>
-                    </div>
-                '
+                'body' => '<h2>Paper Submission Confirmation</h2><p>Dear {{author_name}},</p><p>Thank you for submitting your research paper.</p>'
             ],
             'paper_approved' => [
                 'subject' => 'Paper Approved - {{paper_title}}',
-                'body' => '
-                    <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
-                        <h2 style="color: #28a745;">Paper Approval Notification</h2>
-                        <p>Dear {{author_name}},</p>
-                        <p>Congratulations! Your research paper has been approved for publication.</p>
-                        
-                        <div style="background-color: #d4edda; padding: 20px; border-radius: 8px; margin: 20px 0; border-left: 4px solid #28a745;">
-                            <h3 style="color: #155724;">Approved Paper Details:</h3>
-                            <p><strong>Title:</strong> {{paper_title}}</p>
-                            <p><strong>Research Type:</strong> {{research_type}}</p>
-                            <p><strong>Review Date:</strong> {{review_date}}</p>
-                            <p><strong>Reviewed by:</strong> {{reviewed_by}}</p>
-                        </div>
-                        
-                        <div style="background-color: #f8f9fa; padding: 15px; border-radius: 8px; margin: 20px 0;">
-                            <h4>Reviewer Comments:</h4>
-                            <p>{{reviewer_comments}}</p>
-                        </div>
-                        
-                        <p>Your paper will now be published on our research platform. You will receive another notification when it becomes publicly available.</p>
-                        
-                        <p>Thank you for contributing to agricultural research!</p>
-                        
-                        <p>Best regards,<br>CNLRRS Review Team</p>
-                    </div>
-                '
+                'body' => '<h2>Paper Approved</h2><p>Dear {{author_name}},</p><p>Your paper has been approved!</p>'
             ],
-            'paper_rejected' => [
-                'subject' => 'Paper Review Update - {{paper_title}}',
-                'body' => '
-                    <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
-                        <h2 style="color: #dc3545;">Paper Review Update</h2>
-                        <p>Dear {{author_name}},</p>
-                        <p>Thank you for your submission to CNLRRS. After careful review, we have feedback regarding your paper that requires your attention.</p>
-                        
-                        <div style="background-color: #f8d7da; padding: 20px; border-radius: 8px; margin: 20px 0; border-left: 4px solid #dc3545;">
-                            <h3 style="color: #721c24;">Paper Details:</h3>
-                            <p><strong>Title:</strong> {{paper_title}}</p>
-                            <p><strong>Research Type:</strong> {{research_type}}</p>
-                            <p><strong>Review Date:</strong> {{review_date}}</p>
-                        </div>
-                        
-                        <div style="background-color: #fff3cd; padding: 15px; border-radius: 8px; margin: 20px 0; border-left: 4px solid #ffc107;">
-                            <h4 style="color: #856404;">Reviewer Feedback:</h4>
-                            <p>{{reviewer_comments}}</p>
-                        </div>
-                        
-                        <p>We encourage you to address the reviewer feedback and resubmit your paper. Our goal is to help you publish high-quality research.</p>
-                        
-                        <p>If you have questions about the feedback, please contact us at dacnlrrs@gmail.com</p>
-                        
-                        <p>Best regards,<br>CNLRRS Review Team</p>
-                    </div>
-                '
+            'paper_revision_requested' => [
+                'subject' => 'Revision Required - {{paper_title}}',
+                'body' => '<h2>Paper Revision Requested</h2><p>Dear {{author_name}},</p><p>Your paper requires revision.</p>'
+            ],
+            'paper_revision_submitted' => [
+                'subject' => 'Revision Received - {{paper_title}}',
+                'body' => '<h2>Revision Successfully Submitted</h2><p>Dear {{author_name}},</p><p>We have received your revised paper.</p>'
             ],
             'paper_under_review' => [
                 'subject' => 'Paper Under Review - {{paper_title}}',
-                'body' => '
-                    <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
-                        <h2 style="color: #17a2b8;">Paper Under Review</h2>
-                        <p>Dear {{author_name}},</p>
-                        <p>Your research paper is now under active review by our team.</p>
-                        
-                        <div style="background-color: #d1ecf1; padding: 20px; border-radius: 8px; margin: 20px 0; border-left: 4px solid #17a2b8;">
-                            <h3 style="color: #0c5460;">Paper Details:</h3>
-                            <p><strong>Title:</strong> {{paper_title}}</p>
-                            <p><strong>Research Type:</strong> {{research_type}}</p>
-                            <p><strong>Review Started:</strong> {{review_date}}</p>
-                            <p><strong>Reviewer:</strong> {{reviewed_by}}</p>
-                        </div>
-                        
-                        <p>We will notify you as soon as the review is complete. This typically takes 5-10 business days.</p>
-                        
-                        <p>Thank you for your patience.</p>
-                        
-                        <p>Best regards,<br>CNLRRS Review Team</p>
-                    </div>
-                '
+                'body' => '<h2>Paper Under Review</h2><p>Dear {{author_name}},</p><p>Your paper is under review.</p>'
             ]
         ];
         
@@ -575,6 +685,20 @@ function createEmailTemplatesTable($conn) {
     return $conn->query($sql);
 }
 
+function createNotificationSettingsTable($conn) {
+    $sql = "CREATE TABLE IF NOT EXISTS notification_settings (
+        id INT PRIMARY KEY DEFAULT 1,
+        notification_emails TEXT,
+        notify_on_submission BOOLEAN DEFAULT TRUE,
+        notify_on_revision BOOLEAN DEFAULT TRUE,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+        updated_by VARCHAR(50)
+    )";
+    
+    return $conn->query($sql);
+}
+
 function initializeDefaultEmailTemplates($conn) {
     createEmailTemplatesTable($conn);
     
@@ -592,10 +716,16 @@ function initializeDefaultEmailTemplates($conn) {
             'body' => '<h2>Paper Approved</h2><p>Dear {{author_name}},</p><p>Your paper has been approved!</p>'
         ],
         [
-            'template_type' => 'paper_rejected',
-            'template_name' => 'Paper Requires Revision',
-            'subject' => 'Paper Review Update - {{paper_title}}',
-            'body' => '<h2>Paper Review Update</h2><p>Dear {{author_name}},</p><p>Your paper requires revision.</p>'
+            'template_type' => 'paper_revision_requested',
+            'template_name' => 'Paper Revision Required',
+            'subject' => 'Revision Required - {{paper_title}}',
+            'body' => '<h2>Paper Revision Requested</h2><p>Dear {{author_name}},</p><p>Your paper requires revision.</p>'
+        ],
+        [
+            'template_type' => 'paper_revision_submitted',
+            'template_name' => 'Revision Submitted Confirmation',
+            'subject' => 'Revision Received - {{paper_title}}',
+            'body' => '<h2>Revision Successfully Submitted</h2><p>Dear {{author_name}},</p><p>We have received your revised paper.</p>'
         ],
         [
             'template_type' => 'paper_under_review',
