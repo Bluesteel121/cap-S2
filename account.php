@@ -21,7 +21,7 @@
                 <img src="Images/adminlogo.png" alt="Admin Logo" class="h-12 mb-2" />
                 <i class="fas fa-user-cog text-[#115D5B] text-3xl"></i>
             </div>
-            <p class="mt-2 text-lg font-semibold">Admin/reviewer</p>
+            <p class="mt-2 text-lg font-semibold">Admin</p>
         </button>
 
       

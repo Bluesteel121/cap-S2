@@ -165,11 +165,11 @@ class EmailService {
     private static function getAdminSubmissionTemplate($paperData) {
         $paper_url = (isset($_SERVER['HTTPS']) && $_SERVER['HTTPS'] === 'on' ? "https" : "http") . 
                      "://" . $_SERVER['HTTP_HOST'] . dirname($_SERVER['PHP_SELF']) . 
-                     "/admin_manage_papers.php";
+                     "/admin_review_papers.php";
         
         return '
             <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
-                <div style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; padding: 30px; text-align: center; border-radius: 10px 10px 0 0;">
+                <div style="background: linear-gradient(135deg, #1a7b7b 0%, #0d5858 100%); color: white; padding: 30px; text-align: center; border-radius: 10px 10px 0 0;">
                     <h1 style="margin: 0; font-size: 24px;">
                         <span style="font-size: 30px;">📄</span><br>
                         New Paper Submission
@@ -178,7 +178,7 @@ class EmailService {
                 
                 <div style="background-color: #f8f9fa; padding: 30px; border-radius: 0 0 10px 10px;">
                     <div style="background-color: white; padding: 25px; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.1);">
-                        <h2 style="color: #667eea; margin-top: 0; border-bottom: 2px solid #667eea; padding-bottom: 10px;">
+                        <h2 style="color: #1a7b7b; margin-top: 0; border-bottom: 2px solid #1a7b7b; padding-bottom: 10px;">
                             Submission Details
                         </h2>
                         
@@ -226,14 +226,14 @@ class EmailService {
                         </table>
                         
                         <div style="margin-top: 30px; text-align: center;">
-                            <a href="' . $paper_url . '" style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; padding: 15px 40px; text-decoration: none; border-radius: 25px; display: inline-block; font-weight: bold; font-size: 16px; box-shadow: 0 4px 6px rgba(102, 126, 234, 0.4);">
+                            <a href="' . $paper_url . '" style="background: linear-gradient(135deg, #1a7b7b 0%, #0d5858 100%); color: white; padding: 15px 40px; text-decoration: none; border-radius: 25px; display: inline-block; font-weight: bold; font-size: 16px; box-shadow: 0 4px 6px rgba(26, 123, 123, 0.4);">
                                 Review Paper →
                             </a>
                         </div>
                     </div>
                     
-                    <div style="margin-top: 20px; padding: 15px; background-color: #e7f3ff; border-left: 4px solid #2196F3; border-radius: 4px;">
-                        <p style="margin: 0; color: #0d47a1; font-size: 14px;">
+                    <div style="margin-top: 20px; padding: 15px; background-color: #e0f2f1; border-left: 4px solid #1a7b7b; border-radius: 4px;">
+                        <p style="margin: 0; color: #0d5858; font-size: 14px;">
                             <strong>⏰ Action Required:</strong> This paper is awaiting your review. Please log in to the admin panel to review and approve or request revisions.
                         </p>
                     </div>
@@ -242,7 +242,7 @@ class EmailService {
                         <p>This is an automated notification from CNLRRS E-Library System</p>
                         <p style="margin-top: 5px;">
                             To manage notification settings, visit the 
-                            <a href="' . dirname($paper_url) . '/admin_email_templates.php" style="color: #667eea;">Email Templates</a> page
+                            <a href="' . dirname($paper_url) . '/admin_email_templates.php" style="color: #1a7b7b;">Email Templates</a> page
                         </p>
                     </div>
                 </div>
@@ -256,13 +256,13 @@ class EmailService {
     private static function getAdminRevisionTemplate($paperData) {
         $paper_url = (isset($_SERVER['HTTPS']) && $_SERVER['HTTPS'] === 'on' ? "https" : "http") . 
                      "://" . $_SERVER['HTTP_HOST'] . dirname($_SERVER['PHP_SELF']) . 
-                     "/admin_manage_papers.php";
+                     "/admin_review_papers.php";
         
         $revisionNumber = $paperData['revision_count'] ?? 1;
         
         return '
             <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
-                <div style="background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%); color: white; padding: 30px; text-align: center; border-radius: 10px 10px 0 0;">
+                <div style="background: linear-gradient(135deg, #16a085 0%, #0d6f5f 100%); color: white; padding: 30px; text-align: center; border-radius: 10px 10px 0 0;">
                     <h1 style="margin: 0; font-size: 24px;">
                         <span style="font-size: 30px;">🔄</span><br>
                         Paper Revision Submitted
@@ -271,13 +271,13 @@ class EmailService {
                 
                 <div style="background-color: #f8f9fa; padding: 30px; border-radius: 0 0 10px 10px;">
                     <div style="background-color: white; padding: 25px; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.1);">
-                        <div style="background-color: #fff3cd; padding: 15px; border-radius: 8px; margin-bottom: 20px; border-left: 4px solid #ffc107;">
-                            <p style="margin: 0; color: #856404; font-weight: bold;">
-                                📝 Revision #' . $revisionNumber . '
+                        <div style="background-color: #e0f2f1; padding: 15px; border-radius: 8px; margin-bottom: 20px; border-left: 4px solid #16a085;">
+                            <p style="margin: 0; color: #0d5858; font-weight: bold;">
+                                🔖 Revision #' . $revisionNumber . '
                             </p>
                         </div>
                         
-                        <h2 style="color: #f5576c; margin-top: 0; border-bottom: 2px solid #f5576c; padding-bottom: 10px;">
+                        <h2 style="color: #16a085; margin-top: 0; border-bottom: 2px solid #16a085; padding-bottom: 10px;">
                             Revision Details
                         </h2>
                         
@@ -340,14 +340,14 @@ class EmailService {
                         ' : '') . '
                         
                         <div style="margin-top: 30px; text-align: center;">
-                            <a href="' . $paper_url . '" style="background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%); color: white; padding: 15px 40px; text-decoration: none; border-radius: 25px; display: inline-block; font-weight: bold; font-size: 16px; box-shadow: 0 4px 6px rgba(245, 87, 108, 0.4);">
+                            <a href="' . $paper_url . '" style="background: linear-gradient(135deg, #16a085 0%, #0d6f5f 100%); color: white; padding: 15px 40px; text-decoration: none; border-radius: 25px; display: inline-block; font-weight: bold; font-size: 16px; box-shadow: 0 4px 6px rgba(22, 160, 133, 0.4);">
                                 Review Revision →
                             </a>
                         </div>
                     </div>
                     
-                    <div style="margin-top: 20px; padding: 15px; background-color: #fff3cd; border-left: 4px solid #ffc107; border-radius: 4px;">
-                        <p style="margin: 0; color: #856404; font-size: 14px;">
+                    <div style="margin-top: 20px; padding: 15px; background-color: #fff8e1; border-left: 4px solid #16a085; border-radius: 4px;">
+                        <p style="margin: 0; color: #0d5858; font-size: 14px;">
                             <strong>⏰ Action Required:</strong> The author has submitted a revised version based on your feedback. Please review the changes.
                         </p>
                     </div>
@@ -356,7 +356,7 @@ class EmailService {
                         <p>This is an automated notification from CNLRRS E-Library System</p>
                         <p style="margin-top: 5px;">
                             To manage notification settings, visit the 
-                            <a href="' . dirname($paper_url) . '/admin_email_templates.php" style="color: #f5576c;">Email Templates</a> page
+                            <a href="' . dirname($paper_url) . '/admin_email_templates.php" style="color: #16a085;">Email Templates</a> page
                         </p>
                     </div>
                 </div>

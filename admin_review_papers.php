@@ -358,7 +358,182 @@ function getStatusBadge($status) {
             color: #115D5B;
         }
     </style>
+    <style>
+.modal-overlay {
+    display: none;
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background-color: rgba(0, 0, 0, 0.5);
+    z-index: 1000;
+    overflow-y: auto;
+}
+
+.modal-overlay.active {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 20px;
+}
+
+.modal-content {
+    background: white;
+    border-radius: 8px;
+    width: 100%;
+    max-width: 800px;
+    max-height: 90vh;
+    overflow-y: auto;
+    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+}
+
+.modal-header {
+    padding: 20px 24px;
+    border-bottom: 1px solid #e5e7eb;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    position: sticky;
+    top: 0;
+    background: white;
+    z-index: 1;
+}
+
+.modal-header h2 {
+    margin: 0;
+    font-size: 1.5rem;
+    color: #1f2937;
+}
+
+.modal-close {
+    background: none;
+    border: none;
+    font-size: 24px;
+    cursor: pointer;
+    color: #6b7280;
+    padding: 0;
+    width: 32px;
+    height: 32px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 4px;
+}
+
+.modal-close:hover {
+    background-color: #f3f4f6;
+}
+
+.modal-body {
+    padding: 24px;
+}
+
+.detail-section {
+    margin-bottom: 24px;
+}
+
+.detail-section:last-child {
+    margin-bottom: 0;
+}
+
+.detail-label {
+    font-weight: 600;
+    color: #374151;
+    margin-bottom: 8px;
+    font-size: 0.875rem;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+}
+
+.detail-value {
+    color: #1f2937;
+    font-size: 1rem;
+    line-height: 1.6;
+}
+
+.status-badge {
+    display: inline-block;
+    padding: 4px 12px;
+    border-radius: 12px;
+    font-size: 0.875rem;
+    font-weight: 500;
+}
+
+.status-pending { background-color: #fef3c7; color: #92400e; }
+.status-approved { background-color: #d1fae5; color: #065f46; }
+.status-rejected { background-color: #fee2e2; color: #991b1b; }
+.status-revision_requested { background-color: #dbeafe; color: #1e40af; }
+.status-under_review { background-color: #e0e7ff; color: #3730a3; }
+
+.metrics-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+    gap: 16px;
+    margin-top: 8px;
+}
+
+.metric-card {
+    background-color: #f9fafb;
+    padding: 16px;
+    border-radius: 8px;
+    text-align: center;
+}
+
+.metric-value {
+    font-size: 2rem;
+    font-weight: 700;
+    color: #1f2937;
+}
+
+.metric-label {
+    font-size: 0.875rem;
+    color: #6b7280;
+    margin-top: 4px;
+}
+
+.file-link {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    color: #2563eb;
+    text-decoration: none;
+    padding: 8px 16px;
+    border: 1px solid #2563eb;
+    border-radius: 6px;
+    transition: all 0.2s;
+}
+
+.file-link:hover {
+    background-color: #2563eb;
+    color: white;
+}
+
+.authors-list {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+}
+
+.author-tag {
+    background-color: #e5e7eb;
+    padding: 6px 12px;
+    border-radius: 16px;
+    font-size: 0.875rem;
+}
+</style>
 </head>
+<div id="paperModal" class="modal-overlay">
+    <div class="modal-content">
+        <div class="modal-header">
+            <h2>Paper Details</h2>
+            <button class="modal-close" onclick="closePaperModal()">&times;</button>
+        </div>
+        <div class="modal-body" id="modalBody">
+            <!-- Content will be loaded dynamically -->
+        </div>
+    </div>
+</div>
 <body class="bg-gray-50">
     <header class="bg-gradient-to-r from-[#115D5B] to-[#0d4a47] text-white py-3 px-4 shadow-lg">
         <div class="max-w-7xl mx-auto">
@@ -594,14 +769,161 @@ function getStatusBadge($status) {
     <script>
         const papers = <?php echo json_encode($papers); ?>;
 
-        function viewPaperDetails(paperId) {
-            const paper = papers.find(p => p.id == paperId);
-            if (paper) {
-                alert('Paper details: ' + paper.paper_title);
-                // Implement full modal view
-            }
+async function viewPaperDetails(paperId) {
+    const modal = document.getElementById('paperModal');
+    const modalBody = document.getElementById('modalBody');
+    
+    // Show modal with loading state
+    modal.classList.add('active');
+    modalBody.innerHTML = '<div style="text-align: center; padding: 40px;"><i class="fas fa-spinner fa-spin text-3xl text-[#115D5B]"></i><p class="mt-4 text-gray-600">Loading paper details...</p></div>';
+    
+    try {
+        const response = await fetch(`get_paper_details.php?id=${paperId}`);
+        const data = await response.json();
+        
+        if (data.error) {
+            modalBody.innerHTML = `<div style="color: #dc2626; text-align: center; padding: 40px;"><i class="fas fa-exclamation-triangle text-3xl mb-4"></i><p>${data.error}</p></div>`;
+            return;
         }
+        
+        const paper = data.paper;
+        
+        // Handle authors field - check both 'authors' and 'author_name'
+        const authorsField = paper.authors || paper.author_name || 'Unknown';
+        const authorsList = authorsField.split(',').map(author => 
+            `<span class="author-tag">${escapeHtml(author.trim())}</span>`
+        ).join('');
+        
+        // Build the modal content
+        modalBody.innerHTML = `
+            <div class="detail-section">
+                <div class="detail-label">Title</div>
+                <div class="detail-value" style="font-size: 1.25rem; font-weight: 600;">${escapeHtml(paper.paper_title)}</div>
+            </div>
+            
+            <div class="detail-section">
+                <div class="detail-label">Authors</div>
+                <div class="authors-list">
+                    ${authorsList}
+                </div>
+            </div>
+            
+            <div class="detail-section">
+                <div class="detail-label">Research Type</div>
+                <div class="detail-value">${escapeHtml(paper.research_type || 'N/A')}</div>
+            </div>
+            
+            <div class="detail-section">
+                <div class="detail-label">Abstract</div>
+                <div class="detail-value">${escapeHtml(paper.abstract)}</div>
+            </div>
+            
+            <div class="detail-section">
+                <div class="detail-label">Keywords</div>
+                <div class="detail-value">${escapeHtml(paper.keywords)}</div>
+            </div>
+            
+            <div class="detail-section">
+                <div class="detail-label">Status</div>
+                <div class="detail-value">
+                    <span class="status-badge status-${paper.status.toLowerCase().replace(' ', '_')}">${paper.status.replace('_', ' ').toUpperCase()}</span>
+                </div>
+            </div>
+            
+            ${paper.reviewer_comments ? `
+            <div class="detail-section">
+                <div class="detail-label">Reviewer Comments</div>
+                <div class="detail-value" style="background-color: #fef3c7; padding: 16px; border-radius: 6px; border-left: 4px solid #f59e0b;">
+                    ${escapeHtml(paper.reviewer_comments).replace(/\n/g, '<br>')}
+                </div>
+            </div>
+            ` : ''}
+            
+            <div class="detail-section">
+                <div class="detail-label">Paper Metrics</div>
+                <div class="metrics-grid">
+                    <div class="metric-card">
+                        <div class="metric-value">${paper.total_views || 0}</div>
+                        <div class="metric-label">Views</div>
+                    </div>
+                    <div class="metric-card">
+                        <div class="metric-value">${paper.total_downloads || 0}</div>
+                        <div class="metric-label">Downloads</div>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="detail-section">
+                <div class="detail-label">Paper File</div>
+                <div class="detail-value">
+                    <a href="${escapeHtml(paper.file_path)}" class="file-link" target="_blank">
+                        <svg width="20" height="20" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/>
+                        </svg>
+                        Download Paper
+                    </a>
+                </div>
+            </div>
+            
+            <div class="detail-section">
+                <div class="detail-label">Submission Information</div>
+                <div class="detail-value" style="font-size: 0.875rem; color: #6b7280;">
+                    <div>Submitted by: <strong>${escapeHtml(paper.user_name || paper.username || 'Unknown')}</strong></div>
+                    <div>Submission Date: <strong>${formatDate(paper.submission_date)}</strong></div>
+                    ${paper.review_date ? `<div>Review Date: <strong>${formatDate(paper.review_date)}</strong></div>` : ''}
+                    ${paper.reviewed_by ? `<div>Reviewed by: <strong>${escapeHtml(paper.reviewed_by)}</strong></div>` : ''}
+                </div>
+            </div>
+        `;
+        
+    } catch (error) {
+        console.error('Error fetching paper details:', error);
+        modalBody.innerHTML = '<div style="color: #dc2626; text-align: center; padding: 40px;"><i class="fas fa-exclamation-triangle text-3xl mb-4"></i><p>Failed to load paper details</p><p class="text-sm mt-2">Please try again or contact support</p></div>';
+    }
+}
 
+// Function to close the modal
+function closePaperModal() {
+    const modal = document.getElementById('paperModal');
+    modal.classList.remove('active');
+}
+
+// Close modal when clicking outside
+document.addEventListener('click', function(event) {
+    const modal = document.getElementById('paperModal');
+    if (event.target === modal) {
+        closePaperModal();
+    }
+});
+
+// Close modal on Escape key
+document.addEventListener('keydown', function(event) {
+    if (event.key === 'Escape') {
+        closePaperModal();
+    }
+});
+
+// Helper function to escape HTML
+function escapeHtml(text) {
+    const div = document.createElement('div');
+    div.textContent = text;
+    return div.innerHTML;
+}
+
+// Helper function to format dates
+function formatDate(dateString) {
+    const options = { year: 'numeric', month: 'long', day: 'numeric', hour: '2-digit', minute: '2-digit' };
+    return new Date(dateString).toLocaleDateString('en-US', options);
+}
+
+// Initialize modal (call this when the page loads)
+document.addEventListener('DOMContentLoaded', function() {
+    // Add styles to head
+    document.head.insertAdjacentHTML('beforeend', modalStyles);
+    
+    // Add modal HTML to body
+    document.body.insertAdjacentHTML('beforeend', modalHTML);
+});
         function viewPaperPDF(paperId) {
             const paper = papers.find(p => p.id == paperId);
             if (paper && paper.file_path) {
@@ -789,6 +1111,10 @@ function getStatusBadge($status) {
                 closeDeleteModal();
             }
         });
+
     </script>
+
+
+    
 </body>
 </html>
