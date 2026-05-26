@@ -59,25 +59,25 @@ $is_logged_in = isset($_SESSION['name']);
 <body class="bg-white pt-24 text-[#103625] font-sans">
 
 <!-- Header -->
-<header id="main-header" class="fixed top-0 left-0 w-full z-50 bg-white shadow-lg h-16 sm:h-20 md:h-24 lg:h-28">
-  <div class="max-w-7xl mx-auto px-1 sm:px-3 md:px-6 flex flex-wrap justify-between items-center gap-1 sm:gap-2 md:gap-4 h-full">
+<header id="main-header" class="fixed top-0 left-0 w-full z-50 bg-white shadow-lg h-auto min-h-[4rem] sm:min-h-[5rem] md:h-24 lg:h-28">
+  <div class="max-w-7xl mx-auto px-2 sm:px-4 md:px-6 py-2 md:py-0 flex flex-wrap justify-between items-center gap-2 sm:gap-3 md:gap-4 h-full">
     
     <!-- Logo and Title -->
-    <div class="flex items-center space-x-1 sm:space-x-2 md:space-x-4 flex-shrink-0">
-      <img src="Images/Logo.jpg" alt="CNLRRS Logo" class="h-8 sm:h-12 md:h-16 lg:h-20 xl:h-24 object-contain" />
-      <h1 class="text-[10px] sm:text-xs md:text-sm lg:text-lg font-bold leading-tight">
-        <span class="block sm:hidden">CNLRRS</span>
-        <span class="hidden sm:block">
-          Camarines Norte Lowland <br class="hidden sm:block" />
+    <div class="flex items-center space-x-2 sm:space-x-3 md:space-x-4 flex-shrink-0">
+      <img src="Images/Logo.jpg" alt="CNLRRS Logo" class="h-10 sm:h-14 md:h-16 lg:h-20 xl:h-24 object-contain" />
+      <h1 class="text-[11px] sm:text-xs md:text-sm lg:text-base xl:text-lg font-bold leading-tight">
+        <span class="block lg:hidden">CNLRRS</span>
+        <span class="hidden lg:block">
+          Camarines Norte Lowland <br />
           Rainfed Research Station
         </span>
       </h1>
     </div>
 
     <!-- Partner Logos -->
-    <div class="flex items-center space-x-1 sm:space-x-2 md:space-x-4 flex-shrink-0">
-      <img src="Images/Ph.png" alt="Philippines Logo" class="h-8 sm:h-12 md:h-16 lg:h-20 xl:h-24 object-contain"/>
-      <img src="Images/Da.png" alt="CNLRRS Logo" class="h-8 sm:h-12 md:h-16 lg:h-20 xl:h-24 object-contain" />
+    <div class="flex items-center space-x-2 sm:space-x-3 md:space-x-4 flex-shrink-0">
+      <img src="Images/Ph.png" alt="Philippines Logo" class="h-10 sm:h-14 md:h-16 lg:h-20 xl:h-24 object-contain"/>
+      <img src="Images/Da.png" alt="DA Logo" class="h-10 sm:h-14 md:h-16 lg:h-20 xl:h-24 object-contain" />
     </div>
 
     <!-- Contact Info Section -->
