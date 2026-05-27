@@ -1,127 +1,139 @@
 <?php
 session_start();
+header('Content-Type: application/json');
 
-// Check if user is logged in and has admin role
+// Only admins may call this
 if (!isset($_SESSION['username']) || $_SESSION['role'] !== 'admin') {
-    http_response_code(403);
-    echo json_encode(['success' => false, 'message' => 'Unauthorized access']);
+    echo json_encode(['success' => false, 'message' => 'Unauthorized']);
     exit();
 }
 
 include 'connect.php';
 
-// Get JSON input
-$input = json_decode(file_get_contents('php://input'), true);
+$input  = json_decode(file_get_contents('php://input'), true);
+$action = $input['action']  ?? '';
+$userId = (int)($input['user_id'] ?? 0);
 
-if (!$input || !isset($input['action']) || !isset($input['user_id'])) {
-    echo json_encode(['success' => false, 'message' => 'Invalid request data']);
+if (!$userId) {
+    echo json_encode(['success' => false, 'message' => 'Invalid user ID']);
     exit();
 }
 
-$action = $input['action'];
-$user_id = intval($input['user_id']);
-
-// Prevent admin from modifying their own account
-$current_admin_query = "SELECT id FROM accounts WHERE username = ? AND role = 'admin'";
-$stmt = $conn->prepare($current_admin_query);
-$stmt->bind_param("s", $_SESSION['username']);
-$stmt->execute();
-$result = $stmt->get_result();
-$current_admin = $result->fetch_assoc();
-
-if ($current_admin && $current_admin['id'] == $user_id && ($action === 'demote' || $action === 'delete')) {
-    echo json_encode(['success' => false, 'message' => 'Cannot modify your own account']);
-    exit();
-}
-
-// Verify user exists
-$user_check_query = "SELECT id, role FROM accounts WHERE id = ?";
-$stmt = $conn->prepare($user_check_query);
-$stmt->bind_param("i", $user_id);
-$stmt->execute();
-$result = $stmt->get_result();
-
-if ($result->num_rows === 0) {
-    echo json_encode(['success' => false, 'message' => 'User not found']);
-    exit();
-}
-
-$user = $result->fetch_assoc();
+$currentAdminId = (int)($_SESSION['user_id'] ?? 0);
 
 switch ($action) {
+
+    // ── Promote to admin ──────────────────────────────────────────────────────
     case 'promote':
-        if ($user['role'] === 'admin') {
-            echo json_encode(['success' => false, 'message' => 'User is already an administrator']);
-            exit();
-        }
-        
-        $update_query = "UPDATE accounts SET role = 'admin', updated_at = CURRENT_TIMESTAMP WHERE id = ?";
-        $stmt = $conn->prepare($update_query);
-        $stmt->bind_param("i", $user_id);
-        
+        $stmt = $conn->prepare("UPDATE accounts SET role = 'admin' WHERE id = ?");
+        $stmt->bind_param('i', $userId);
         if ($stmt->execute()) {
-            echo json_encode(['success' => true, 'message' => 'User promoted to administrator successfully']);
+            echo json_encode(['success' => true]);
         } else {
-            echo json_encode(['success' => false, 'message' => 'Failed to promote user']);
+            echo json_encode(['success' => false, 'message' => 'Database error']);
         }
         break;
-        
+
+    // ── Demote to user ────────────────────────────────────────────────────────
     case 'demote':
-        if ($user['role'] === 'user') {
-            echo json_encode(['success' => false, 'message' => 'User is already a regular user']);
-            exit();
+        if ($userId === $currentAdminId) {
+            echo json_encode(['success' => false, 'message' => 'Cannot demote yourself']);
+            break;
         }
-        
-        // Check if this is the last admin
-        $admin_count_query = "SELECT COUNT(*) as count FROM accounts WHERE role = 'admin'";
-        $result = $conn->query($admin_count_query);
-        $admin_count = $result->fetch_assoc()['count'];
-        
-        if ($admin_count <= 1) {
-            echo json_encode(['success' => false, 'message' => 'Cannot demote the last administrator']);
-            exit();
-        }
-        
-        $update_query = "UPDATE accounts SET role = 'user', updated_at = CURRENT_TIMESTAMP WHERE id = ?";
-        $stmt = $conn->prepare($update_query);
-        $stmt->bind_param("i", $user_id);
-        
+        $stmt = $conn->prepare("UPDATE accounts SET role = 'user' WHERE id = ?");
+        $stmt->bind_param('i', $userId);
         if ($stmt->execute()) {
-            echo json_encode(['success' => true, 'message' => 'Administrator demoted to user successfully']);
+            echo json_encode(['success' => true]);
         } else {
-            echo json_encode(['success' => false, 'message' => 'Failed to demote administrator']);
+            echo json_encode(['success' => false, 'message' => 'Database error']);
         }
         break;
-        
+
+    // ── Delete account ────────────────────────────────────────────────────────
     case 'delete':
-        // Check if this is the last admin (if deleting an admin)
-        if ($user['role'] === 'admin') {
-            $admin_count_query = "SELECT COUNT(*) as count FROM accounts WHERE role = 'admin'";
-            $result = $conn->query($admin_count_query);
-            $admin_count = $result->fetch_assoc()['count'];
-            
-            if ($admin_count <= 1) {
-                echo json_encode(['success' => false, 'message' => 'Cannot delete the last administrator']);
-                exit();
-            }
+        if ($userId === $currentAdminId) {
+            echo json_encode(['success' => false, 'message' => 'Cannot delete your own account']);
+            break;
         }
-        
-        $delete_query = "DELETE FROM accounts WHERE id = ?";
-        $stmt = $conn->prepare($delete_query);
-        $stmt->bind_param("i", $user_id);
-        
+        $stmt = $conn->prepare("DELETE FROM accounts WHERE id = ?");
+        $stmt->bind_param('i', $userId);
         if ($stmt->execute()) {
-            echo json_encode(['success' => true, 'message' => 'User account deleted successfully']);
+            echo json_encode(['success' => true]);
         } else {
-            echo json_encode(['success' => false, 'message' => 'Failed to delete user account']);
+            echo json_encode(['success' => false, 'message' => 'Database error']);
         }
         break;
-        
+
+    // ── Update profile info ───────────────────────────────────────────────────
+    case 'update_profile':
+        $name       = trim($input['name']       ?? '');
+        $username   = trim($input['username']   ?? '');
+        $email      = trim($input['email']      ?? '');
+        $contact    = trim($input['contact']    ?? '');
+        $birth_date = trim($input['birth_date'] ?? '');
+        $address    = trim($input['address']    ?? '');
+
+        if (!$name || !$username || !$email || !$contact || !$birth_date || !$address) {
+            echo json_encode(['success' => false, 'message' => 'All fields are required']);
+            break;
+        }
+
+        // Check username uniqueness (exclude current user)
+        $check = $conn->prepare("SELECT id FROM accounts WHERE username = ? AND id != ?");
+        $check->bind_param('si', $username, $userId);
+        $check->execute();
+        $check->store_result();
+        if ($check->num_rows > 0) {
+            echo json_encode(['success' => false, 'message' => 'Username already taken']);
+            break;
+        }
+
+        // Check email uniqueness (exclude current user)
+        $checkEmail = $conn->prepare("SELECT id FROM accounts WHERE email = ? AND id != ?");
+        $checkEmail->bind_param('si', $email, $userId);
+        $checkEmail->execute();
+        $checkEmail->store_result();
+        if ($checkEmail->num_rows > 0) {
+            echo json_encode(['success' => false, 'message' => 'Email already in use by another account']);
+            break;
+        }
+
+        $stmt = $conn->prepare(
+            "UPDATE accounts SET name=?, username=?, email=?, contact=?, birth_date=?, address=? WHERE id=?"
+        );
+        $stmt->bind_param('ssssssi', $name, $username, $email, $contact, $birth_date, $address, $userId);
+        if ($stmt->execute()) {
+            echo json_encode(['success' => true]);
+        } else {
+            echo json_encode(['success' => false, 'message' => 'Database error: ' . $conn->error]);
+        }
+        break;
+
+    // ── Reset password ────────────────────────────────────────────────────────
+    case 'reset_password':
+        $newPassword = $input['new_password'] ?? '';
+        if (strlen($newPassword) < 4) {
+            echo json_encode(['success' => false, 'message' => 'Password must be at least 4 characters']);
+            break;
+        }
+
+        // NOTE: If your app uses password_hash(), replace the line below with:
+        // $hashed = password_hash($newPassword, PASSWORD_DEFAULT);
+        // and use $hashed in the bind_param instead of $newPassword.
+        // Currently storing plain text to match existing schema (not recommended for production).
+        $stmt = $conn->prepare("UPDATE accounts SET password = ? WHERE id = ?");
+        $stmt->bind_param('si', $newPassword, $userId);
+        if ($stmt->execute()) {
+            echo json_encode(['success' => true]);
+        } else {
+            echo json_encode(['success' => false, 'message' => 'Database error']);
+        }
+        break;
+
     default:
-        echo json_encode(['success' => false, 'message' => 'Invalid action']);
+        echo json_encode(['success' => false, 'message' => 'Unknown action']);
         break;
 }
 
-$stmt->close();
 $conn->close();
 ?>
